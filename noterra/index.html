@@ -56,6 +56,24 @@ dd.warn{color:var(--warn)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;color:var(--mute);font-weight:500;padding:9px 10px;border-bottom:1px solid var(--line)}
 .empty{color:var(--mute);text-align:center;padding:48px 0}
+.stack{display:grid;gap:16px}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.ctl{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:var(--mute)}
+.ctl label{display:flex;align-items:center;gap:8px}
+.ctl select,.fld{height:34px}
+.fld{display:inline-flex;align-items:center;gap:4px;padding:0 10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);color:var(--mute)}
+.fld:focus-within{outline:2px solid var(--a);outline-offset:2px}
+.fld input{width:38px;height:100%;padding:0;border:0;background:transparent;text-align:right;font-family:var(--mono);outline:0;-moz-appearance:textfield;appearance:textfield}
+.fld input::-webkit-inner-spin-button,.fld input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+svg.sp.lg{height:200px;margin-bottom:0}
+td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:13px}
+table.n td:not(:first-child),table.n th:not(:first-child){text-align:right}
+table.n td:not(:first-child){font-family:var(--mono)}
+tr.grp td{background:var(--bg);font-weight:600}
+input[type=checkbox]{accent-color:var(--a)}
+.timer{font-family:var(--mono);color:var(--mute);min-width:52px}
+.btn.on{background:var(--bad);border-color:var(--bad);color:#fff}
+.hint{color:var(--mute);font-size:12px;margin-top:8px}
 @media(max-width:1100px){.grid{grid-template-columns:1fr}}
 @media(max-width:900px){body{grid-template-columns:1fr}nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}nav h1{width:100%;margin-bottom:6px}.foot{margin:0 0 0 auto;flex-direction:row}}
 @media(max-width:600px){.cols{grid-template-columns:1fr}.cols>*{grid-column:auto!important}}
@@ -164,11 +182,7 @@ function show(id){
   if(id!=="log")id="overview"; location.hash=id; cur=[];
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
   const root=$("#root");
-  if(id==="log"){
-    root.innerHTML=`<div class="bar-top"><input placeholder="Session label" size="26" disabled><button class="btn" disabled>Start recording</button><span class="grow"></span><button class="btn" disabled>Compare selected</button></div>
-    <div class="p"><table><tr><th>Name</th><th>Started</th><th>Length</th><th>Samples</th><th>Notes</th></tr></table><div class="empty">No logs yet. Recorded sessions will appear here.</div></div>`;
-    return;
-  }
+  if(id==="log"){renderLog();return}
   root.innerHTML=`<div class="grid" id="g"></div>`;
   PANELS.forEach(p=>{
     const el=document.createElement("section"); el.className="p";
@@ -178,6 +192,88 @@ function show(id){
   });
   cur.forEach(x=>x.up());
 }
+/* ---- log ---- */
+const METRICS=[["cpuT","CPU temp","°C","cpu_temp_c"],["cpuW","CPU power","W","cpu_power_w"],["gT","GPU temp","°C","gpu_temp_c"],["gW","GPU power","W","gpu_power_w"],["vbw","VRAM bandwidth","GB/s","vram_bw_gbs"],["prx","PCIe receive","GB/s","pcie_rx_gbs"],["majF","Major faults","/s","mem_major_faults_s"],["r0","NVMe 0 read","MB/s","nvme0_read_mbps"]];
+const PROF={cpuT:[58,72],cpuW:[22,30],gT:[62,76],gW:[44,59],vbw:[51,140],prx:[6.2,.4],majF:[900,20],r0:[1400,90]};
+const COL=["--a","--b","--ok","--warn","--bad"];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mmss=t=>String(t/60|0).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
+const snapNow=()=>({governor:"powersave",epp:"balance_performance",turbo:"on","core pinning":"none","gpu clock lock":"none",readahead:"128 KB",kernel:"7.0.0-38"});
+const st=a=>{const s=[...a].sort((x,y)=>x-y),m=avg(a);return{mean:m,med:s[s.length>>1],p95:s[Math.floor(s.length*.95)],sd:Math.sqrt(avg(a.map(v=>(v-m)**2))),min:s[0],max:s[s.length-1]}};
+const f2=v=>fx(v,Math.abs(v)<10?2:1);
+let LOG=[],sel=new Set(),rec=null,uid=0,lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:""};
+function seed(name,tag,f,ov,ago){
+  const d={};METRICS.forEach(([k])=>{const[a,b]=PROF[k];d[k]=[...Array(150)].map((_,i)=>(a+(b-a)*Math.min(i/45,1))*(f[k]||1)*(1+n(.02)))});
+  LOG.unshift({id:++uid,name,tag,start:Date.now()-ago*36e5,iv:1,data:d,mk:1,snap:{...snapNow(),...ov}});
+}
+const pin={"core pinning":"P-cores only",readahead:"512 KB"};
+seed("baseline-1","baseline",{},{},30);seed("baseline-2","baseline",{cpuT:1.01,gT:1.01},{},29);
+seed("pinned-1","pinned",{cpuT:.94,cpuW:.92,gT:.96,gW:.95,majF:.8,r0:.9},pin,5);seed("pinned-2","pinned",{cpuT:.95,cpuW:.93,gT:.95,gW:.96,majF:.82,r0:.92},pin,4);
+sel=new Set([1,2,3,4]);
+
+function overlay(svg,arrs,ivs){
+  const all=arrs.flat(),mn=Math.min(...all),sp=(Math.max(...all)-mn)||1,D=Math.max(...arrs.map((a,i)=>a.length*ivs[i]));
+  svg.innerHTML=arrs.map((a,i)=>`<path stroke="var(${COL[i%5]})" d="${a.map((v,j)=>`${j?"L":"M"}${(j*ivs[i]/D*200).toFixed(1)},${(58-(v-mn)/sp*56).toFixed(1)}`).join("")}"/>`).join("");
+}
+function toggleRec(){
+  if(!rec){
+    const iv=+$("#iv").value; rec={id:++uid,name:$("#lb").value.trim()||"session-"+uid,tag:$("#tg").value.trim(),iv,start:Date.now(),data:Object.fromEntries(METRICS.map(([k])=>[k,[]])),mk:0,snap:snapNow()};
+    rec.h=setInterval(()=>{METRICS.forEach(([k])=>rec.data[k].push(S[k]));const e=$("#tm");if(e)e.textContent=mmss(Math.round(rec.data.cpuT.length*rec.iv))},iv*1000);
+  } else {
+    clearInterval(rec.h);
+    if(rec.data.cpuT.length>1){const{h,...s}=rec;LOG.unshift(s);sel.add(s.id)}
+    rec=null;
+  }
+  renderLog();
+}
+function exportCsv(){
+  LOG.filter(s=>sel.has(s.id)).forEach(s=>{
+    const head="timestamp_ms,"+METRICS.map(m=>m[3]).join(",");
+    const body=s.data.cpuT.map((_,i)=>[s.start+Math.round(i*s.iv*1000),...METRICS.map(([k])=>s.data[k][i]==null?"":s.data[k][i].toFixed(3))].join(","));
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([head+"\n"+body.join("\n")+"\n"],{type:"text/csv"}));a.download=s.name+".csv";a.click();
+  });
+}
+function renderLog(){
+  const root=$("#root"), ss=LOG.filter(s=>sel.has(s.id)), M=METRICS.find(x=>x[0]===lo.m), r=!!rec;
+  const rows=LOG.map(s=>`<tr><td><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.name)}"></td><td>${esc(s.name)}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td>${new Date(s.start).toLocaleString()}</td><td>${mmss(Math.round(s.data.cpuT.length*s.iv))}</td><td>${s.iv} s</td><td>${s.data.cpuT.length}</td><td>${s.mk}</td><td><button class="btn" data-del="${s.id}">Delete</button></td></tr>`).join("");
+  let an=`<div class="empty">Select one or more sessions above to analyze them.</div>`;
+  if(ss.length){
+    const arrs=ss.map(s=>s.data[lo.m].slice(Math.round(lo.trim/s.iv))), S2=arrs.map(st);
+    const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${f2(x[k])}</td>`).join("")}</tr>`;
+    let tb=ss.map((s,i)=>line(`<i style="display:inline-block;width:10px;height:3px;border-radius:2px;background:var(${COL[i%5]});margin-right:8px;vertical-align:middle"></i>${esc(s.name)}`,S2[i])).join("");
+    if(lo.grp){
+      const g={};ss.forEach((s,i)=>(g[s.tag||"none"]=g[s.tag||"none"]||[]).push(S2[i]));
+      Object.entries(g).filter(([,v])=>v.length>1).forEach(([t,v])=>{const m=k=>avg(v.map(x=>x[k]));
+        tb+=line(`Average of ${v.length} runs (${esc(t)})`,{mean:m("mean"),med:m("med"),p95:m("p95"),sd:st(v.map(x=>x.mean)).sd,min:Math.min(...v.map(x=>x.min)),max:Math.max(...v.map(x=>x.max))},1)});
+    }
+    const keys=[...new Set(ss.flatMap(s=>Object.keys(s.snap)))].filter(k=>new Set(ss.map(s=>s.snap[k])).size>1);
+    an=`<div class="ctl"><label>Metric <select id="mt">${METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
+      <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
+      <label><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label></div>
+      <svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>
+      <div class="hint">${M[1]} (${M[2]}) over time. Skipped samples are excluded from the chart and the statistics.</div>
+      <h3 style="margin-top:18px">Statistics</h3><table class="n"><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr>${tb}</table>
+      ${lo.grp?`<div class="hint">For average rows, std dev is the spread between runs.</div>`:""}
+      <h3 style="margin-top:18px">Configuration differences</h3>${keys.length?`<table class="n"><tr><th>Setting</th>${ss.map(s=>`<th>${esc(s.name)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${ss.map(s=>`<td>${esc(s.snap[k])}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint">All selected sessions have the same configuration.</div>`}`;
+  }
+  root.innerHTML=`<div class="bar-top"><input id="lb" placeholder="Session label" size="22" value="${esc(lo.lb)}"><input id="tg" placeholder="Tag (groups repeated runs)" size="24" value="${esc(lo.tg)}">
+    <label>Interval <select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===lo.iv?"selected":""}>${v} s</option>`).join("")}</select></label>
+    <button class="btn ${r?"on":""}" id="rc">${r?"Stop and save":"Start recording"}</button><span class="timer" id="tm">${r?mmss(Math.round(rec.data.cpuT.length*rec.iv)):"00:00"}</span>
+    <button class="btn" id="mk" ${r?"":"disabled"}>Add marker${r?" ("+rec.mk+")":""}</button><span class="grow"></span><button class="btn" id="ex" ${sel.size?"":"disabled"}>Export CSV</button></div>
+    <div class="stack"><section class="p"><h2>Sessions</h2><div class="sub">${LOG.length} recorded. Interval is saved with each session so comparisons stay fair.</div>
+    ${LOG.length?`<table><tr><th></th><th>Name</th><th>Tag</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr>${rows}</table>`:`<div class="empty">No logs yet. Start a recording to create one.</div>`}</section>
+    <section class="p"><h2>Analysis</h2><div class="sub">${ss.length} selected</div>${an}</section></div>`;
+  $("#lb").oninput=e=>lo.lb=e.target.value; $("#tg").oninput=e=>lo.tg=e.target.value; $("#iv").onchange=e=>lo.iv=+e.target.value;
+  $("#rc").onclick=toggleRec; $("#ex").onclick=exportCsv;
+  $("#mk").onclick=()=>{rec.mk++;$("#mk").textContent="Add marker ("+rec.mk+")"};
+  root.querySelectorAll("[data-id]").forEach(c=>c.onchange=()=>{const id=+c.dataset.id;sel.has(id)?sel.delete(id):sel.add(id);renderLog()});
+  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const id=+b.dataset.del;LOG=LOG.filter(s=>s.id!==id);sel.delete(id);renderLog()});
+  if(ss.length){
+    $("#mt").onchange=e=>{lo.m=e.target.value;renderLog()}; $("#tr").onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $("#gp").onchange=e=>{lo.grp=e.target.checked;renderLog()};
+    overlay($("#ov"),ss.map(s=>s.data[lo.m].slice(Math.round(lo.trim/s.iv))),ss.map(s=>s.iv));
+  }
+}
+
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>show(b.dataset.p));
 for(let i=0;i<20;i++)sample();
 show(location.hash.slice(1));
