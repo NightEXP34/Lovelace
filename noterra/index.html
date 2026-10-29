@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitor</title>
 <style>
-/* Themes: add a new [data-theme="name"] block overriding these tokens. */
+/* Themes: add a [data-theme="name"] block that overrides these tokens. */
 :root{
   --bg:#f2f3f5;--surface:#fff;--line:#e2e4e9;--ink:#15171c;--mute:#6a7180;
   --a:#3b5bdb;--b:#e8590c;--ok:#2b9348;--warn:#e08a00;--bad:#d6336c;
@@ -17,211 +17,167 @@
   --a:#7f95ff;--b:#ff9b5e;--ok:#4cc16b;--warn:#f2a93b;--bad:#ff6b9d;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);display:grid;grid-template-columns:190px 1fr;min-height:100vh}
 nav{padding:20px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
-nav h1{font-size:15px;margin:0 8px 18px;font-weight:650;letter-spacing:.2px}
+nav h1{font-size:15px;margin:0 8px 18px;font-weight:650}
 nav button{all:unset;cursor:pointer;padding:8px 10px;border-radius:var(--r-ctl);color:var(--mute)}
 nav button:hover{color:var(--ink)}
 nav button[aria-current=true]{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
-nav button:focus-visible,.btn:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+nav button:focus-visible,select:focus-visible,.card:focus-visible{outline:2px solid var(--a);outline-offset:2px}
 .foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--mute)}
+select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:5px 8px}
 main{padding:22px 26px;max-width:1280px}
-.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
-.bar .grow{flex:1}
-input,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:7px 10px}
-.btn{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 14px;border-radius:var(--r-ctl)}
-.btn.rec{background:var(--a);border-color:var(--a);color:#fff}
-.btn.rec.on{background:var(--bad);border-color:var(--bad)}
-.timer{font-family:var(--mono);color:var(--mute);min-width:52px}
+.head{display:flex;align-items:baseline;gap:14px;margin-bottom:18px}
+.head h1{font-size:20px;margin:0;font-weight:650}
+.head span{color:var(--mute)}
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
 .p{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-panel);padding:16px 18px;min-width:0}
-.s4{grid-column:span 4}.s6{grid-column:span 6}.s8{grid-column:span 8}.s12{grid-column:span 12}
+.s4{grid-column:span 4}.s6{grid-column:span 6}.s12{grid-column:span 12}
 .p h2{font-size:13px;font-weight:600;margin:0 0 12px;color:var(--mute)}
-.big{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:8px}
+.card{cursor:pointer}.card:hover{border-color:var(--mute)}
+.big{display:flex;gap:28px;flex-wrap:wrap}
 .big div span{display:block;font-size:12px;color:var(--mute)}
-.big div b{font:600 26px/1.15 var(--mono);font-variant-numeric:tabular-nums}
+.big div b{font:600 24px/1.2 var(--mono);font-variant-numeric:tabular-nums}
 .big small{font:12px var(--sans);color:var(--mute);font-weight:400;margin-left:3px}
-svg.sp{width:100%;height:56px;display:block}
+svg.sp{width:100%;height:56px;display:block;margin-top:12px}
+svg.sp.lg{height:170px}
 svg.sp path{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
-svg.lg{height:220px}
-.cores{display:grid;gap:5px;margin:6px 0 12px}
-.cores.pc{grid-template-columns:repeat(6,1fr)}.cores.ec{grid-template-columns:repeat(8,1fr)}
-.core{height:34px;background:var(--bg);border-radius:4px;position:relative;overflow:hidden}
-.core i{position:absolute;left:0;right:0;bottom:0;background:var(--a);opacity:.85}
-.ec .core i{background:var(--b)}
-.lbl{font-size:12px;color:var(--mute);margin-top:2px}
-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:0;font-size:13px}
-dt{color:var(--mute)}dd{margin:0;font-family:var(--mono);text-align:right}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:right;padding:9px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
-th:first-child,td:first-child{text-align:left}
-th{color:var(--mute);font-weight:500}
-td.m{font-family:var(--mono)}
-.tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
-.up{color:var(--ok)}.dn{color:var(--bad)}.diff{color:var(--warn)}
 .legend{display:flex;gap:16px;font-size:12px;color:var(--mute);margin-top:8px}
 .legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
-.empty{color:var(--mute);padding:26px 0;text-align:center}
-.view{display:none}.view.on{display:block}
-@media(max-width:900px){body{grid-template-columns:1fr}nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}nav h1{width:100%;margin-bottom:6px}.foot{margin:0 0 0 auto;flex-direction:row}.s4,.s6,.s8{grid-column:span 12}}
-@media(prefers-reduced-motion:no-preference){.core i{transition:height .5s}}
+dl{display:grid;grid-template-columns:auto 1fr;gap:7px 18px;margin:0;font-size:13px}
+dt{color:var(--mute)}dd{margin:0;font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+dd.warn{color:var(--warn)}
+.cr{display:grid;grid-template-columns:34px 62px 1fr 52px;gap:10px;align-items:center;padding:5px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.cr:last-child{border:0}
+.cr span{font-family:var(--mono)}.cr span:first-child{color:var(--mute)}.cr span:last-child{text-align:right}
+.bar{height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--a)}
+.ec .bar i{background:var(--b)}
+@media(max-width:900px){body{grid-template-columns:1fr}nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}nav h1{width:100%;margin-bottom:6px}.foot{margin:0 0 0 auto;flex-direction:row}.s4,.s6{grid-column:span 12}}
 </style>
 </head>
 <body>
-<nav>
-  <h1>Monitor</h1>
-  <button data-v="live" aria-current="true">Live</button>
-  <button data-v="sessions">Sessions</button>
-  <button data-v="compare">Compare</button>
-  <div class="foot">
-    <label>Theme <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
-    <span>Demo data. Not connected to hardware.</span>
-  </div>
+<nav id="nav"><h1>Monitor</h1>
+  <div class="foot"><label>Theme <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label><span>Demo data. Not connected to hardware.</span></div>
 </nav>
-<main>
-
-<section class="view on" id="live">
-  <div class="bar">
-    <input id="label" placeholder="Session label, e.g. pin-pcore-cold" size="28">
-    <select id="kind"><option>cold</option><option>warm</option></select>
-    <button class="btn rec" id="rec">Start recording</button>
-    <span class="timer" id="timer">00:00</span>
-    <span class="grow"></span>
-    <span class="tag" id="status">Engine: demo</span>
-  </div>
-  <div class="grid">
-    <div class="p s8"><h2>Engine throughput</h2>
-      <div class="big"><div><span>Decode</span><b id="v-dec">0<small>tok/s</small></b></div><div><span>Prefill</span><b id="v-pre">0<small>tok/s</small></b></div><div><span>Tokens per joule</span><b id="v-tpj">0</b></div></div>
-      <svg class="sp lg" id="c-dec" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>
-      <div class="legend"><span><i style="background:var(--a)"></i>Decode</span><span><i style="background:var(--b)"></i>Prefill (scaled)</span></div>
-    </div>
-    <div class="p s4"><h2>System snapshot</h2>
-      <dl><dt>Governor</dt><dd>powersave</dd><dt>EPP</dt><dd>balance_performance</dd><dt>CPU turbo</dt><dd>off</dd><dt>CPU PL1 / PL2</dt><dd>45 W / 65 W</dd><dt>GPU clock lock</dt><dd>2330 MHz</dd><dt>PCIe link</dt><dd>Gen4 x8</dd><dt>I/O scheduler</dt><dd>none</dd><dt>Kernel</dt><dd>7.0.0-38</dd><dt>NVIDIA driver</dt><dd>595.99.02</dd></dl>
-    </div>
-    <div class="p s4"><h2>GPU</h2>
-      <div class="big"><div><span>Temperature</span><b id="v-temp">0<small>°C</small></b></div><div><span>Power</span><b id="v-pow">0<small>W</small></b></div><div><span>SM clock</span><b id="v-clk">0<small>MHz</small></b></div></div>
-      <svg class="sp" id="c-gpu" viewBox="0 0 200 56" preserveAspectRatio="none"></svg>
-      <div class="lbl">VRAM <span id="v-vram">0</span> / 8.0 GB. Throttle: <span id="v-thr">none</span></div>
-    </div>
-    <div class="p s4"><h2>CPU</h2>
-      <div class="lbl">Performance cores</div><div class="cores pc" id="pc"></div>
-      <div class="lbl">Efficiency cores</div><div class="cores ec" id="ec"></div>
-      <div class="lbl">Package <span id="v-cpu">0</span> °C, <span id="v-cpw">0</span> W, <span id="v-cmig">0</span> migrations/s</div>
-    </div>
-    <div class="p s4"><h2>Memory and page faults</h2>
-      <div class="big"><div><span>Major faults</span><b id="v-flt">0<small>/s</small></b></div><div><span>Page cache</span><b id="v-pc">0<small>GB</small></b></div></div>
-      <svg class="sp" id="c-flt" viewBox="0 0 200 56" preserveAspectRatio="none"></svg>
-      <div class="lbl">RAM <span id="v-ram">0</span> / 32 GB, swap 0.4 / 8 GB</div>
-    </div>
-    <div class="p s12"><h2>Storage and PCIe</h2>
-      <div class="grid">
-        <div class="s6"><div class="big"><div><span>NVMe read</span><b id="v-nv">0<small>MB/s</small></b></div><div><span>Await</span><b id="v-aw">0<small>ms</small></b></div></div><svg class="sp" id="c-nv" viewBox="0 0 200 56" preserveAspectRatio="none"></svg></div>
-        <div class="s6"><div class="big"><div><span>PCIe receive</span><b id="v-px">0<small>GB/s</small></b></div><div><span>Root disk used</span><b>94<small>%</small></b></div></div><svg class="sp" id="c-px" viewBox="0 0 200 56" preserveAspectRatio="none"></svg></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="view" id="sessions">
-  <div class="p"><h2>Recorded sessions</h2><div id="tbl"></div></div>
-</section>
-
-<section class="view" id="compare">
-  <div class="bar"><label>A <select id="selA"></select></label><label>B <select id="selB"></select></label></div>
-  <div class="grid">
-    <div class="p s12"><h2>Decode throughput over time</h2><svg class="sp lg" id="c-cmp" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>
-      <div class="legend"><span><i style="background:var(--a)"></i>A</span><span><i style="background:var(--b)"></i>B</span></div></div>
-    <div class="p s6"><h2>Metrics</h2><div id="mt"></div></div>
-    <div class="p s6"><h2>Configuration differences</h2><div id="df"></div></div>
-  </div>
-</section>
-
-</main>
+<main><div class="head"><h1 id="ttl"></h1><span id="sub"></span></div><div class="grid" id="page"></div></main>
 <script>
-const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const N=60, rnd=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const $=s=>document.querySelector(s), rnd=(a,b)=>a+Math.random()*(b-a), n=a=>rnd(-a,a), clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const avg=a=>a.reduce((x,y)=>x+y,0)/a.length, fx=(v,d=0)=>v.toFixed(d);
 
 /* theme */
 const th=$("#theme"); th.value=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";
-const applyTheme=()=>document.documentElement.dataset.theme=th.value; th.onchange=applyTheme; applyTheme();
+(th.onchange=()=>document.documentElement.dataset.theme=th.value)();
 
-/* nav */
-$$("nav button").forEach(b=>b.onclick=()=>{
-  $$("nav button").forEach(x=>x.removeAttribute("aria-current")); b.setAttribute("aria-current","true");
-  $$(".view").forEach(v=>v.classList.toggle("on",v.id===b.dataset.v));
-  if(b.dataset.v==="compare")renderCompare();
-});
-
-/* sparkline: series[] of arrays, colors[] css vars */
-function spark(svg,series,colors,fixedMin){
-  const all=series.flat(), mn=fixedMin??Math.min(...all), mx=Math.max(...all), span=(mx-mn)||1, H=svg.viewBox.baseVal.height;
-  svg.innerHTML=series.map((d,i)=>{
-    const p=d.map((v,j)=>`${j?"L":"M"}${(j/Math.max(d.length-1,1)*200).toFixed(1)},${(H-2-(v-mn)/span*(H-4)).toFixed(1)}`).join("");
-    return `<path d="${p}" stroke="var(${colors[i]})"/>`;
-  }).join("");
+/* ---- mock sampler: replace with fetch to the collector API ---- */
+const H={}; let t=0, S={};
+function sample(){
+  const ph=clamp(++t/45,0,1), s={};
+  s.cpuT=58+ph*14+n(1); s.cpuW=22+ph*8+n(1.5); s.cpuU=22+ph*38+n(4); s.migr=rnd(2,30); s.ctx=9000+ph*6000+n(500); s.c6=60-ph*35+n(3); s.irq=3000+ph*2500+n(200);
+  s.pu=[...Array(6)].map(()=>clamp(30+ph*45+n(20),3,100)); s.pf=[...Array(6)].map(()=>1.8+ph*.6+n(.1)); s.pt=[...Array(6)].map(()=>s.cpuT+n(3));
+  s.eu=[...Array(8)].map(()=>clamp(12+ph*10+rnd(-8,12),3,100)); s.ef=[...Array(8)].map(()=>1.3+ph*.4+n(.1)); s.et=[...Array(8)].map(()=>s.cpuT-4+n(3));
+  s.pfa=avg(s.pf);
+  s.gT=62+ph*14+n(.6); s.gW=44+ph*15+n(2); s.gClk=s.gT>76?2270:2330; s.gU=30+ph*40+n(5); s.gMU=20+ph*35+n(4); s.vram=7.1+ph*.5; s.vbw=256*s.gMU/100;
+  s.prx=6.2*(1-ph)+rnd(.2,.5); s.ptx=.4*(1-ph)+rnd(.05,.15); s.pcu=s.prx/15.75*100; s.fan=45+ph*30; s.thr=s.gT>76?"SW thermal slowdown":"none";
+  s.ramU=14+ph*10; s.cache=6+ph*14; s.avail=32-s.ramU; s.majF=900*(1-ph)+rnd(5,40); s.minF=4000+ph*3000+n(400); s.swp=rnd(0,2);
+  s.r0=1400*(1-ph)+rnd(60,120); s.w0=rnd(1,8); s.i0=s.r0*8; s.a0=2.4*(1-ph)+.2+rnd(0,.2); s.u0=clamp(s.r0/18,2,100); s.q0=1+s.r0/200; s.t0=48+ph*8;
+  s.r1=rnd(0,3); s.w1=rnd(0,2); s.i1=s.r1*8; s.a1=rnd(.1,.3); s.u1=rnd(0,2); s.q1=1; s.t1=41+rnd(0,1);
+  for(const k in s) if(typeof s[k]==="number"){(H[k]=H[k]||[]).push(s[k]); if(H[k].length>60)H[k].shift()}
+  S=s;
 }
-const stat=a=>{const s=[...a].sort((x,y)=>x-y),m=a.reduce((x,y)=>x+y,0)/a.length;
-  return{avg:m,p95:s[Math.floor(s.length*.95)],sd:Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/a.length)}};
 
-/* live mock */
-const H={dec:[],pre:[],temp:[],pow:[],flt:[],nv:[],px:[]};
-const P=[...Array(6)].map(()=>{const d=document.createElement("div");d.className="core";d.innerHTML="<i></i>";$("#pc").append(d);return d.firstChild});
-const E=[...Array(8)].map(()=>{const d=document.createElement("div");d.className="core";d.innerHTML="<i></i>";$("#ec").append(d);return d.firstChild});
-let t=0, rec=null;
-const set=(id,v,u)=>$(id).innerHTML=u?`${v}<small>${u}</small>`:v;
-function tick(){
-  t++; const ph=clamp(t/45,0,1);
-  const s={dec:10+ph*26+rnd(-2,2),pre:50+ph*120+rnd(-8,8),temp:62+ph*14+rnd(-.6,.6),pow:44+ph*15+rnd(-2,2),
-    flt:900*(1-ph)+rnd(5,40),nv:1400*(1-ph)+rnd(60,120),px:6.2*(1-ph)+rnd(.2,.5)};
-  for(const k in s){H[k].push(s[k]);if(H[k].length>N)H[k].shift()}
-  set("#v-dec",s.dec.toFixed(1),"tok/s");set("#v-pre",s.pre.toFixed(0),"tok/s");$("#v-tpj").textContent=(s.dec/s.pow).toFixed(2);
-  set("#v-temp",s.temp.toFixed(0),"°C");set("#v-pow",s.pow.toFixed(0),"W");set("#v-clk",(2330-(s.temp>76?60:0)).toFixed(0),"MHz");
-  $("#v-vram").textContent=(7.1+ph*.5).toFixed(1);$("#v-thr").textContent=s.temp>76?"thermal":"none";
-  set("#v-flt",s.flt.toFixed(0),"/s");set("#v-pc",(6+ph*14).toFixed(1),"GB");$("#v-ram").textContent=(14+ph*10).toFixed(1);
-  set("#v-nv",s.nv.toFixed(0),"MB/s");set("#v-aw",(2.4*(1-ph)+.2).toFixed(1),"ms");set("#v-px",s.px.toFixed(1),"GB/s");
-  $("#v-cpu").textContent=(58+ph*14+rnd(-1,1)).toFixed(0);$("#v-cpw").textContent=(22+ph*8+rnd(-1,1)).toFixed(0);$("#v-cmig").textContent=(rnd(2,30)|0);
-  P.forEach(i=>i.style.height=clamp(30+ph*45+rnd(-20,20),4,100)+"%");E.forEach(i=>i.style.height=clamp(12+ph*10+rnd(-8,12),3,100)+"%");
-  spark($("#c-dec"),[H.dec,H.pre.map(v=>v/4.5)],["--a","--b"],0);
-  spark($("#c-gpu"),[H.temp,H.pow],["--b","--a"]);spark($("#c-flt"),[H.flt],["--a"],0);
-  spark($("#c-nv"),[H.nv],["--a"],0);spark($("#c-px"),[H.px],["--b"],0);
-  if(rec){rec.dec.push(s.dec);rec.pow.push(s.pow);$("#timer").textContent=new Date((t-rec.t0)*1000).toISOString().slice(14,19)}
+/* ---- sparkline ---- */
+function spark(svg,keys,cols,min){
+  const sr=keys.map(k=>H[k]||[]), all=sr.flat(), mn=min??Math.min(...all), span=(Math.max(...all)-mn)||1, h=svg.viewBox.baseVal.height;
+  svg.innerHTML=sr.map((d,i)=>`<path stroke="var(${cols[i]})" d="${d.map((v,j)=>`${j?"L":"M"}${(j/Math.max(d.length-1,1)*200).toFixed(1)},${(h-2-(v-mn)/span*(h-4)).toFixed(1)}`).join("")}"/>`).join("");
 }
-setInterval(tick,1000);tick();
 
-/* sessions */
-const snap=(o={})=>({governor:"powersave",epp:"balance_performance",turbo:"off","gpu lock":"2330 MHz","P/E pinning":"none",readahead:"128 KB","I/O scheduler":"none",...o});
-const curve=(cold,lo,hi,n=90)=>[...Array(n)].map((_,i)=>{const p=cold?clamp(i/60,0,1):1;return lo+(hi-lo)*p+rnd(-1.5,1.5)});
-let sessions=[
- {name:"baseline-cold",kind:"cold",dec:curve(1,9,30),pow:curve(0,48,58),snap:snap()},
- {name:"baseline-warm",kind:"warm",dec:curve(0,33,37),pow:curve(0,56,60),snap:snap()},
- {name:"pin-pcore-cold",kind:"cold",dec:curve(1,11,34),pow:curve(0,47,56),snap:snap({"P/E pinning":"decode on P-cores"})},
- {name:"pin-pcore-warm",kind:"warm",dec:curve(0,36,41),pow:curve(0,55,59),snap:snap({"P/E pinning":"decode on P-cores"})}];
-const fmt=s=>{const d=stat(s.dec),w=stat(s.pow);return{n:s.dec.length,avg:d.avg,p95:d.p95,sd:d.sd,w:w.avg,tpj:d.avg/w.avg}};
-function renderSessions(){
-  $("#tbl").innerHTML=sessions.length?`<table><tr><th>Name</th><th>Type</th><th>Length</th><th>Decode avg</th><th>p95</th><th>Std dev</th><th>Power avg</th><th>Tok/J</th></tr>${sessions.map(s=>{const f=fmt(s);
-    return`<tr><td>${s.name}</td><td><span class="tag">${s.kind}</span></td><td class="m">${f.n}s</td><td class="m">${f.avg.toFixed(1)}</td><td class="m">${f.p95.toFixed(1)}</td><td class="m">${f.sd.toFixed(1)}</td><td class="m">${f.w.toFixed(0)} W</td><td class="m">${f.tpj.toFixed(2)}</td></tr>`}).join("")}</table>`
-   :`<div class="empty">No sessions yet. Start a recording on the Live tab.</div>`;
+/* ---- block builders: each returns {el, up(S)} ---- */
+function block(b,bare){
+  const el=document.createElement("div"); if(!bare)el.className="p s"+(b.span||12);
+  const T=b.title&&!bare?`<h2>${b.title}</h2>`:"";
+  if(b.t==="stats"){
+    el.innerHTML=T+`<div class="big">${b.items.map((x,i)=>`<div><span>${x[1]}</span><b></b></div>`).join("")}</div>`;
+    const bs=[...el.querySelectorAll("b")];
+    return{el,up:()=>b.items.forEach((x,i)=>bs[i].innerHTML=fx(S[x[0]],x[3]||0)+`<small>${x[2]}</small>`)};
+  }
+  if(b.t==="chart"){
+    el.innerHTML=T+`<svg class="sp${b.small?"":" lg"}" viewBox="0 0 200 ${b.small?56:60}" preserveAspectRatio="none"></svg>`+(b.small?"":`<div class="legend">${b.series.map(s=>`<span><i style="background:var(${s[2]})"></i>${s[1]}</span>`).join("")}</div>`);
+    const sv=el.querySelector("svg");
+    return{el,up:()=>spark(sv,b.series.map(s=>s[0]),b.series.map(s=>s[2]),b.min)};
+  }
+  if(b.t==="dl"){
+    el.innerHTML=T+`<dl>${b.rows.map(r=>`<dt>${r[0]}</dt><dd></dd>`).join("")}</dl>`;
+    const ds=[...el.querySelectorAll("dd")];
+    return{el,up:()=>b.rows.forEach((r,i)=>{const v=typeof r[1]==="function"?r[1](S):r[1];ds[i].textContent=v;ds[i].className=r[2]&&r[2](S)?"warn":""})};
+  }
+  if(b.t==="cores"){
+    el.className+=" "+b.cls;
+    el.innerHTML=T+[...Array(b.count)].map((_,i)=>`<div class="cr"><span>${b.pre}${i}</span><span></span><div class="bar"><i></i></div><span></span></div>`).join("");
+    const rows=[...el.querySelectorAll(".cr")];
+    return{el,up:()=>rows.forEach((r,i)=>{const c=r.children;c[1].textContent=fx(S[b.f][i],2)+" GHz";c[2].firstChild.style.width=S[b.u][i]+"%";c[3].textContent=fx(S[b.T][i])+"°C"})};
+  }
 }
-$("#rec").onclick=function(){
-  if(!rec){rec={t0:t,dec:[],pow:[],name:$("#label").value.trim()||"session-"+(sessions.length+1),kind:$("#kind").value,snap:snap()};this.textContent="Stop and save";this.classList.add("on")}
-  else{if(rec.dec.length>1)sessions.unshift({name:rec.name,kind:rec.kind,dec:rec.dec,pow:rec.pow,snap:rec.snap});rec=null;this.textContent="Start recording";this.classList.remove("on");$("#timer").textContent="00:00";renderSessions()}
+
+/* ---- pages ---- */
+const drive=(i,name,link,used)=>[
+  {t:"stats",span:12,title:name,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"Read IOPS","",0],["a"+i,"Await","ms",1]]},
+  {t:"chart",span:6,title:"Throughput",min:0,series:[["r"+i,"Read","--a"],["w"+i,"Write","--b"]]},
+  {t:"dl",span:6,title:"Device",rows:[["Link",link],["Utilization",s=>fx(s["u"+i])+" %"],["Queue depth",s=>fx(s["q"+i],1)],["Temperature",s=>fx(s["t"+i])+" °C"],["Capacity used",used],["I/O scheduler","none"],["Readahead","128 KB"]]}];
+const warn=s=>s.thr!=="none";
+const PAGES={
+ overview:{title:"Overview",sub:"All components",blocks:[]},
+ cpu:{title:"CPU",sub:"Intel Core i7-13620H, 6 P-cores and 8 E-cores",blocks:[
+  {t:"stats",items:[["cpuT","Package temp","°C"],["cpuW","Package power","W",1],["cpuU","Utilization","%"],["pfa","Avg P-core clock","GHz",2],["migr","Migrations","/s"]]},
+  {t:"chart",span:6,title:"Temperature and power",series:[["cpuT","Temp (°C)","--b"],["cpuW","Power (W)","--a"]]},
+  {t:"chart",span:6,title:"Load and idle",min:0,series:[["cpuU","Utilization (%)","--a"],["c6","C6 residency (%)","--b"]]},
+  {t:"cores",span:6,title:"Performance cores",cls:"pc",count:6,pre:"P",u:"pu",f:"pf",T:"pt"},
+  {t:"cores",span:6,title:"Efficiency cores",cls:"ec",count:8,pre:"E",u:"eu",f:"ef",T:"et"},
+  {t:"dl",span:6,title:"Scheduler and power",rows:[["Governor","powersave"],["EPP","balance_performance"],["Turbo","off"],["PL1 / PL2","45 W / 65 W"],["P/E pinning","none"],["Driver","intel_pstate (active)"]]},
+  {t:"dl",span:6,title:"Kernel activity",rows:[["Context switches",s=>fx(s.ctx)+" /s"],["Thread migrations",s=>fx(s.migr)+" /s"],["Interrupts",s=>fx(s.irq)+" /s"],["C6 residency",s=>fx(s.c6)+" %"],["Throttle","none"]]}]},
+ gpu:{title:"GPU",sub:"NVIDIA GeForce RTX 4060 Laptop, 8 GB",blocks:[
+  {t:"stats",items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GB",1]]},
+  {t:"chart",span:6,title:"Temperature and power",series:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},
+  {t:"chart",span:6,title:"Utilization",min:0,series:[["gU","GPU (%)","--a"],["gMU","Memory controller (%)","--b"]]},
+  {t:"chart",span:6,title:"VRAM bandwidth in use",min:0,series:[["vbw","GB/s","--a"]]},
+  {t:"chart",span:6,title:"PCIe traffic",min:0,series:[["prx","Receive (GB/s)","--a"],["ptx","Transmit (GB/s)","--b"]]},
+  {t:"dl",span:4,title:"VRAM",rows:[["Used / total",s=>fx(s.vram,1)+" / 8.0 GB"],["Memory clock","8001 MHz"],["Bus width","128-bit"],["Peak bandwidth","256 GB/s"],["Bandwidth in use",s=>fx(s.vbw)+" GB/s"],["Controller util",s=>fx(s.gMU)+" %"]]},
+  {t:"dl",span:4,title:"PCIe",rows:[["Link now","Gen4 x8"],["Link max","Gen4 x8"],["Receive",s=>fx(s.prx,2)+" GB/s"],["Transmit",s=>fx(s.ptx,2)+" GB/s"],["Theoretical","15.75 GB/s"],["Link used",s=>fx(s.pcu)+" %"]]},
+  {t:"dl",span:4,title:"Power and throttle",rows:[["Draw / limit",s=>fx(s.gW,1)+" / 70 W"],["Clock lock","2330 MHz"],["Fan",s=>fx(s.fan)+" %"],["P-state","P2"],["Throttle reason",s=>s.thr,warn]]}]},
+ memory:{title:"Memory",sub:"2 x 16 GB DDR5-5200, dual channel",blocks:[
+  {t:"stats",items:[["ramU","Used","GB",1],["cache","Page cache","GB",1],["avail","Available","GB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
+  {t:"chart",span:6,title:"RAM",min:0,series:[["ramU","Used (GB)","--a"],["cache","Page cache (GB)","--b"]]},
+  {t:"chart",span:6,title:"Page faults",min:0,series:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]},
+  {t:"dl",span:6,title:"Capacity",rows:[["Total","32 GB"],["Used",s=>fx(s.ramU,1)+" GB"],["Page cache",s=>fx(s.cache,1)+" GB"],["Swap","0.4 / 8 GB"],["Transparent hugepages","madvise"],["Swappiness","60"]]},
+  {t:"dl",span:6,title:"Bandwidth",rows:[["Type","DDR5-5200"],["Channels","2"],["Theoretical peak","83.2 GB/s"],["Measured bandwidth","unavailable"],["Minor faults",s=>fx(s.minF)+" /s"]]}]},
+ nvme:{title:"NVMe",sub:"Two drives",blocks:[
+  ...drive(0,"WD PC SN540, 512 GB (root)","Gen4 x4","94 %"),
+  ...drive(1,"ZHITAI TiPlus5000, 1 TB","Gen3 x4","unavailable")]}
 };
+const ORDER=Object.keys(PAGES);
+const OV=[["cpu","CPU",[["cpuT","Temp","°C"],["cpuW","Power","W"],["cpuU","Util","%"]],"cpuU"],["gpu","GPU",[["gT","Temp","°C"],["gW","Power","W"],["vbw","VRAM bw","GB/s"]],"gU"],["memory","Memory",[["ramU","Used","GB",1],["cache","Cache","GB",1],["majF","Faults","/s"]],"majF"],["nvme","NVMe (root)",[["r0","Read","MB/s"],["a0","Await","ms",1],["u0","Util","%"]],"r0"]];
 
-/* compare */
-function renderCompare(){
-  const keep=[$("#selA").value,$("#selB").value], opts=sessions.map((s,i)=>`<option value="${i}">${s.name}</option>`).join("");
-  $("#selA").innerHTML=opts;$("#selB").innerHTML=opts;
-  $("#selA").value=keep[0]||0;$("#selB").value=keep[1]||Math.min(2,sessions.length-1);
-  const A=sessions[$("#selA").value],B=sessions[$("#selB").value];if(!A||!B)return;
-  spark($("#c-cmp"),[A.dec,B.dec],["--a","--b"],0);
-  const a=fmt(A),b=fmt(B),row=(l,k,u,hi)=>{const d=(b[k]-a[k])/a[k]*100,good=hi?d>0:d<0;
-    return`<tr><td>${l}</td><td class="m">${a[k].toFixed(1)}${u}</td><td class="m">${b[k].toFixed(1)}${u}</td><td class="m ${Math.abs(d)<.5?"":good?"up":"dn"}">${d>0?"+":""}${d.toFixed(1)}%</td></tr>`};
-  $("#mt").innerHTML=`<table><tr><th>Metric</th><th>A</th><th>B</th><th>Change</th></tr>${row("Decode avg","avg"," tok/s",1)}${row("Decode p95","p95"," tok/s",1)}${row("Std dev","sd","",0)}${row("Power avg","w"," W",0)}${row("Tokens per joule","tpj","",1)}</table>`;
-  const keys=Object.keys(A.snap),dif=keys.filter(k=>A.snap[k]!==B.snap[k]);
-  $("#df").innerHTML=dif.length?`<table><tr><th>Setting</th><th>A</th><th>B</th></tr>${dif.map(k=>`<tr><td>${k}</td><td class="m">${A.snap[k]}</td><td class="m diff">${B.snap[k]}</td></tr>`).join("")}</table>`:`<div class="empty">Same configuration. Differences come from run-to-run variance.</div>`;
+let cur=[]; 
+function show(id){
+  if(!PAGES[id])id="overview"; const pg=PAGES[id]; location.hash=id;
+  $("#ttl").textContent=pg.title; $("#sub").textContent=pg.sub;
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
+  const root=$("#page"); root.innerHTML=""; cur=[];
+  if(id==="overview"){
+    OV.forEach(o=>{
+      const c=document.createElement("div"); c.className="p s6 card"; c.tabIndex=0; c.setAttribute("role","button");
+      c.innerHTML=`<h2>${o[1]}</h2>`;
+      const a=block({t:"stats",items:o[2]},true), b=block({t:"chart",small:1,min:0,series:[[o[3],"","--a"]]},true);
+      c.append(a.el,b.el); cur.push(a,b); root.append(c);
+      c.onclick=()=>show(o[0]); c.onkeydown=e=>{if(e.key==="Enter")show(o[0])};
+    });
+  } else pg.blocks.forEach(b=>{const x=block(b); cur.push(x); root.append(x.el)});
+  cur.forEach(x=>x.up());
 }
-$("#selA").onchange=$("#selB").onchange=renderCompare;
-renderSessions();
+ORDER.forEach(id=>{const b=document.createElement("button");b.dataset.p=id;b.textContent=PAGES[id].title;b.onclick=()=>show(id);$("#nav").insertBefore(b,$(".foot"))});
+for(let i=0;i<20;i++)sample();
+show(location.hash.slice(1)||"overview");
+setInterval(()=>{sample();cur.forEach(x=>x.up())},1000);
 </script>
 </body>
 </html>
