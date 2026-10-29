@@ -17,59 +17,65 @@
   --a:#7f95ff;--b:#ff9b5e;--ok:#4cc16b;--warn:#f2a93b;--bad:#ff6b9d;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);display:grid;grid-template-columns:190px 1fr;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);display:grid;grid-template-columns:170px 1fr;min-height:100vh}
 nav{padding:20px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
 nav h1{font-size:15px;margin:0 8px 18px;font-weight:650}
 nav button{all:unset;cursor:pointer;padding:8px 10px;border-radius:var(--r-ctl);color:var(--mute)}
 nav button:hover{color:var(--ink)}
 nav button[aria-current=true]{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
-nav button:focus-visible,select:focus-visible,.card:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+nav button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--a);outline-offset:2px}
 .foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--mute)}
-select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:5px 8px}
-main{padding:22px 26px;max-width:1280px}
-.head{display:flex;align-items:baseline;gap:14px;margin-bottom:18px}
-.head h1{font-size:20px;margin:0;font-weight:650}
-.head span{color:var(--mute)}
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-.p{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-panel);padding:16px 18px;min-width:0}
-.s4{grid-column:span 4}.s6{grid-column:span 6}.s12{grid-column:span 12}
-.p h2{font-size:13px;font-weight:600;margin:0 0 12px;color:var(--mute)}
-.card{cursor:pointer}.card:hover{border-color:var(--mute)}
-.big{display:flex;gap:28px;flex-wrap:wrap}
+select,input,.btn{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:6px 10px}
+.btn{cursor:pointer}.btn:disabled,input:disabled{opacity:.5;cursor:not-allowed}
+main{padding:22px 26px;max-width:1500px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.p{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-panel);padding:18px 20px;min-width:0}
+.p>h2{font-size:16px;margin:0;font-weight:650}
+.sub{color:var(--mute);font-size:12px;margin:2px 0 16px}
+h3{font-size:12px;font-weight:600;color:var(--mute);margin:0 0 10px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px 26px}
+.big{display:flex;gap:24px;flex-wrap:wrap}
 .big div span{display:block;font-size:12px;color:var(--mute)}
-.big div b{font:600 24px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.big div b{font:600 22px/1.2 var(--mono);font-variant-numeric:tabular-nums}
 .big small{font:12px var(--sans);color:var(--mute);font-weight:400;margin-left:3px}
-svg.sp{width:100%;height:56px;display:block;margin-top:12px}
-svg.sp.lg{height:170px}
+svg.sp{width:100%;height:84px;display:block}
 svg.sp path{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
-.legend{display:flex;gap:16px;font-size:12px;color:var(--mute);margin-top:8px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:6px}
 .legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
-dl{display:grid;grid-template-columns:auto 1fr;gap:7px 18px;margin:0;font-size:13px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0;font-size:13px}
 dt{color:var(--mute)}dd{margin:0;font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
 dd.warn{color:var(--warn)}
-.cr{display:grid;grid-template-columns:34px 62px 1fr 52px;gap:10px;align-items:center;padding:5px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.cr{display:grid;grid-template-columns:28px 58px 1fr 44px;gap:8px;align-items:center;padding:4px 0;font-size:12px;border-bottom:1px solid var(--line)}
 .cr:last-child{border:0}
 .cr span{font-family:var(--mono)}.cr span:first-child{color:var(--mute)}.cr span:last-child{text-align:right}
-.bar{height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.bar{height:7px;background:var(--bg);border-radius:4px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--a)}
 .ec .bar i{background:var(--b)}
-@media(max-width:900px){body{grid-template-columns:1fr}nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}nav h1{width:100%;margin-bottom:6px}.foot{margin:0 0 0 auto;flex-direction:row}.s4,.s6{grid-column:span 12}}
+.bar-top{display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.bar-top .grow{flex:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--mute);font-weight:500;padding:9px 10px;border-bottom:1px solid var(--line)}
+.empty{color:var(--mute);text-align:center;padding:48px 0}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}}
+@media(max-width:900px){body{grid-template-columns:1fr}nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}nav h1{width:100%;margin-bottom:6px}.foot{margin:0 0 0 auto;flex-direction:row}}
+@media(max-width:600px){.cols{grid-template-columns:1fr}.cols>*{grid-column:auto!important}}
 </style>
 </head>
 <body>
 <nav id="nav"><h1>Monitor</h1>
+  <button data-p="overview">Overview</button>
+  <button data-p="log">Log</button>
   <div class="foot"><label>Theme <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label><span>Demo data. Not connected to hardware.</span></div>
 </nav>
-<main><div class="head"><h1 id="ttl"></h1><span id="sub"></span></div><div class="grid" id="page"></div></main>
+<main id="root"></main>
 <script>
 const $=s=>document.querySelector(s), rnd=(a,b)=>a+Math.random()*(b-a), n=a=>rnd(-a,a), clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const avg=a=>a.reduce((x,y)=>x+y,0)/a.length, fx=(v,d=0)=>v.toFixed(d);
 
-/* theme */
 const th=$("#theme"); th.value=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";
 (th.onchange=()=>document.documentElement.dataset.theme=th.value)();
 
-/* ---- mock sampler: replace with fetch to the collector API ---- */
+/* ---- mock sampler: replace with a fetch to the collector API ---- */
 const H={}; let t=0, S={};
 function sample(){
   const ph=clamp(++t/45,0,1), s={};
@@ -86,97 +92,95 @@ function sample(){
   S=s;
 }
 
-/* ---- sparkline ---- */
 function spark(svg,keys,cols,min){
   const sr=keys.map(k=>H[k]||[]), all=sr.flat(), mn=min??Math.min(...all), span=(Math.max(...all)-mn)||1, h=svg.viewBox.baseVal.height;
   svg.innerHTML=sr.map((d,i)=>`<path stroke="var(${cols[i]})" d="${d.map((v,j)=>`${j?"L":"M"}${(j/Math.max(d.length-1,1)*200).toFixed(1)},${(h-2-(v-mn)/span*(h-4)).toFixed(1)}`).join("")}"/>`).join("");
 }
 
-/* ---- block builders: each returns {el, up(S)} ---- */
-function block(b,bare){
-  const el=document.createElement("div"); if(!bare)el.className="p s"+(b.span||12);
-  const T=b.title&&!bare?`<h2>${b.title}</h2>`:"";
+/* ---- parts: each returns {el, up()} ---- */
+function part(b){
+  const el=document.createElement("div"); el.style.gridColumn="span "+(b.span||1);
+  const T=b.title?`<h3>${b.title}</h3>`:"";
   if(b.t==="stats"){
-    el.innerHTML=T+`<div class="big">${b.items.map((x,i)=>`<div><span>${x[1]}</span><b></b></div>`).join("")}</div>`;
+    el.innerHTML=T+`<div class="big">${b.items.map(x=>`<div><span>${x[1]}</span><b></b></div>`).join("")}</div>`;
     const bs=[...el.querySelectorAll("b")];
     return{el,up:()=>b.items.forEach((x,i)=>bs[i].innerHTML=fx(S[x[0]],x[3]||0)+`<small>${x[2]}</small>`)};
   }
   if(b.t==="chart"){
-    el.innerHTML=T+`<svg class="sp${b.small?"":" lg"}" viewBox="0 0 200 ${b.small?56:60}" preserveAspectRatio="none"></svg>`+(b.small?"":`<div class="legend">${b.series.map(s=>`<span><i style="background:var(${s[2]})"></i>${s[1]}</span>`).join("")}</div>`);
+    el.innerHTML=T+`<svg class="sp" viewBox="0 0 200 60" preserveAspectRatio="none"></svg><div class="legend">${b.series.map(s=>`<span><i style="background:var(${s[2]})"></i>${s[1]}</span>`).join("")}</div>`;
     const sv=el.querySelector("svg");
     return{el,up:()=>spark(sv,b.series.map(s=>s[0]),b.series.map(s=>s[2]),b.min)};
   }
   if(b.t==="dl"){
     el.innerHTML=T+`<dl>${b.rows.map(r=>`<dt>${r[0]}</dt><dd></dd>`).join("")}</dl>`;
     const ds=[...el.querySelectorAll("dd")];
-    return{el,up:()=>b.rows.forEach((r,i)=>{const v=typeof r[1]==="function"?r[1](S):r[1];ds[i].textContent=v;ds[i].className=r[2]&&r[2](S)?"warn":""})};
+    return{el,up:()=>b.rows.forEach((r,i)=>{ds[i].textContent=typeof r[1]==="function"?r[1](S):r[1];ds[i].className=r[2]&&r[2](S)?"warn":""})};
   }
   if(b.t==="cores"){
-    el.className+=" "+b.cls;
+    el.className=b.cls;
     el.innerHTML=T+[...Array(b.count)].map((_,i)=>`<div class="cr"><span>${b.pre}${i}</span><span></span><div class="bar"><i></i></div><span></span></div>`).join("");
     const rows=[...el.querySelectorAll(".cr")];
     return{el,up:()=>rows.forEach((r,i)=>{const c=r.children;c[1].textContent=fx(S[b.f][i],2)+" GHz";c[2].firstChild.style.width=S[b.u][i]+"%";c[3].textContent=fx(S[b.T][i])+"°C"})};
   }
 }
 
-/* ---- pages ---- */
-const drive=(i,name,link,used)=>[
-  {t:"stats",span:12,title:name,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"Read IOPS","",0],["a"+i,"Await","ms",1]]},
-  {t:"chart",span:6,title:"Throughput",min:0,series:[["r"+i,"Read","--a"],["w"+i,"Write","--b"]]},
-  {t:"dl",span:6,title:"Device",rows:[["Link",link],["Utilization",s=>fx(s["u"+i])+" %"],["Queue depth",s=>fx(s["q"+i],1)],["Temperature",s=>fx(s["t"+i])+" °C"],["Capacity used",used],["I/O scheduler","none"],["Readahead","128 KB"]]}];
+/* ---- overview layout: one panel per component ---- */
 const warn=s=>s.thr!=="none";
-const PAGES={
- overview:{title:"Overview",sub:"All components",blocks:[]},
- cpu:{title:"CPU",sub:"Intel Core i7-13620H, 6 P-cores and 8 E-cores",blocks:[
-  {t:"stats",items:[["cpuT","Package temp","°C"],["cpuW","Package power","W",1],["cpuU","Utilization","%"],["pfa","Avg P-core clock","GHz",2],["migr","Migrations","/s"]]},
-  {t:"chart",span:6,title:"Temperature and power",series:[["cpuT","Temp (°C)","--b"],["cpuW","Power (W)","--a"]]},
-  {t:"chart",span:6,title:"Load and idle",min:0,series:[["cpuU","Utilization (%)","--a"],["c6","C6 residency (%)","--b"]]},
-  {t:"cores",span:6,title:"Performance cores",cls:"pc",count:6,pre:"P",u:"pu",f:"pf",T:"pt"},
-  {t:"cores",span:6,title:"Efficiency cores",cls:"ec",count:8,pre:"E",u:"eu",f:"ef",T:"et"},
-  {t:"dl",span:6,title:"Scheduler and power",rows:[["Governor","powersave"],["EPP","balance_performance"],["Turbo","off"],["PL1 / PL2","45 W / 65 W"],["P/E pinning","none"],["Driver","intel_pstate (active)"]]},
-  {t:"dl",span:6,title:"Kernel activity",rows:[["Context switches",s=>fx(s.ctx)+" /s"],["Thread migrations",s=>fx(s.migr)+" /s"],["Interrupts",s=>fx(s.irq)+" /s"],["C6 residency",s=>fx(s.c6)+" %"],["Throttle","none"]]}]},
- gpu:{title:"GPU",sub:"NVIDIA GeForce RTX 4060 Laptop, 8 GB",blocks:[
-  {t:"stats",items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GB",1]]},
-  {t:"chart",span:6,title:"Temperature and power",series:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},
-  {t:"chart",span:6,title:"Utilization",min:0,series:[["gU","GPU (%)","--a"],["gMU","Memory controller (%)","--b"]]},
-  {t:"chart",span:6,title:"VRAM bandwidth in use",min:0,series:[["vbw","GB/s","--a"]]},
-  {t:"chart",span:6,title:"PCIe traffic",min:0,series:[["prx","Receive (GB/s)","--a"],["ptx","Transmit (GB/s)","--b"]]},
-  {t:"dl",span:4,title:"VRAM",rows:[["Used / total",s=>fx(s.vram,1)+" / 8.0 GB"],["Memory clock","8001 MHz"],["Bus width","128-bit"],["Peak bandwidth","256 GB/s"],["Bandwidth in use",s=>fx(s.vbw)+" GB/s"],["Controller util",s=>fx(s.gMU)+" %"]]},
-  {t:"dl",span:4,title:"PCIe",rows:[["Link now","Gen4 x8"],["Link max","Gen4 x8"],["Receive",s=>fx(s.prx,2)+" GB/s"],["Transmit",s=>fx(s.ptx,2)+" GB/s"],["Theoretical","15.75 GB/s"],["Link used",s=>fx(s.pcu)+" %"]]},
-  {t:"dl",span:4,title:"Power and throttle",rows:[["Draw / limit",s=>fx(s.gW,1)+" / 70 W"],["Clock lock","2330 MHz"],["Fan",s=>fx(s.fan)+" %"],["P-state","P2"],["Throttle reason",s=>s.thr,warn]]}]},
- memory:{title:"Memory",sub:"2 x 16 GB DDR5-5200, dual channel",blocks:[
-  {t:"stats",items:[["ramU","Used","GB",1],["cache","Page cache","GB",1],["avail","Available","GB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
-  {t:"chart",span:6,title:"RAM",min:0,series:[["ramU","Used (GB)","--a"],["cache","Page cache (GB)","--b"]]},
-  {t:"chart",span:6,title:"Page faults",min:0,series:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]},
-  {t:"dl",span:6,title:"Capacity",rows:[["Total","32 GB"],["Used",s=>fx(s.ramU,1)+" GB"],["Page cache",s=>fx(s.cache,1)+" GB"],["Swap","0.4 / 8 GB"],["Transparent hugepages","madvise"],["Swappiness","60"]]},
-  {t:"dl",span:6,title:"Bandwidth",rows:[["Type","DDR5-5200"],["Channels","2"],["Theoretical peak","83.2 GB/s"],["Measured bandwidth","unavailable"],["Minor faults",s=>fx(s.minF)+" /s"]]}]},
- nvme:{title:"NVMe",sub:"Two drives",blocks:[
-  ...drive(0,"WD PC SN540, 512 GB (root)","Gen4 x4","94 %"),
-  ...drive(1,"ZHITAI TiPlus5000, 1 TB","Gen3 x4","unavailable")]}
-};
-const ORDER=Object.keys(PAGES);
-const OV=[["cpu","CPU",[["cpuT","Temp","°C"],["cpuW","Power","W"],["cpuU","Util","%"]],"cpuU"],["gpu","GPU",[["gT","Temp","°C"],["gW","Power","W"],["vbw","VRAM bw","GB/s"]],"gU"],["memory","Memory",[["ramU","Used","GB",1],["cache","Cache","GB",1],["majF","Faults","/s"]],"majF"],["nvme","NVMe (root)",[["r0","Read","MB/s"],["a0","Await","ms",1],["u0","Util","%"]],"r0"]];
+const drive=(i,name,link,used)=>[
+  {t:"stats",span:2,title:name,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"Read IOPS"],["a"+i,"Await","ms",1]]},
+  {t:"chart",title:"Throughput",min:0,series:[["r"+i,"Read","--a"],["w"+i,"Write","--b"]]},
+  {t:"dl",title:"Device",rows:[["Link",link],["Utilization",s=>fx(s["u"+i])+" %"],["Queue depth",s=>fx(s["q"+i],1)],["Temperature",s=>fx(s["t"+i])+" °C"],["Capacity used",used],["I/O scheduler","none"],["Readahead","128 KB"]]}];
+const PANELS=[
+ {title:"CPU",sub:"Intel Core i7-13620H, 6 P-cores and 8 E-cores",parts:[
+  {t:"stats",span:2,items:[["cpuT","Package temp","°C"],["cpuW","Package power","W",1],["cpuU","Utilization","%"],["pfa","Avg P-core clock","GHz",2],["migr","Migrations","/s"]]},
+  {t:"chart",title:"Temperature and power",series:[["cpuT","Temp (°C)","--b"],["cpuW","Power (W)","--a"]]},
+  {t:"chart",title:"Load and idle",min:0,series:[["cpuU","Utilization (%)","--a"],["c6","C6 residency (%)","--b"]]},
+  {t:"cores",title:"Performance cores",cls:"pc",count:6,pre:"P",u:"pu",f:"pf",T:"pt"},
+  {t:"cores",title:"Efficiency cores",cls:"ec",count:8,pre:"E",u:"eu",f:"ef",T:"et"},
+  {t:"dl",title:"Scheduler and power",rows:[["Governor","powersave"],["EPP","balance_performance"],["Turbo","on"],["PL1 / PL2","45 W / 65 W"],["Core pinning","none"],["Driver","intel_pstate (active)"]]},
+  {t:"dl",title:"Kernel activity",rows:[["Context switches",s=>fx(s.ctx)+" /s"],["Thread migrations",s=>fx(s.migr)+" /s"],["Interrupts",s=>fx(s.irq)+" /s"],["C6 residency",s=>fx(s.c6)+" %"],["Throttle","none"]]}]},
+ {title:"GPU",sub:"NVIDIA GeForce RTX 4060 Laptop, 8 GB",parts:[
+  {t:"stats",span:2,items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GB",1]]},
+  {t:"chart",title:"Temperature and power",series:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},
+  {t:"chart",title:"Utilization",min:0,series:[["gU","GPU (%)","--a"],["gMU","Memory controller (%)","--b"]]},
+  {t:"chart",title:"VRAM bandwidth in use",min:0,series:[["vbw","GB/s","--a"]]},
+  {t:"chart",title:"PCIe traffic",min:0,series:[["prx","Receive (GB/s)","--a"],["ptx","Transmit (GB/s)","--b"]]},
+  {t:"dl",title:"VRAM",rows:[["Used / total",s=>fx(s.vram,1)+" / 8.0 GB"],["Memory clock","8001 MHz"],["Bus width","128-bit"],["Peak bandwidth","256 GB/s"],["Bandwidth in use",s=>fx(s.vbw)+" GB/s"],["Controller util",s=>fx(s.gMU)+" %"]]},
+  {t:"dl",title:"PCIe",rows:[["Link now","Gen4 x8"],["Link max","Gen4 x8"],["Receive",s=>fx(s.prx,2)+" GB/s"],["Transmit",s=>fx(s.ptx,2)+" GB/s"],["Theoretical","15.75 GB/s"],["Link used",s=>fx(s.pcu)+" %"]]},
+  {t:"dl",span:2,title:"Power and throttle",rows:[["Draw / limit",s=>fx(s.gW,1)+" / 70 W"],["Clock lock","none"],["Fan",s=>fx(s.fan)+" %"],["P-state","P2"],["Throttle reason",s=>s.thr,warn]]}]},
+ {title:"Memory",sub:"2 x 16 GB DDR5-5200, dual channel",parts:[
+  {t:"stats",span:2,items:[["ramU","Used","GB",1],["cache","Page cache","GB",1],["avail","Available","GB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
+  {t:"chart",title:"RAM",min:0,series:[["ramU","Used (GB)","--a"],["cache","Page cache (GB)","--b"]]},
+  {t:"chart",title:"Page faults",min:0,series:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]},
+  {t:"dl",title:"Capacity",rows:[["Total","32 GB"],["Used",s=>fx(s.ramU,1)+" GB"],["Page cache",s=>fx(s.cache,1)+" GB"],["Swap","0.4 / 8 GB"],["Transparent hugepages","madvise"],["Swappiness","60"]]},
+  {t:"dl",title:"Bandwidth",rows:[["Type","DDR5-5200"],["Channels","2"],["Theoretical peak","83.2 GB/s"],["Measured bandwidth","unavailable"],["Minor faults",s=>fx(s.minF)+" /s"]]}]},
+ {title:"Storage",sub:"NVMe drives",parts:[
+  ...drive(0,"Drive 0: WD PC SN540, 512 GB","Gen4 x4","94 %"),
+  ...drive(1,"Drive 1: ZHITAI TiPlus5000, 1 TB","Gen3 x4","unavailable")]}
+];
 
-let cur=[]; 
+let cur=[];
 function show(id){
-  if(!PAGES[id])id="overview"; const pg=PAGES[id]; location.hash=id;
-  $("#ttl").textContent=pg.title; $("#sub").textContent=pg.sub;
+  if(id!=="log")id="overview"; location.hash=id; cur=[];
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
-  const root=$("#page"); root.innerHTML=""; cur=[];
-  if(id==="overview"){
-    OV.forEach(o=>{
-      const c=document.createElement("div"); c.className="p s6 card"; c.tabIndex=0; c.setAttribute("role","button");
-      c.innerHTML=`<h2>${o[1]}</h2>`;
-      const a=block({t:"stats",items:o[2]},true), b=block({t:"chart",small:1,min:0,series:[[o[3],"","--a"]]},true);
-      c.append(a.el,b.el); cur.push(a,b); root.append(c);
-      c.onclick=()=>show(o[0]); c.onkeydown=e=>{if(e.key==="Enter")show(o[0])};
-    });
-  } else pg.blocks.forEach(b=>{const x=block(b); cur.push(x); root.append(x.el)});
+  const root=$("#root");
+  if(id==="log"){
+    root.innerHTML=`<div class="bar-top"><input placeholder="Session label" size="26" disabled><button class="btn" disabled>Start recording</button><span class="grow"></span><button class="btn" disabled>Compare selected</button></div>
+    <div class="p"><table><tr><th>Name</th><th>Started</th><th>Length</th><th>Samples</th><th>Notes</th></tr></table><div class="empty">No logs yet. Recorded sessions will appear here.</div></div>`;
+    return;
+  }
+  root.innerHTML=`<div class="grid" id="g"></div>`;
+  PANELS.forEach(p=>{
+    const el=document.createElement("section"); el.className="p";
+    el.innerHTML=`<h2>${p.title}</h2><div class="sub">${p.sub}</div><div class="cols"></div>`;
+    p.parts.forEach(b=>{const x=part(b); cur.push(x); el.lastChild.append(x.el)});
+    $("#g").append(el);
+  });
   cur.forEach(x=>x.up());
 }
-ORDER.forEach(id=>{const b=document.createElement("button");b.dataset.p=id;b.textContent=PAGES[id].title;b.onclick=()=>show(id);$("#nav").insertBefore(b,$(".foot"))});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>show(b.dataset.p));
 for(let i=0;i<20;i++)sample();
-show(location.hash.slice(1)||"overview");
+show(location.hash.slice(1));
 setInterval(()=>{sample();cur.forEach(x=>x.up())},1000);
 </script>
 </body>
