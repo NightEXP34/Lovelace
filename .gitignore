@@ -1,0 +1,11 @@
+# Python venv & cache
+noterra/.venv/
+__pycache__/
+noterra/.server.log
+
+# Node test deps
+node_modules/
+
+# editor/OS clutter
+*.swp
+.DS_Store

@@ -83,36 +83,44 @@ input[type=checkbox]{accent-color:var(--a)}
 <nav id="nav"><h1>Monitor</h1>
   <button data-p="overview">Overview</button>
   <button data-p="log">Log</button>
-  <div class="foot"><label>Theme <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label><span>Demo data. Not connected to hardware.</span></div>
+  <div class="foot"><label>Theme <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label><span id="status">Backend: offline</span></div>
 </nav>
 <main id="root"></main>
 <script>
-const $=s=>document.querySelector(s), rnd=(a,b)=>a+Math.random()*(b-a), n=a=>rnd(-a,a), clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-const avg=a=>a.reduce((x,y)=>x+y,0)/a.length, fx=(v,d=0)=>v.toFixed(d);
+const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.min(b,Math.max(a,v)), avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const fx=(v,d=0)=>typeof v==="number"?v.toFixed(d):"unavailable";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mmss=t=>String(t/60|0).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
+const GT={1:2.5,2:5,3:8,4:16,5:32,6:64};
 
 const th=$("#theme"); th.value=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";
 (th.onchange=()=>document.documentElement.dataset.theme=th.value)();
 
-/* ---- mock sampler: replace with a fetch to the collector API ---- */
-const H={}; let t=0, S={};
-function sample(){
-  const ph=clamp(++t/45,0,1), s={};
-  s.cpuT=58+ph*14+n(1); s.cpuW=22+ph*8+n(1.5); s.cpuU=22+ph*38+n(4); s.migr=rnd(2,30); s.ctx=9000+ph*6000+n(500); s.c6=60-ph*35+n(3); s.irq=3000+ph*2500+n(200);
-  s.pu=[...Array(6)].map(()=>clamp(30+ph*45+n(20),3,100)); s.pf=[...Array(6)].map(()=>1.8+ph*.6+n(.1)); s.pt=[...Array(6)].map(()=>s.cpuT+n(3));
-  s.eu=[...Array(8)].map(()=>clamp(12+ph*10+rnd(-8,12),3,100)); s.ef=[...Array(8)].map(()=>1.3+ph*.4+n(.1)); s.et=[...Array(8)].map(()=>s.cpuT-4+n(3));
-  s.pfa=avg(s.pf);
-  s.gT=62+ph*14+n(.6); s.gW=44+ph*15+n(2); s.gClk=s.gT>76?2270:2330; s.gU=30+ph*40+n(5); s.gMU=20+ph*35+n(4); s.vram=7.1+ph*.5; s.vbw=256*s.gMU/100;
-  s.prx=6.2*(1-ph)+rnd(.2,.5); s.ptx=.4*(1-ph)+rnd(.05,.15); s.pcu=s.prx/15.75*100; s.fan=45+ph*30; s.thr=s.gT>76?"SW thermal slowdown":"none";
-  s.ramU=14+ph*10; s.cache=6+ph*14; s.avail=32-s.ramU; s.majF=900*(1-ph)+rnd(5,40); s.minF=4000+ph*3000+n(400); s.swp=rnd(0,2);
-  s.r0=1400*(1-ph)+rnd(60,120); s.w0=rnd(1,8); s.i0=s.r0*8; s.a0=2.4*(1-ph)+.2+rnd(0,.2); s.u0=clamp(s.r0/18,2,100); s.q0=1+s.r0/200; s.t0=48+ph*8;
-  s.r1=rnd(0,3); s.w1=rnd(0,2); s.i1=s.r1*8; s.a1=rnd(.1,.3); s.u1=rnd(0,2); s.q1=1; s.t1=41+rnd(0,1);
-  for(const k in s) if(typeof s[k]==="number"){(H[k]=H[k]||[]).push(s[k]); if(H[k].length>60)H[k].shift()}
-  S=s;
+/* ---- live sampler: fetch the collector API every second ---- */
+let S={snap:{},drives:[{},{}]}, H={}, cur=[], online=false;
+async function sample(){
+  try{
+    const r=await fetch("/api/snapshot",{cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    const d=await r.json();
+    S={drives:[{},{}],snap:{},...d};
+    online=true; $("#status").textContent="Backend: live";
+    for(const k in d){const v=d[k];
+      if(typeof v==="number"){(H[k]=H[k]||[]).push(v); if(H[k].length>60)H[k].shift()}
+    }
+    cur.forEach(x=>x.up());
+    refreshSubs();
+  }catch(e){
+    online=false; $("#status").textContent="Backend: offline — run server.py";
+  }
 }
+setInterval(sample,1000); sample();
 
 function spark(svg,keys,cols,min){
-  const sr=keys.map(k=>H[k]||[]), all=sr.flat(), mn=min??Math.min(...all), span=(Math.max(...all)-mn)||1, h=svg.viewBox.baseVal.height;
-  svg.innerHTML=sr.map((d,i)=>`<path stroke="var(${cols[i]})" d="${d.map((v,j)=>`${j?"L":"M"}${(j/Math.max(d.length-1,1)*200).toFixed(1)},${(h-2-(v-mn)/span*(h-4)).toFixed(1)}`).join("")}"/>`).join("");
+  const pairs=keys.map((k,i)=>[H[k]||[],cols[i]]).filter(([d])=>d.length>1);
+  if(!pairs.length){svg.innerHTML="";return}
+  const all=pairs.flatMap(([d])=>d), mn=min??Math.min(...all), span=(Math.max(...all)-mn)||1, h=svg.viewBox.baseVal.height;
+  svg.innerHTML=pairs.map(([d,c])=>`<path stroke="var(${c})" d="${d.map((v,j)=>`${j?"L":"M"}${(j/Math.max(d.length-1,1)*200).toFixed(1)},${(h-2-(v-mn)/span*(h-4)).toFixed(1)}`).join("")}"/>`).join("");
 }
 
 /* ---- parts: each returns {el, up()} ---- */
@@ -132,52 +140,95 @@ function part(b){
   if(b.t==="dl"){
     el.innerHTML=T+`<dl>${b.rows.map(r=>`<dt>${r[0]}</dt><dd></dd>`).join("")}</dl>`;
     const ds=[...el.querySelectorAll("dd")];
-    return{el,up:()=>b.rows.forEach((r,i)=>{ds[i].textContent=typeof r[1]==="function"?r[1](S):r[1];ds[i].className=r[2]&&r[2](S)?"warn":""})};
+    return{el,up:()=>b.rows.forEach((r,i)=>{
+      const v=typeof r[1]==="function"?r[1](S):r[1];
+      ds[i].textContent=v==null?"unavailable":v;
+      ds[i].className=r[2]&&r[2](S)?"warn":"";
+    })};
   }
   if(b.t==="cores"){
-    el.className=b.cls;
-    el.innerHTML=T+[...Array(b.count)].map((_,i)=>`<div class="cr"><span>${b.pre}${i}</span><span></span><div class="bar"><i></i></div><span></span></div>`).join("");
-    const rows=[...el.querySelectorAll(".cr")];
-    return{el,up:()=>rows.forEach((r,i)=>{const c=r.children;c[1].textContent=fx(S[b.f][i],2)+" GHz";c[2].firstChild.style.width=S[b.u][i]+"%";c[3].textContent=fx(S[b.T][i])+"°C"})};
+    el.className=b.cls; el.innerHTML=T;
+    let rows=[];
+    return{el,up:()=>{
+      const u=S[b.u]||[],f=S[b.f]||[],tp=S[b.T]||[];
+      if(rows.length!==u.length){
+        el.innerHTML=T+[...Array(u.length)].map((_,i)=>`<div class="cr"><span>${b.pre}${i}</span><span></span><div class="bar"><i></i></div><span></span></div>`).join("");
+        rows=[...el.querySelectorAll(".cr")];
+      }
+      rows.forEach((r,i)=>{const c=r.children;
+        c[1].textContent=fx(f[i],2)+" GHz";
+        c[2].firstChild.style.width=(typeof u[i]==="number"?u[i]:0)+"%";
+        c[3].textContent=fx(tp[i])+"°C"});
+    }};
   }
 }
 
 /* ---- overview layout: one panel per component ---- */
-const warn=s=>s.thr!=="none";
-const drive=(i,name,link,used)=>[
-  {t:"stats",span:2,title:name,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"Read IOPS"],["a"+i,"Await","ms",1]]},
+const warnG=s=>s.thr!=null&&s.thr!=="none";
+const drive=(i)=>[
+  {t:"stats",span:2,title:`Drive ${i}: nvme${i}n1`,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"Read+write IOPS"],["a"+i,"Await","ms",1]]},
   {t:"chart",title:"Throughput",min:0,series:[["r"+i,"Read","--a"],["w"+i,"Write","--b"]]},
-  {t:"dl",title:"Device",rows:[["Link",link],["Utilization",s=>fx(s["u"+i])+" %"],["Queue depth",s=>fx(s["q"+i],1)],["Temperature",s=>fx(s["t"+i])+" °C"],["Capacity used",used],["I/O scheduler","none"],["Readahead","128 KB"]]}];
+  {t:"dl",title:"Device",rows:[
+    ["Model",s=>s.drives[i].name],["Link",s=>s.drives[i].link],["Link max",s=>s.drives[i].linkMax],
+    ["Size",s=>s.drives[i].sizeGB==null?"unavailable":fx(s.drives[i].sizeGB,1)+" GB"],
+    ["Utilization",s=>fx(s["u"+i])+" %"],["Queue depth",s=>fx(s["q"+i],1)],
+    ["Temperature",s=>fx(s["t"+i])+" °C"],
+    ["Capacity used",s=>s.drives[i].capUsed==null?"unavailable":fx(s.drives[i].capUsed)+" %"],
+    ["I/O scheduler",s=>s.drives[i].sched],["Readahead",s=>s.drives[i].readahead]]}];
 const PANELS=[
- {title:"CPU",sub:"Intel Core i7-13620H, 6 P-cores and 8 E-cores",parts:[
+ {title:"CPU",sub:s=>s.snap.cpuModel||"CPU",parts:[
   {t:"stats",span:2,items:[["cpuT","Package temp","°C"],["cpuW","Package power","W",1],["cpuU","Utilization","%"],["pfa","Avg P-core clock","GHz",2],["migr","Migrations","/s"]]},
   {t:"chart",title:"Temperature and power",series:[["cpuT","Temp (°C)","--b"],["cpuW","Power (W)","--a"]]},
-  {t:"chart",title:"Load and idle",min:0,series:[["cpuU","Utilization (%)","--a"],["c6","C6 residency (%)","--b"]]},
-  {t:"cores",title:"Performance cores",cls:"pc",count:6,pre:"P",u:"pu",f:"pf",T:"pt"},
-  {t:"cores",title:"Efficiency cores",cls:"ec",count:8,pre:"E",u:"eu",f:"ef",T:"et"},
-  {t:"dl",title:"Scheduler and power",rows:[["Governor","powersave"],["EPP","balance_performance"],["Turbo","on"],["PL1 / PL2","45 W / 65 W"],["Core pinning","none"],["Driver","intel_pstate (active)"]]},
-  {t:"dl",title:"Kernel activity",rows:[["Context switches",s=>fx(s.ctx)+" /s"],["Thread migrations",s=>fx(s.migr)+" /s"],["Interrupts",s=>fx(s.irq)+" /s"],["C6 residency",s=>fx(s.c6)+" %"],["Throttle","none"]]}]},
- {title:"GPU",sub:"NVIDIA GeForce RTX 4060 Laptop, 8 GB",parts:[
+  {t:"chart",title:"Load and idle",min:0,series:[["cpuU","Utilization (%)","--a"],["idle","Idle residency (%)","--b"]]},
+  {t:"cores",title:"Performance cores",cls:"pc",pre:"P",u:"pu",f:"pf",T:"pt"},
+  {t:"cores",title:"Efficiency cores",cls:"ec",pre:"E",u:"eu",f:"ef",T:"et"},
+  {t:"dl",title:"Scheduler and power",rows:[
+    ["Governor",s=>s.snap.governor],["EPP",s=>s.snap.epp],["Turbo",s=>s.snap.turbo],
+    ["PL1 / PL2",()=>null],["Core pinning",s=>s.snap.pinning],["Driver",s=>s.snap.driver]]},
+  {t:"dl",title:"Kernel activity",rows:[
+    ["Context switches",s=>fx(s.ctx)+" /s"],["Thread migrations",s=>fx(s.migr)+" /s"],
+    ["Interrupts",s=>fx(s.irq)+" /s"],
+    ["Idle residency",s=>s.idle==null?"unavailable":fx(s.idle)+" % ("+s.idleName+")"],
+    ["Throttle",s=>s.cpuThr]]}]},
+ {title:"GPU",sub:s=>s.snap.nvml?"NVIDIA GPU (NVML)":"NVIDIA GPU (NVML unavailable)",parts:[
   {t:"stats",span:2,items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GB",1]]},
   {t:"chart",title:"Temperature and power",series:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},
   {t:"chart",title:"Utilization",min:0,series:[["gU","GPU (%)","--a"],["gMU","Memory controller (%)","--b"]]},
   {t:"chart",title:"VRAM bandwidth in use",min:0,series:[["vbw","GB/s","--a"]]},
   {t:"chart",title:"PCIe traffic",min:0,series:[["prx","Receive (GB/s)","--a"],["ptx","Transmit (GB/s)","--b"]]},
-  {t:"dl",title:"VRAM",rows:[["Used / total",s=>fx(s.vram,1)+" / 8.0 GB"],["Memory clock","8001 MHz"],["Bus width","128-bit"],["Peak bandwidth","256 GB/s"],["Bandwidth in use",s=>fx(s.vbw)+" GB/s"],["Controller util",s=>fx(s.gMU)+" %"]]},
-  {t:"dl",title:"PCIe",rows:[["Link now","Gen4 x8"],["Link max","Gen4 x8"],["Receive",s=>fx(s.prx,2)+" GB/s"],["Transmit",s=>fx(s.ptx,2)+" GB/s"],["Theoretical","15.75 GB/s"],["Link used",s=>fx(s.pcu)+" %"]]},
-  {t:"dl",span:2,title:"Power and throttle",rows:[["Draw / limit",s=>fx(s.gW,1)+" / 70 W"],["Clock lock","none"],["Fan",s=>fx(s.fan)+" %"],["P-state","P2"],["Throttle reason",s=>s.thr,warn]]}]},
- {title:"Memory",sub:"2 x 16 GB DDR5-5200, dual channel",parts:[
+  {t:"dl",title:"VRAM",rows:[
+    ["Used / total",s=>s.vram==null?"unavailable":fx(s.vram,1)+" / "+fx(s.vramTot,1)+" GB"],
+    ["Memory clock",s=>s.gMemClk==null?"unavailable":s.gMemClk+" MHz"],
+    ["Bus width","128-bit (spec)"],["Peak bandwidth","256 GB/s (spec)"],
+    ["Bandwidth in use",s=>s.vbw==null?"unavailable":fx(s.vbw)+" GB/s"],
+    ["Controller util",s=>s.gMU==null?"unavailable":fx(s.gMU)+" %"]]},
+  {t:"dl",title:"PCIe",rows:[
+    ["Link now",s=>s.pcieGen==null?"unavailable":"Gen"+s.pcieGen+" x"+s.pcieWidth],
+    ["Link max",()=>null],
+    ["Receive",s=>s.prx==null?"unavailable":fx(s.prx,2)+" GB/s"],
+    ["Transmit",s=>s.ptx==null?"unavailable":fx(s.ptx,2)+" GB/s"],
+    ["Theoretical",s=>s.pcieGen==null?"unavailable":fx(GT[s.pcieGen]*(s.pcieWidth||0)/8*(s.pcieGen<=2?0.8:128/130),2)+" GB/s"],
+    ["Link used",s=>s.pcu==null?"unavailable":fx(s.pcu)+" %"]]},
+  {t:"dl",span:2,title:"Power and throttle",rows:[
+    ["Draw / limit",s=>s.gW==null?"unavailable":fx(s.gW,1)+" W"+(s.gLim?" / "+fx(s.gLim)+" W":"")],
+    ["SM clock max",s=>s.gClkMax==null?"unavailable":s.gClkMax+" MHz"],
+    ["Fan",s=>s.fan==null?"unavailable":fx(s.fan)+" %"],
+    ["P-state",s=>s.pstate],
+    ["Throttle reason",s=>s.thr,warnG]]}]},
+ {title:"Memory",sub:s=>(s.snap.kernel?"kernel "+s.snap.kernel:"")+((s.snap.gpuDriver)?` · NVIDIA ${s.snap.gpuDriver}`:""),parts:[
   {t:"stats",span:2,items:[["ramU","Used","GB",1],["cache","Page cache","GB",1],["avail","Available","GB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
   {t:"chart",title:"RAM",min:0,series:[["ramU","Used (GB)","--a"],["cache","Page cache (GB)","--b"]]},
   {t:"chart",title:"Page faults",min:0,series:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]},
-  {t:"dl",title:"Capacity",rows:[["Total","32 GB"],["Used",s=>fx(s.ramU,1)+" GB"],["Page cache",s=>fx(s.cache,1)+" GB"],["Swap","0.4 / 8 GB"],["Transparent hugepages","madvise"],["Swappiness","60"]]},
-  {t:"dl",title:"Bandwidth",rows:[["Type","DDR5-5200"],["Channels","2"],["Theoretical peak","83.2 GB/s"],["Measured bandwidth","unavailable"],["Minor faults",s=>fx(s.minF)+" /s"]]}]},
- {title:"Storage",sub:"NVMe drives",parts:[
-  ...drive(0,"Drive 0: WD PC SN540, 512 GB","Gen4 x4","94 %"),
-  ...drive(1,"Drive 1: ZHITAI TiPlus5000, 1 TB","Gen3 x4","unavailable")]}
+  {t:"dl",title:"Capacity",rows:[
+    ["Total",s=>fx(s.memTot,1)+" GB"],["Used",s=>fx(s.ramU,1)+" GB"],
+    ["Page cache",s=>fx(s.cache,1)+" GB"],["Swap",s=>fx(s.swapU,1)+" / "+fx(s.swapTot)+" GB"],
+    ["Transparent hugepages",s=>s.snap.thp],["Swappiness",s=>s.snap.swappiness]]},
+  {t:"dl",title:"Bandwidth",rows:[
+    ["Type","DDR5-5200 (spec)"],["Channels","2 (spec)"],["Theoretical peak","83.2 GB/s (spec)"],
+    ["Measured bandwidth",()=>null],["Minor faults",s=>fx(s.minF)+" /s"]]}]},
+ {title:"Storage",sub:"NVMe drives",parts:[...drive(0),...drive(1)]}
 ];
 
-let cur=[];
 function show(id){
   if(id!=="log")id="overview"; location.hash=id; cur=[];
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
@@ -186,45 +237,55 @@ function show(id){
   root.innerHTML=`<div class="grid" id="g"></div>`;
   PANELS.forEach(p=>{
     const el=document.createElement("section"); el.className="p";
-    el.innerHTML=`<h2>${p.title}</h2><div class="sub">${p.sub}</div><div class="cols"></div>`;
+    el.innerHTML=`<h2>${p.title}</h2><div class="sub"></div><div class="cols"></div>`;
+    const sub=el.querySelector(".sub");
     p.parts.forEach(b=>{const x=part(b); cur.push(x); el.lastChild.append(x.el)});
     $("#g").append(el);
+    sub.textContent=(typeof p.sub==="function"?p.sub(S):p.sub)||"";
   });
   cur.forEach(x=>x.up());
 }
+function refreshSubs(){
+  document.querySelectorAll("#g .sub").forEach((el,i)=>{
+    const p=PANELS[i]; if(!p)return;
+    el.textContent=(typeof p.sub==="function"?p.sub(S):p.sub)||"";
+  });
+}
+
 /* ---- log ---- */
 const METRICS=[["cpuT","CPU temp","°C","cpu_temp_c"],["cpuW","CPU power","W","cpu_power_w"],["gT","GPU temp","°C","gpu_temp_c"],["gW","GPU power","W","gpu_power_w"],["vbw","VRAM bandwidth","GB/s","vram_bw_gbs"],["prx","PCIe receive","GB/s","pcie_rx_gbs"],["majF","Major faults","/s","mem_major_faults_s"],["r0","NVMe 0 read","MB/s","nvme0_read_mbps"]];
-const PROF={cpuT:[58,72],cpuW:[22,30],gT:[62,76],gW:[44,59],vbw:[51,140],prx:[6.2,.4],majF:[900,20],r0:[1400,90]};
 const COL=["--a","--b","--ok","--warn","--bad"];
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const mmss=t=>String(t/60|0).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
-const snapNow=()=>({governor:"powersave",epp:"balance_performance",turbo:"on","core pinning":"none","gpu clock lock":"none",readahead:"128 KB",kernel:"7.0.0-38"});
-const st=a=>{const s=[...a].sort((x,y)=>x-y),m=avg(a);return{mean:m,med:s[s.length>>1],p95:s[Math.floor(s.length*.95)],sd:Math.sqrt(avg(a.map(v=>(v-m)**2))),min:s[0],max:s[s.length-1]}};
-const f2=v=>fx(v,Math.abs(v)<10?2:1);
 let LOG=[],sel=new Set(),rec=null,uid=0,lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:""};
-function seed(name,tag,f,ov,ago){
-  const d={};METRICS.forEach(([k])=>{const[a,b]=PROF[k];d[k]=[...Array(150)].map((_,i)=>(a+(b-a)*Math.min(i/45,1))*(f[k]||1)*(1+n(.02)))});
-  LOG.unshift({id:++uid,name,tag,start:Date.now()-ago*36e5,iv:1,data:d,mk:1,snap:{...snapNow(),...ov}});
-}
-const pin={"core pinning":"P-cores only",readahead:"512 KB"};
-seed("baseline-1","baseline",{},{},30);seed("baseline-2","baseline",{cpuT:1.01,gT:1.01},{},29);
-seed("pinned-1","pinned",{cpuT:.94,cpuW:.92,gT:.96,gW:.95,majF:.8,r0:.9},pin,5);seed("pinned-2","pinned",{cpuT:.95,cpuW:.93,gT:.95,gW:.96,majF:.82,r0:.92},pin,4);
-sel=new Set([1,2,3,4]);
-
-function overlay(svg,arrs,ivs){
-  const all=arrs.flat(),mn=Math.min(...all),sp=(Math.max(...all)-mn)||1,D=Math.max(...arrs.map((a,i)=>a.length*ivs[i]));
-  svg.innerHTML=arrs.map((a,i)=>`<path stroke="var(${COL[i%5]})" d="${a.map((v,j)=>`${j?"L":"M"}${(j*ivs[i]/D*200).toFixed(1)},${(58-(v-mn)/sp*56).toFixed(1)}`).join("")}"/>`).join("");
+const snapNow=()=>({...S.snap});
+const f2=v=>typeof v==="number"?fx(v,Math.abs(v)<10?2:1):"unavailable";
+function st(a){
+  const v=a.filter(x=>typeof x==="number");
+  if(!v.length)return null;
+  const s=[...v].sort((x,y)=>x-y),m=avg(v);
+  return{mean:m,med:s[s.length>>1],p95:s[Math.floor(s.length*.95)],sd:Math.sqrt(avg(v.map(x=>(x-m)**2))),min:s[0],max:s[v.length-1]};
 }
 function toggleRec(){
   if(!rec){
-    const iv=+$("#iv").value; rec={id:++uid,name:$("#lb").value.trim()||"session-"+uid,tag:$("#tg").value.trim(),iv,start:Date.now(),data:Object.fromEntries(METRICS.map(([k])=>[k,[]])),mk:0,snap:snapNow()};
-    rec.h=setInterval(()=>{METRICS.forEach(([k])=>rec.data[k].push(S[k]));const e=$("#tm");if(e)e.textContent=mmss(Math.round(rec.data.cpuT.length*rec.iv))},iv*1000);
+    const iv=+$("#iv").value;
+    rec={id:++uid,name:$("#lb").value.trim()||"session-"+uid,tag:$("#tg").value.trim(),iv,start:Date.now(),
+      data:Object.fromEntries(METRICS.map(([k])=>[k,[]])),mk:0,snap:snapNow()};
+    rec.h=setInterval(recTick,iv*1000); recTick();
   } else {
     clearInterval(rec.h);
     if(rec.data.cpuT.length>1){const{h,...s}=rec;LOG.unshift(s);sel.add(s.id)}
     rec=null;
   }
   renderLog();
+}
+async function recTick(){
+  if(!rec)return;
+  try{
+    const r=await fetch("/api/snapshot",{cache:"no-store"});
+    if(!r.ok)throw new Error(r.status);
+    const d=await r.json();
+    METRICS.forEach(([k])=>{rec.data[k].push(typeof d[k]==="number"?d[k]:null)});
+    const e=$("#tm");if(e)e.textContent=mmss(Math.round(rec.data.cpuT.length*rec.iv));
+  }catch(e){/* backend offline: skip this tick */}
 }
 function exportCsv(){
   LOG.filter(s=>sel.has(s.id)).forEach(s=>{
@@ -236,22 +297,24 @@ function exportCsv(){
 function renderLog(){
   const root=$("#root"), ss=LOG.filter(s=>sel.has(s.id)), M=METRICS.find(x=>x[0]===lo.m), r=!!rec;
   const rows=LOG.map(s=>`<tr><td><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.name)}"></td><td>${esc(s.name)}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td>${new Date(s.start).toLocaleString()}</td><td>${mmss(Math.round(s.data.cpuT.length*s.iv))}</td><td>${s.iv} s</td><td>${s.data.cpuT.length}</td><td>${s.mk}</td><td><button class="btn" data-del="${s.id}">Delete</button></td></tr>`).join("");
-  let an=`<div class="empty">Select one or more sessions above to analyze them.</div>`;
+  let an=`<div class="empty">Select one or more sessions above to analyze them.</div>`, arrs=[];
   if(ss.length){
-    const arrs=ss.map(s=>s.data[lo.m].slice(Math.round(lo.trim/s.iv))), S2=arrs.map(st);
-    const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${f2(x[k])}</td>`).join("")}</tr>`;
+    arrs=ss.map(s=>s.data[lo.m].slice(Math.round(lo.trim/s.iv)).filter(v=>typeof v==="number"));
+    const S2=arrs.map(st);
+    const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${x?f2(x[k]):"unavailable"}</td>`).join("")}</tr>`;
     let tb=ss.map((s,i)=>line(`<i style="display:inline-block;width:10px;height:3px;border-radius:2px;background:var(${COL[i%5]});margin-right:8px;vertical-align:middle"></i>${esc(s.name)}`,S2[i])).join("");
     if(lo.grp){
-      const g={};ss.forEach((s,i)=>(g[s.tag||"none"]=g[s.tag||"none"]||[]).push(S2[i]));
+      const g={};ss.forEach((s,i)=>{if(S2[i])(g[s.tag||"none"]=g[s.tag||"none"]||[]).push(S2[i])});
       Object.entries(g).filter(([,v])=>v.length>1).forEach(([t,v])=>{const m=k=>avg(v.map(x=>x[k]));
         tb+=line(`Average of ${v.length} runs (${esc(t)})`,{mean:m("mean"),med:m("med"),p95:m("p95"),sd:st(v.map(x=>x.mean)).sd,min:Math.min(...v.map(x=>x.min)),max:Math.max(...v.map(x=>x.max))},1)});
     }
     const keys=[...new Set(ss.flatMap(s=>Object.keys(s.snap)))].filter(k=>new Set(ss.map(s=>s.snap[k])).size>1);
+    const hasData=arrs.some(a=>a.length);
     an=`<div class="ctl"><label>Metric <select id="mt">${METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
       <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
       <label><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label></div>
-      <svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>
-      <div class="hint">${M[1]} (${M[2]}) over time. Skipped samples are excluded from the chart and the statistics.</div>
+      ${hasData?`<svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>`:""}
+      <div class="hint">${M[1]} (${M[2]}) over time. ${hasData?"Skipped samples are excluded from the chart and the statistics.":"No samples available for this metric — it may be unavailable on this machine."}</div>
       <h3 style="margin-top:18px">Statistics</h3><table class="n"><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr>${tb}</table>
       ${lo.grp?`<div class="hint">For average rows, std dev is the spread between runs.</div>`:""}
       <h3 style="margin-top:18px">Configuration differences</h3>${keys.length?`<table class="n"><tr><th>Setting</th>${ss.map(s=>`<th>${esc(s.name)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${ss.map(s=>`<td>${esc(s.snap[k])}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint">All selected sessions have the same configuration.</div>`}`;
@@ -267,17 +330,22 @@ function renderLog(){
   $("#rc").onclick=toggleRec; $("#ex").onclick=exportCsv;
   $("#mk").onclick=()=>{rec.mk++;$("#mk").textContent="Add marker ("+rec.mk+")"};
   root.querySelectorAll("[data-id]").forEach(c=>c.onchange=()=>{const id=+c.dataset.id;sel.has(id)?sel.delete(id):sel.add(id);renderLog()});
-  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const id=+b.dataset.del;LOG=LOG.filter(s=>s.id!==id);sel.delete(id);renderLog()});
+  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const id=+b.dataset.id;LOG=LOG.filter(s=>s.id!==id);sel.delete(id);renderLog()});
   if(ss.length){
     $("#mt").onchange=e=>{lo.m=e.target.value;renderLog()}; $("#tr").onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $("#gp").onchange=e=>{lo.grp=e.target.checked;renderLog()};
-    overlay($("#ov"),ss.map(s=>s.data[lo.m].slice(Math.round(lo.trim/s.iv))),ss.map(s=>s.iv));
+    const ov=$("#ov");
+    if(ov) overlay(ov,arrs,ss.map(s=>s.iv));
   }
+}
+function overlay(svg,arrs,ivs){
+  const keep=arrs.map((a,i)=>[a,ivs[i]]).filter(([a])=>a.length>1);
+  if(!keep.length){svg.innerHTML="";return}
+  const all=keep.flatMap(([a])=>a),mn=Math.min(...all),sp=(Math.max(...all)-mn)||1,D=Math.max(...keep.map(([a,i])=>a.length*ivs[i]));
+  svg.innerHTML=keep.map(([a,i])=>`<path stroke="var(${COL[i%5]})" d="${a.map((v,j)=>`${j?"L":"M"}${(j*ivs[i]/D*200).toFixed(1)},${(58-(v-mn)/sp*56).toFixed(1)}`).join("")}"/>`).join("");
 }
 
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>show(b.dataset.p));
-for(let i=0;i<20;i++)sample();
 show(location.hash.slice(1));
-setInterval(()=>{sample();cur.forEach(x=>x.up())},1000);
 </script>
 </body>
 </html>

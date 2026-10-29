@@ -1,0 +1,37 @@
+import { JSDOM } from "jsdom";
+import { readFileSync } from "fs";
+const html = readFileSync("../noterra/index.html", "utf8");
+const base = JSON.parse(readFileSync("../noterra/snapshot-sample.json", "utf8"));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dom = new JSDOM(html, { url: "http://localhost/", runScripts: "dangerously", pretendToBeVisual: true,
+  beforeParse(window) {
+    let i = 0;
+    window.matchMedia = () => ({ matches: false });
+    window.fetch = async () => ({ ok: true, json: async () => { i++; return { ...base, majF: (base.majF ?? 20) + i * 7, cpuU: (base.cpuU ?? 10) + i, r0: (base.r0 ?? 0) + i, gT: 60 + i, gW: 50 + i }; } });
+  } });
+const w = dom.window, d = w.document;
+const fail = m => { console.error("FAIL:", m); process.exit(1); };
+const ok = (c, m) => { if (!c) fail(m); console.log("ok:", m); };
+await sleep(1400);
+ok(d.querySelector("#status").textContent.includes("live"), "backend live after first fetch");
+ok(d.querySelectorAll(".pc .cr").length === base.pu.length, `P-core rows dynamic (${base.pu.length})`);
+ok(d.querySelectorAll(".ec .cr").length === base.eu.length, `E-core rows dynamic (${base.eu.length})`);
+const dls = [...d.querySelectorAll(".p dd")].map(x => x.textContent);
+ok(dls.some(t => t === "powersave"), "governor row shows real snap value");
+ok(d.querySelectorAll("svg.sp path").length > 0, "sparkline paths rendered from history");
+ok(dls.some(t => t.startsWith("unavailable")), "unavailable metrics rendered honestly");
+ok(d.querySelector(".p .sub").textContent.includes("i7-13620H"), "CPU subtitle from real model name");
+d.querySelectorAll("nav button")[1].click();
+ok(d.body.textContent.includes("No logs yet"), "empty log state");
+d.querySelector("#rc").click();
+await sleep(2400);
+d.querySelector("#rc").click();
+ok(d.body.textContent.includes("1 recorded"), "session saved with samples");
+ok(d.body.textContent.includes("Mean"), "statistics table shown");
+w.URL.createObjectURL = () => "blob:fake";
+let clicked = false;
+w.HTMLAnchorElement.prototype.click = function () { clicked = true; };
+d.querySelector("#ex").click();
+ok(clicked, "CSV export triggered");
+console.log("ALL PASS");
+process.exit(0);
