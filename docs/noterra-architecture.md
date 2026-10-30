@@ -11,13 +11,23 @@ sekarang = monitoring hardware murni; adapter engine LLM dikecualikan sampai nan
 ```
 noterra/
   server.py            # FastAPI: collector /proc, /sys, NVML + endpoint
-  index.html           # UI vanilla JS: layout Overview port dari prototype v6 + tab Log
+  metrics_meta.json    # schema metrik (label, satuan, sumber, scaleKey)
   prototype/           # prototype UI dari Claude (overview_v6.html, data mock)
   snapshot-sample.json # fixture snapshot nyata untuk test
   README.md            # cara menjalankan + tabel sumber metrik
   .venv/               # deps: fastapi, uvicorn, psutil, nvidia-ml-py
+web/                   # UI yang diserve GET /
+  index.html           # shell: nav, palette, status, #root
+  core/client.js       # data client (fetch/registry/ctx), tanpa DOM
+  core/widgets.js      # widget primitif + renderLayout
+  core/shell.js        # nav/status/tab Log/view registry
+  core/core.css        # fallback gaya (dimuat sebelum theme.css)
+  themes/default/      # theme L3 (overview.js) + layout.json
+  themes/minimal/      # contoh L2 tanpa JavaScript
+  examples/headless.html
 nttest/
-  test.mjs             # smoke test headless (jsdom) terhadap index.html
+  test-web.mjs         # smoke test headless (jsdom) terhadap web/index.html
+  test.mjs             # smoke test UI lama (noterra/index.html, route /legacy)
 ```
 
 ## Alur data
@@ -47,7 +57,8 @@ min/max, overlay A/B); export CSV = file server
 
 ## Layout Overview (port dari prototype overview_v6.html)
 
-Prototype punya data mock; porting ke `index.html` memakai snapshot nyata:
+Prototype punya data mock; porting ke `web/themes/default/overview.js` memakai
+snapshot nyata:
 
 - **Gauge**: skala penuh diambil dari ring buffer 60 sampel + nilai terkini
   (`dynMax`), bukan konstanta prototype; ring dalam CPU = daya vs PL1 nyata
@@ -200,8 +211,10 @@ di kemudian hari tanpa mengubah core.
 - [ ] **Baseline A/B tuning OS** — ≥3 run cold/warm untuk eksperimen
       governor/EPP/pinning/readahead (protokol drop_caches), sebagai alat
       verifikasi tweak hardware — bukan metrik engine.
-- [ ] **Refactor core/adapter** sesuai struktur Repo A (`core/`,
-      `adapters/`, `web/`) saat fork teman dibutuhkan.
+- [~] **Refactor core/adapter** — frontend sudah modular: data client tanpa DOM
+      (`web/core/client.js`), shell (`shell.js`), widget/layout L2, theme L3,
+      contoh headless L4, dan theme minimal tanpa JS. Yang tersisa: pemisahan
+      backend collector/`adapters/` dan adapter engine/game sesuai Repo A.
 
 Dikecualikan dari scope sekarang (bukan hilang permanen, hanya tidak dikerjakan):
 adapter Strata / metrik engine (tok/s, joule per token, waktu hingga warm) dan
