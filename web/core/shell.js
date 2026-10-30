@@ -177,6 +177,25 @@ async function addMarker(){
   await loadSessions();
   const e=$(DOM.mk); if(e)e.textContent="Add marker ("+(rec.mk||0)+")";
 }
+function logMetricMeta(key){
+  const old=METRICS.find(x=>x[0]===key);
+  if(old)return [key,old[1],old[2]];
+  const e=REG.get(key);
+  if(e)return [key,e.label||key,e.unit||""];
+  let m=key.match(/^(pu|pf|pt|eu|ef|et)(\d+)$/);
+  if(m){
+    const base={pu:["P%s util","%"],pf:["P%s clock","GHz"],pt:["P%s temp","°C"],
+      eu:["E%s util","%"],ef:["E%s clock","GHz"],et:["E%s temp","°C"]}[m[1]];
+    return [key,base[0].replace("%s",m[2]),base[1]];
+  }
+  m=key.match(/^([rwiaqut])(\d+)$/);
+  if(m){
+    const base={r:["read","MB/s"],w:["write","MB/s"],i:["IOPS","IOPS"],a:["await","ms"],
+      u:["util","%"],q:["queue","requests"],t:["temp","°C"]}[m[1]];
+    return [key,`drive ${m[2]} ${base[0]}`,base[1]];
+  }
+  return [key,key,""];
+}
 async function loadCsv(id){
   if(CSV[id])return CSV[id];
   const r=await fetch(`/api/log/${id}/samples.csv`);
@@ -190,10 +209,11 @@ async function loadCsv(id){
   const found=[];
   cols.forEach((col,i)=>{
     if(!col||col==="timestamp_ms")return;
-    const key=HEADER_TO_KEY[col]||(REG.has(col)?col:null);
+    const key=HEADER_TO_KEY[col]||(REG.has(col)?col:null)||
+      (/^(pu|pf|pt|eu|ef|et)\d+$/.test(col)||/^[rwiaqut]\d+$/.test(col)?col:null);
     if(!key)return;
-    const old=METRICS.find(x=>x[0]===key), e=REG.get(key);
-    found.push([key,old?old[1]:((e&&e.label)||key),old?old[2]:((e&&e.unit)||""),i+off]);
+    const [k,label,unit]=logMetricMeta(key);
+    found.push([k,label,unit,i+off]);
   });
   let use;
   if(found.length){use=found; LOG_METRICS=found.map(([k,l,u])=>[k,l,u]);}
@@ -203,7 +223,12 @@ async function loadCsv(id){
     ln=ln.replace(/\r$/,""); if(!ln)return;
     const p=ln.split(",");
     d.ts.push(+p[0]);
-    use.forEach(([k,,,idx])=>{const v=p[idx]; d[k].push(v===undefined||v===""?null:+v)});
+    use.forEach(([k,,,idx])=>{
+      const v=p[idx];
+      if(v===undefined||v===""){d[k].push(null);return}
+      const n=+v;
+      d[k].push(Number.isFinite(n)?n:v);
+    });
   });
   CSV[id]=d; return d;
 }

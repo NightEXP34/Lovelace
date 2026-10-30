@@ -33,8 +33,8 @@ const HEALTH = { ok: true, nvml: false, items: {
   ramBW: "PMU IMC ada tapi perf diblokir kernel.perf_event_paranoid=4",
   pcieGen: "NVML dan sysfs tidak terbaca",
   cpuT: "hwmon coretemp tidak terbaca" } };
-const CSV_TEXT = "timestamp_ms,cpu_temp_c,cpu_power_w,gpu_temp_c,gpu_power_w,vram_bw_gbs,pcie_rx_gbs,mem_major_faults_s,nvme0_read_mbps\n" +
-  Array.from({ length: 12 }, (_, i) => `1793000000000,${60 + i}.000,,61.000,15.000,0.000,0.164,10.000,0.000`).join("\n") + "\n";
+const CSV_TEXT = "timestamp_ms,cpu_temp_c,cpu_power_w,gpu_temp_c,gpu_power_w,vram_bw_gbs,pcie_rx_gbs,mem_major_faults_s,nvme0_read_mbps,cpuU,w0,pu0,pu1,eu0\n" +
+  Array.from({ length: 12 }, (_, i) => `1793000000000,${60 + i}.000,,61.000,15.000,0.000,0.164,10.000,0.000,20.000,5.000,12.000,8.000,3.000`).join("\n") + "\n";
 /* saat recording, server baru punya sebagian sample; cache CSV lama tidak
    boleh dipakai setelah stop (regresi: analysis harus baca CSV final). */
 const CSV_PARTIAL = "timestamp_ms,cpu_temp_c,cpu_power_w,gpu_temp_c,gpu_power_w,vram_bw_gbs,pcie_rx_gbs,mem_major_faults_s,nvme0_read_mbps\n" +
@@ -234,6 +234,10 @@ ok(d.body.textContent.includes("Mean"), "statistics table shown");
 ok(d.body.textContent.includes("65.5"), "mean CPU temp dari CSV server (60..71 → 65.5)");
 ok(d.querySelector("#ov path")?.getAttribute("d"), "chart Log menggambar path");
 ok(d.querySelectorAll("#ov .grid line").length === 5, "chart Log punya grid + label");
+const logMetrics = [...d.querySelectorAll("#mt option")].map(o => o.value);
+ok(logMetrics.includes("pu0") && logMetrics.includes("eu0"), "log: metrik per core tersedia");
+ok(logMetrics.includes("w0"), "log: metrik write per drive tersedia");
+ok(d.body.textContent.includes("P0 util"), "log: label P0 util terbaca");
 dom.window.URL.createObjectURL = () => "blob:fake";
 let csvClicked = false;
 dom.window.HTMLAnchorElement.prototype.click = function () { csvClicked = true; };

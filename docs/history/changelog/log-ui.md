@@ -12,3 +12,9 @@
 - Setelah stop, cache CSV sementara dihapus dan sesi langsung di-select ulang;
   analysis membaca CSV final tanpa refresh browser. Backend `log_stop` juga
   membatalkan task recorder dan menunggu `finally` menulis status `saved`.
+
+- Recording diperluas: CSV memuat timestamp + skalar penting + `puN/pfN/ptN`,
+  `euN/efN/etN` per core, dan `rN/wN/iN/aN/uN/qN/tN` per drive. Header CSV
+  sekarang eksplisit `timestamp_ms`.
+- Parser Log memetakan kolom skalar, per-core, dan per-drive ke label/satuan;
+  dropdown metrik ikut memuat metrik core/drive.

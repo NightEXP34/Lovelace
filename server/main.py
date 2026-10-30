@@ -35,10 +35,53 @@ def health():
 # ---- recording (persistensi log di repo) -------------------------------------
 
 LOGS = BASE.parent / "logs"
-LOG_COLS = [("cpuT", "cpu_temp_c"), ("cpuW", "cpu_power_w"), ("gT", "gpu_temp_c"),
-            ("gW", "gpu_power_w"), ("vbw", "vram_bw_gbs"), ("prx", "pcie_rx_gbs"),
-            ("majF", "mem_major_faults_s"), ("r0", "drive0_read_mbps")]
+# Kolom skalar yang direkam; kolom per-core/drive ditambahkan dinamis saat start.
+LOG_SCALARS = [
+    "cpuT", "cpuU", "cpuW", "pfa", "pl1", "pl2", "plPeak", "cpuThr", "idle", "idleName",
+    "ctx", "migr", "irq",
+    "gT", "gU", "gW", "gClk", "gMemClk", "gClkMax", "gMU", "vram", "vramTot", "gLim",
+    "gLimDef", "pstate", "thr", "fan", "thrIdle", "thrPower", "thrThermal", "thrHw",
+    "pcieGen", "pcieWidth", "pcieMax", "vbw", "prx", "ptx", "pcu", "gbw", "gpeak", "pctheory",
+    "ramU", "cache", "avail", "memTot", "swapU", "swapTot", "majF", "minF", "swp",
+    "ramBW",
+]
+CORE_ARRAYS = ("pu", "pf", "pt", "eu", "ef", "et")
+DRIVE_COLS = ("r", "w", "i", "a", "u", "q", "t")
 _sessions = {}   # id -> sesi aktif
+
+def build_log_columns(snapshot):
+    """Kolom CSV stabil untuk satu sesi: skalar + tiap core + tiap drive."""
+    cols = [k for k in LOG_SCALARS if k in snapshot]
+    for arr in CORE_ARRAYS:
+        for i in range(len(snapshot.get(arr) or [])):
+            cols.append(f"{arr}{i}")
+    for i in range(len(snapshot.get("drives") or [])):
+        for p in DRIVE_COLS:
+            cols.append(f"{p}{i}")
+    return cols
+
+def log_value(data, col):
+    """Ambil nilai kolom dari snapshot, termasuk array core dan kunci drive."""
+    if col in data:
+        return data[col]
+    m = re.match(r"^(pu|pf|pt|eu|ef|et)(\d+)$", col)
+    if m:
+        arr = data.get(m.group(1)) or []
+        i = int(m.group(2))
+        return arr[i] if i < len(arr) else None
+    m = re.match(r"^([rwiaqut])(\d+)$", col)
+    if m:
+        return data.get(m.group(1) + m.group(2))
+    return None
+
+def csv_value(v):
+    if v is None:
+        return ""
+    if isinstance(v, bool):
+        return "1" if v else "0"
+    if isinstance(v, (int, float)):
+        return f"{v:.3f}"
+    return str(v).replace(",", ";")
 
 def slug(s):
     s = re.sub(r"[^a-z0-9]+", "_", (s or "").lower()).strip("_")
@@ -51,7 +94,7 @@ def _meta(sid):
             "start_ms": s["start"],
             "started_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(s["start"] / 1000)),
             "status": s["status"], "samples": s["samples"], "markers": s["markers"],
-            "csv": "samples.csv", "columns": ["timestamp_ms"] + [c for _, c in LOG_COLS],
+            "csv": "samples.csv", "columns": ["timestamp_ms"] + s["columns"],
             "config": s["config"]}
 
 def _write_meta(sid):
@@ -60,11 +103,11 @@ def _write_meta(sid):
 
 async def _record(sid):
     s = _sessions[sid]
-    header = ",".join(c for _, c in LOG_COLS)
+    cols = s["columns"]
     try:
         while s["rec"]:
             data = build_snapshot()
-            row = ",".join("" if data.get(k) is None else f"{data[k]:.3f}" for k, _ in LOG_COLS)
+            row = ",".join(csv_value(log_value(data, c)) for c in cols)
             with open(s["csv"], "a") as f:
                 f.write(f"{int(time.time() * 1000)},{row}\n")
             s["samples"] += 1
@@ -91,10 +134,11 @@ async def log_start(req: Request):
         n += 1
     d.mkdir(parents=True)
     csv = d / "samples.csv"
-    csv.write_text(",".join(c for _, c in LOG_COLS) + "\n")
+    columns = build_log_columns(build_snapshot())
+    csv.write_text(",".join(["timestamp_ms"] + columns) + "\n")
     _sessions[sid] = dict(id=sid, label=label, tag=tag, iv=iv, start=start,
                           dir=d, csv=csv, markers=[], samples=0, rec=True,
-                          status="recording", config=config_snapshot())
+                          status="recording", columns=columns, config=config_snapshot())
     _sessions[sid]["task"] = asyncio.create_task(_record(sid))
     _write_meta(sid)
     return JSONResponse({"id": sid, "dir": str(d.relative_to(BASE.parent))})

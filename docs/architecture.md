@@ -59,8 +59,9 @@ UI: fetch /api/snapshot tiap 1s + /api/health tiap 5s → S (snapshot terkini)
         ↓
 Tab Log (server-side): POST /api/log/start → loop server nulis
 logs/<tanggal>_<label>/samples.csv tiap interval + meta.json (label, tag,
-iv, marker, status); analisis UI fetch CSV dari server (mean/median/p95/sd/
-min/max, overlay A/B); export CSV = file server
+iv, marker, status); CSV berisi skalar + per-core (P/E) + per-drive
+(read/write/IOPS/await/util/queue/temp); analisis UI fetch CSV dari server
+(mean/median/p95/sd/min/max, overlay A/B); export CSV = file server
 ```
 
 ## Layout Overview (port dari prototype overview_v6.html)

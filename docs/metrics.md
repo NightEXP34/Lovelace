@@ -27,6 +27,11 @@ interval_s, snapshot konfigurasi saat sesi mulai — governor/EPP/turbo/power
 limit/sysctl/kernel/driver, marker, status). Sample unavailable ditulis kosong
 di CSV, bukan 0.
 
+CSV memuat `timestamp_ms` + skalar penting (CPU/GPU/memory/storage),
+`puN/pfN/ptN` (P-core util/clock/temp) dan `euN/efN/etN` (E-core), serta
+`rN/wN/iN/aN/uN/qN/tN` untuk read/write/IOPS/await/util/queue/temp tiap drive.
+Jumlah core/drive ditentukan saat sesi mulai; kolom tetap stabil selama sesi.
+
 ## Sumber metrik
 
 | Metrik | Sumber |
