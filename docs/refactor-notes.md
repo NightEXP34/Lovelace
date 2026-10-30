@@ -95,3 +95,12 @@ Baseline dan akhir sama: `test-web.mjs` **ALL PASS**, `test.mjs`
 - `noterra/index.html` masih diserve di `/legacy` dan dipakai `test.mjs`
   sebagai pembanding; belum dihapus (menunggu keputusan pengguna).
 - Tidak ada server yang dijalankan/dihentikan di sesi ini; tidak ada push.
+
+## Brief #2 — baseline (branch `restructure`)
+
+- `git status` sebelum mulai: bersih, branch `ui-modular`, HEAD `4f55c27`.
+- Baseline `cd nttest && node test-web.mjs` → **ALL PASS**.
+- Baseline `cd nttest && node test.mjs` → **ALL PASS**.
+- Tujuan brief: (A) Storage tab memilih drive yang salah; (B) hapus UI legacy
+  dan rapikan folder (`server/`, `tests/`, `docs/prototype/`).
+
