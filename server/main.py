@@ -95,7 +95,7 @@ async def log_start(req: Request):
     _sessions[sid] = dict(id=sid, label=label, tag=tag, iv=iv, start=start,
                           dir=d, csv=csv, markers=[], samples=0, rec=True,
                           status="recording", config=config_snapshot())
-    asyncio.create_task(_record(sid))
+    _sessions[sid]["task"] = asyncio.create_task(_record(sid))
     _write_meta(sid)
     return JSONResponse({"id": sid, "dir": str(d.relative_to(BASE.parent))})
 
@@ -105,8 +105,18 @@ async def log_stop(req: Request):
     sid = int(body.get("id"))
     if sid not in _sessions:
         return JSONResponse({"error": "session tidak ditemukan"}, status_code=404)
-    _sessions[sid]["rec"] = False
-    return JSONResponse({"id": sid, "status": _sessions[sid]["status"], "samples": _sessions[sid]["samples"]})
+    s = _sessions[sid]
+    s["rec"] = False
+    # Hentikan task recorder sekarang juga, bukan menunggu interval sleep
+    # berikutnya; finally _record menulis status "saved" + meta final.
+    task = s.pop("task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+    return JSONResponse({"id": sid, "status": s["status"], "samples": s["samples"]})
 
 @app.post("/api/log/marker")
 async def log_marker(req: Request):

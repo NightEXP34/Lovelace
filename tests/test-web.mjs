@@ -35,6 +35,10 @@ const HEALTH = { ok: true, nvml: false, items: {
   cpuT: "hwmon coretemp tidak terbaca" } };
 const CSV_TEXT = "timestamp_ms,cpu_temp_c,cpu_power_w,gpu_temp_c,gpu_power_w,vram_bw_gbs,pcie_rx_gbs,mem_major_faults_s,nvme0_read_mbps\n" +
   Array.from({ length: 12 }, (_, i) => `1793000000000,${60 + i}.000,,61.000,15.000,0.000,0.164,10.000,0.000`).join("\n") + "\n";
+/* saat recording, server baru punya sebagian sample; cache CSV lama tidak
+   boleh dipakai setelah stop (regresi: analysis harus baca CSV final). */
+const CSV_PARTIAL = "timestamp_ms,cpu_temp_c,cpu_power_w,gpu_temp_c,gpu_power_w,vram_bw_gbs,pcie_rx_gbs,mem_major_faults_s,nvme0_read_mbps\n" +
+  "1793000000000,60.000,,61.000,15.000,0.000,0.164,10.000,0.000\n";
 const SESSION = { id: 1793000000000, label: "rec-test", tag: "none", interval_s: 1,
   start_ms: Date.now(), started_iso: "2026-10-30T10:26:56+0700",
   config: { governor: "powersave", epp: "balance_performance", turbo: "on",
@@ -64,7 +68,7 @@ function installFetch(w, snapshotFn) {
         samples: recStopped ? 12 : 3, markers: [] };
       return { ok: true, json: async () => ({ sessions: recStarted ? [s] : [] }) };
     }
-    if (url.includes("samples.csv")) return { ok: true, text: async () => CSV_TEXT };
+    if (url.includes("samples.csv")) return { ok: true, text: async () => (recStopped ? CSV_TEXT : CSV_PARTIAL) };
     if (snapshotFn) return { ok: true, json: async () => snapshotFn };
     i++;
     return { ok: true, json: async () => ({ ...base, majF: (base.majF ?? 20) + i * 7, cpuU: (base.cpuU ?? 10) + i, r0: (base.r0 ?? 0) + i, gT: 60 + i, gW: 50 + i }) };

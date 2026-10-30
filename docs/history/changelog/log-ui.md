@@ -9,3 +9,6 @@
   tengah), pesan saat tidak ada sample, dan legend per sesi.
 - `web/core/core.css` mendapat gaya Log netral (berlaku juga untuk theme lain).
 - Test: status live di tab Log, path chart, dan grid chart ditambahkan.
+- Setelah stop, cache CSV sementara dihapus dan sesi langsung di-select ulang;
+  analysis membaca CSV final tanpa refresh browser. Backend `log_stop` juga
+  membatalkan task recorder dan menunggu `finally` menulis status `saved`.

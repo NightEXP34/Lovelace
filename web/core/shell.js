@@ -157,10 +157,16 @@ async function toggleRec(){
       refreshTheme();
     },1000);
   } else {
+    const finished=rec.id;
     await fetch("/api/log/stop",{method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({id:rec.id})});
+      body:JSON.stringify({id:finished})});
     clearInterval(rec.timer);
-    rec=null; await loadSessions();
+    rec=null;
+    /* CSV sementara saat recording tidak boleh dipakai setelah stop: buang
+       cache agar analysis langsung membaca CSV final tanpa refresh browser. */
+    delete CSV[finished];
+    sel.add(finished);
+    await loadSessions();
   }
   refreshTheme(); renderLog();
 }
