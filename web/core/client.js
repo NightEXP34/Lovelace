@@ -105,7 +105,7 @@ async function health(){
 async function loadSchema(){
   try{
     const r=await fetch(SCHEMA_URL,{cache:"no-store"});
-    if(r.ok){const d=await r.json(); if(d&&typeof d==="object")META=d;}
+    if(r.ok){const d=await r.json(); if(d&&typeof d==="object")META={...META,...d};}
   }catch(e){/* offline: registry memakai key sebagai label */}
 }
 
