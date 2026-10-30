@@ -76,7 +76,7 @@ min/max, overlay A/B); export CSV = file server
 | `GET /` | index.html |
 | `GET /api/snapshot` | JSON: metrik scalar (cpuT, cpuW, cpuU, pfa, pl1, pl2, plPeak, cpuThr, ctx, migr, irq, idle, gT..pcu, gbw, gpeak, pctheory, vbw, majF, minF, swp, ramBW, r0..t1, a0Idle/a1Idle), array per-core (pu, pf, pt, eu, ef, et), `drives[]` (model, sizeGB, link, linkMax, sched, readahead, capUsed, mount), `snap` konfigurasi sistem (kernel, cpuModel, driver, gpuDriver, gpuName, governor, epp, turbo, pinning, thp, swappiness, nvml). |
 | `GET /api/health` | `{ok, nvml, items:{key→alasan|null}}` — alasan tiap metrik yang unavailable; dipakai tooltip UI dan `server.py --check`. |
-| `POST /api/log/start` `{label,tag,interval}` | buat sesi recording; folder `logs/<tanggal>_<label>/` (samples.csv + meta.json); loop server nulis CSV tiap interval |
+| `POST /api/log/start` `{label,tag,interval}` | buat sesi recording; folder `logs/<tanggal>_<label>/` (samples.csv + meta.json schema v1: label, tag, interval_s, snapshot konfigurasi, marker, status, kolom CSV); loop server nulis CSV tiap interval |
 | `POST /api/log/stop` `{id}` | hentikan loop, meta status→"saved" |
 | `POST /api/log/marker` `{id,note?}` | marker `{ts_ms, since_s, note}` masuk `meta.markers` |
 | `GET /api/log/sessions` | daftar semua sesi (aktif + yang tersimpan di disk) dari meta.json |

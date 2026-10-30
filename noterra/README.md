@@ -27,8 +27,10 @@ Server melayani frontend di `/`, polled endpoint `GET /api/snapshot`
 `GET /api/health` (alasan tiap metrik yang unavailable), dan endpoint recording
 `POST /api/log/start|stop|marker`, `GET /api/log/sessions`,
 `GET /api/log/<id>/samples.csv`, `DELETE /api/log/<id>`. Recording persisten di
-repo: `logs/<tanggal>_<label>/samples.csv` + `meta.json` (label, tag, interval,
-marker, status).
+repo: `logs/<tanggal>_<label>/samples.csv` + `meta.json` schema v1 (label, tag,
+interval_s, snapshot konfigurasi saat sesi mulai — governor/EPP/turbo/power
+limit/sysctl/kernel/driver, marker, status). Sample unavailable ditulis kosong
+di CSV, bukan 0.
 
 ## Sumber metrik
 

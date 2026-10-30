@@ -104,3 +104,95 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
 - `docs/noterra-architecture.md`: arsitektur backend/UI + alur data +
   desain kunci + endpoint + todolist.
 - `docs/blackbox.md`: file ini.
+
+## 2026-10-30 — Bug fix A (satu commit per langkah, semua di-push)
+
+- `ea5a7bb` cpufreq: sumber kHz, selama ini dilabel MHz → dikonversi ke GHz
+  (`kHz/1e6`); assertion smoke test: semua clock 0.39–5.5 GHz (nilai nyata
+  terendah 0.3998 GHz dari scaling_min_freq, bukan angka karangan).
+- `c24a1c6` satuan: VRAM NVML bytes → GiB (label GiB), RAM kB → GiB, disk tetap
+  GB desimal; nilai nyata VRAM 7.92/7.996 GiB.
+- `3a8f3df` IOPS: `<small>undefined</small>` → label "IOPS"; await nol I/O →
+  "idle" (bukan unavailable).
+- `dbf3dda` subtitle GPU dari `nvmlDeviceGetName` ("NVIDIA GeForce RTX 4060
+  Laptop GPU"); versi driver NVIDIA pindah ke panel GPU, subtitle Memory hanya
+  kernel.
+- `49a5969` `/api/health` (alasan per key) + `server.py --check`; unavailable di
+  kartu besar tampil kecil/redup tanpa satuan + tooltip alasan dari health.
+
+## 2026-10-30 — Insiden proses + aturan baru
+
+- Insiden: perintah `pgrep -f "[s]erver\.py" | while read p; do kill $p; done`
+  ikut membunuh proses Strata (pattern cocok ke command line-nya). Strata
+  kemudian dijalankan ulang oleh pengguna. `pkill -f "noterra/server.py"` juga
+  pernah mematikan shell harness (SIGTERM).
+- Aturan proses yang berlaku sekarang (disepakati pengguna):
+  DILARANG `pkill -f`, `pgrep -f | kill`, `killall`, kill berbasis pola nama.
+  Server noterra dijalankan dengan PID file `noterra/.pid`; berhenti hanya via
+  `kill "$(cat .pid)"` setelah `ps -o pid,args -p <pid>` membuktikan itu proses
+  yang saya start. Proses strata/llama/nvidia tidak pernah disentuh.
+  Kalau koneksi model/harness putus: berhenti dan tunggu, tidak menebak.
+- Catatan pemutusan: sesi harness keluar di tengah langkah C; server mati
+  (listener 5130 kosong), verifikasi dulu kondisi sebelum lanjut.
+
+## 2026-10-30 — Isi metrik B (hasil nyata)
+
+- `dfd7851` PL1/PL2/peak dari `constraint_*_power_limit_uw` (terbaca tanpa
+  root): nyata 200 / 115 / 230 W. Daya package (`energy_uj` mode 0400) tetap
+  unavailable; keputusan OS: **tidak chmod world-readable** (kernel menolak
+  sejak PLATYPUS; expose energy_uj ke user = bocor informasi power telemetry);
+  jalur yang diusulkan = systemd `AmbientCapabilities=CAP_DAC_READ_SEARCH`
+  (`noterra/noterra.service` disiapkan, belum dijalankan — sudo diblokir di
+  sesi harness). Server tetap bind 127.0.0.1.
+- `ff8f072` throttle CPU dari sysfs `thermal_throttle/*_throttle_count`
+  (delta/s, sibling dedup); nilai awal nyata: core 1155, package 40240 count
+  kumulatif; pembanding `turbostat --quiet --no-msr --no-perf sleep 1`
+  bekerja tanpa root (kolom CoreThr).
+- `03a0925` migration thread: `/proc/schedstat` selalu 0 di kernel ini (sumber
+  mati) → diganti `/proc/<pid>/task/<tid>/sched` `se.nr_migrations`; overhead
+  terukur ~15 ms/snapshot (1273 thread file); terbukti naik saat beban
+  (4 thread × ganti affinity → delta 1116). `perf -a cpu-migrations` diblokir
+  `kernel.perf_event_paranoid=4` (tidak diubah; itu parameter tuning).
+- `8310d79` GPU NVML penuh: power limit aktif NotSupported → default limit
+  NVML 70 W (ditandai "(default)" di UI); P-state nyata (P0/P4 berubah saat
+  beban); throttle reasons NVML nyata (bits 0 saat idle, mask 511); fan
+  NotSupported (kipas laptop diatur EC); PCIe link now/max nyata Gen4 x8;
+  rx/tx dari `nvmlDeviceGetPcieThroughput` (KB/s → GB/s); bus width 128 bit;
+  peak VRAM = estimasi berlabel: 128/8 × 8001 MHz × 2 (DDR) ≈ 256 GB/s;
+  theoretical PCIe dari link max ≈ 15.75 GB/s (link sekarang Gen2 saat idle
+  itu normal, ditampilkan terpisah).
+- `458cbf7` readahead NVMe: path benar `queue/read_ahead_kb` (nyata 128 KB;
+  kode lama memakai `queue/readahead_kb` yang tidak ada); drive tanpa mount →
+  "not mounted" (nvme0 belum di-mount); bandwidth RAM terukur: PMU
+  `uncore_imc_free_running_{0,1}` ADA (unit MiB, scale 6.1035e-5 MiB = 64 B
+  per count) tapi perf diblokir paranoid=4 tanpa root → unavailable dengan
+  alasan; jalur pengukuran hanya aktif kalau perf diizinkan (belum bisa
+  diverifikasi di sesi ini). Tidak ada tool baru yang diinstall (perf,
+  turbostat sudah ada; disk root 91% penuh jadi tidak menambah paket).
+- `50ba5ea` persistensi log server-side: `logs/<tanggal>_<label>/samples.csv`
+  + `meta.json`; endpoint start/stop/marker/sessions/csv/delete; UI Log tab
+  baca dari API (bukan memori browser). Nilai unavailable ditulis kosong di
+  CSV (tidak dikarang angka), bukan 0.
+- `d1e8f2c` meta.json schema v1: `schema_version`, `interval_s`, snapshot
+  konfigurasi saat sesi mulai (governor/EPP/turbo/power limits/sysctl/
+  kernel cmdline/driver/`gpuClockLock:null`/`strata:null`), marker dengan
+  note, kolom CSV. Diff konfigurasi sesi di UI memakai meta.config.
+
+## 2026-10-30 — Verifikasi langkah C (setelah harness mati, kondisi dicek ulang)
+
+- `git status` bersih setelah commit; server restart via PID protocol
+  (PID lama 14833 sudah mati saat harness exit, tidak di-kill).
+- Endpoint log diuji nyata: start → 19 samples → marker ber-note → stop →
+  meta.json schema v1 terbaca → **restart server** → sesi tetap terdaftar dari
+  disk + CSV terbaca → DELETE menghapus folder. `logs/` kini kosong (sesi uji
+  dihapus).
+- `server.py --check`: 71 key metrik; terakhir 60 available, 11 unavailable
+  (sebelum langkah GPU; setelah GPU + PL1 tersisa: cpuW (RAPL root), fan,
+  ramBW).
+- Smoke test jsdom: ALL PASS (termasuk render "not mounted", readahead KB,
+  tooltip RAPL, session persisted dari server, mean dari CSV server).
+
+## 2026-10-30 — Langkah 3 belum dikerjakan
+
+- `noterra/prototype/overview_v6.html` belum ada di repo → sesuai aturan,
+  berhenti dan minta pengguna menaruh file prototype sebelum porting layout.
