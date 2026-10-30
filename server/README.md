@@ -17,7 +17,7 @@ sejak PLATYPUS; **jangan** chmod world-readable). Dua cara yang dipakai:
 
 ```bash
 sudo .venv/bin/python server.py                # root penuh (paling sederhana)
-systemctl --user enable --now noterra          # unit noterra/noterra.service:
+systemctl --user enable --now noterra          # unit server/deploy/noterra.service:
                                                # AmbientCapabilities=CAP_DAC_READ_SEARCH,
                                                # tanpa root penuh, server tetap bind 127.0.0.1
 ```
@@ -74,17 +74,17 @@ di CSV, bukan 0.
 
 ## Test frontend
 
-`nttest/test.mjs` (jsdom) menjalankan UI headless dengan fixture
-`noterra/snapshot-sample.json`: rendering panel, dynamic core rows,
+`tests/test-web.mjs` (jsdom) menjalankan UI headless dengan fixture
+`server/fixtures/snapshot-sample.json`: rendering panel, dynamic core rows,
 unavailable handling, sesi recording, statistik, CSV export.
 
 ```bash
-cd nttest && npm install jsdom && node test.mjs
+cd tests && npm test
 ```
 
 ## Layout
 
-Tab Overview memakai layout prototype `noterra/prototype/overview_v6.html`
+Tab Overview memakai layout prototype `docs/prototype/overview_v6.html`
 (gauge 270°, cell core P/E, bar, chip throttle NVML, rail Timeline/Events/System,
 hint aturan bottleneck) tetapi semua angka dari snapshot nyata: skala gauge dari
 ring buffer 60 sampel, penyebut bar dari PL1/limit NVML/theoretical link max/

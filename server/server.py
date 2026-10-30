@@ -5,7 +5,7 @@ Serves the web/ shell (GET /), core+theme static files (mount), /api/themes,
 /api/snapshot, and mock routes (?mock=1 di UI). Every metric is read from real
 sources (/proc, /sys, NVML). Anything that cannot be read is returned as null;
 the UI renders null as "unavailable". Nothing is guessed. Mock routes hanya
-membaca noterra/snapshot-sample.json — tidak menyentuh hardware.
+membaca server/fixtures/snapshot-sample.json — tidak menyentuh hardware.
 
 Run:  .venv/bin/python server.py   (serves http://127.0.0.1:5130)
 """
@@ -1146,7 +1146,7 @@ def log_delete(sid: str):
     return JSONResponse({"deleted": str(target.relative_to(BASE.parent))})
 
 WEB = BASE.parent / "web"
-SAMPLE = BASE / "snapshot-sample.json"
+SAMPLE = BASE / "fixtures" / "snapshot-sample.json"
 SCHEMA = BASE / "metrics_meta.json"
 
 @app.get("/api/schema")
@@ -1201,11 +1201,6 @@ def mock_schema():
 @app.get("/")
 def index():
     return HTMLResponse((WEB / "index.html").read_text())
-
-@app.get("/legacy")
-def legacy():
-    """UI lama satu-file — pembanding visual saat refactor core/theme."""
-    return HTMLResponse((BASE / "index.html").read_text())
 
 # aset static web/ (core + themes); semua rute /api dan / sudah terdaftar sebelum mount
 app.mount("/", StaticFiles(directory=str(WEB)), name="web")

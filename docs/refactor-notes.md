@@ -136,3 +136,21 @@ disebut di target layout dan tidak boleh dihapus, jadi ikut dipindah ke
 `server/README.md` dan `tests/check-layout.mjs` (bukan penghapusan).
 
 
+
+### B2 — backend pindah ke `server/`
+
+- `git mv`: `noterra/server.py` → `server/server.py`,
+  `noterra/metrics_meta.json` → `server/metrics_meta.json`,
+  `noterra/snapshot-sample.json` → `server/fixtures/snapshot-sample.json`,
+  `noterra/noterra.service` → `server/deploy/noterra.service`,
+  `noterra/README.md` → `server/README.md` (lihat catatan B1).
+- `server.py`: `SAMPLE = BASE / "fixtures" / "snapshot-sample.json"`;
+  `WEB`/`LOGS` tetap `BASE.parent / ...` (repo root). Route `/legacy` dihapus.
+- `server/deploy/noterra.service`: `WorkingDirectory` + `ExecStart` ke
+  `server/` dan `server/.venv/bin/python`; tidak dijalankan/di-enable.
+- Verifikasi in-process: `/` 609 byte, `/api/snapshot` 75 key/2 drive,
+  `/api/mock/snapshot` 75 key, `/api/mock/health` 4 alasan,
+  `/api/schema` 57 key, `/api/themes` default+minimal,
+  `/api/log/sessions` **0** (sama dengan `ls logs | wc -l`).
+- `py_compile server/server.py` OK. TestClient tidak tersedia (httpx tidak
+  terpasang), jadi route dipanggil langsung sebagai fungsi Python.

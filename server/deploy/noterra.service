@@ -16,7 +16,8 @@ Description=Lovelace noterra monitor backend (127.0.0.1:5130)
 
 [Service]
 Type=simple
-ExecStart=/home/nightera/Documents/Workplace/University/perSOna/noterra/.venv/bin/python /home/nightera/Documents/Workplace/University/perSOna/noterra/server.py
+WorkingDirectory=/home/nightera/Documents/Workplace/University/perSOna/server
+ExecStart=/home/nightera/Documents/Workplace/University/perSOna/server/.venv/bin/python /home/nightera/Documents/Workplace/University/perSOna/server/server.py
 AmbientCapabilities=CAP_DAC_READ_SEARCH
 CapabilityBoundingSet=CAP_DAC_READ_SEARCH
 NoNewPrivileges=true
