@@ -9,3 +9,4 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — 1.4 semua id core dikumpulkan di objek `DOM`; id wajib `index.html` didokumentasikan di THEMES.md.
 - 2026-10-30 — 1.5 `web/core/core.css` fallback netral (kelas Log + token warna) dimuat sebelum theme.css; daftar kelas didokumentasikan.
 - 2026-10-30 — 1.6 `META` pindah ke `noterra/metrics_meta.json`; route `/api/schema` + `/api/mock/schema`; core fetch schema sebelum theme; stub test diperbarui.
+- 2026-10-30 — 1.7 parser CSV tab Log memakai nama header (`HEADER_TO_KEY`/key registry, offset timestamp), daftar metrik fallback lama dipertahankan.

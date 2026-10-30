@@ -183,6 +183,10 @@ function show(id){
 
 /* ---- tab Log: sesi persisten di server, folder logs/<tanggal>_<label>/ ---- */
 const METRICS=[["cpuT","CPU temp","°C","cpu_temp_c"],["cpuW","CPU power","W","cpu_power_w"],["gT","GPU temp","°C","gpu_temp_c"],["gW","GPU power","W","gpu_power_w"],["vbw","VRAM bandwidth","GB/s","vram_bw_gbs"],["prx","PCIe receive","GB/s","pcie_rx_gbs"],["majF","Major faults","/s","mem_major_faults_s"],["r0","NVMe 0 read","MB/s","nvme0_read_mbps"]];
+/* header CSV -> key registry; fallback: nama kolom yang kebetulan sama dengan key */
+const HEADER_TO_KEY={"cpu_temp_c":"cpuT","cpu_power_w":"cpuW","gpu_temp_c":"gT","gpu_power_w":"gW",
+  "vram_bw_gbs":"vbw","pcie_rx_gbs":"prx","mem_major_faults_s":"majF","nvme0_read_mbps":"r0"};
+let LOG_METRICS=METRICS;          // [key,label,unit]; diperbarui dari header CSV
 const COL=["--a","--b","--ok","--warn","--bad"];
 let SES=[],sel=new Set(),CSV={},lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:""};
 const f2=v=>typeof v==="number"?fx(v,Math.abs(v)<10?2:1):"unavailable";
@@ -231,12 +235,28 @@ async function loadCsv(id){
   const r=await fetch(`/api/log/${id}/samples.csv`);
   if(!r.ok)return null;
   const txt=await r.text();
-  const d={ts:[],...Object.fromEntries(METRICS.map(([k])=>[k,[]]))};
-  txt.split("\n").slice(1).forEach(ln=>{
-    if(!ln)return;
+  const lines=txt.split("\n");
+  const cols=(lines[0]||"").replace(/\r$/,"").split(",").map(c=>c.trim());
+  // header asli tidak memuat timestamp_ms, jadi data bergeser satu kolom;
+  // kalau suatu saat header memuatnya, offset menyesuaikan.
+  const off=cols[0]==="timestamp_ms"?0:1;
+  const found=[];
+  cols.forEach((col,i)=>{
+    if(!col||col==="timestamp_ms")return;
+    const key=HEADER_TO_KEY[col]||(REG.has(col)?col:null);
+    if(!key)return;
+    const old=METRICS.find(x=>x[0]===key), e=REG.get(key);
+    found.push([key,old?old[1]:((e&&e.label)||key),old?old[2]:((e&&e.unit)||""),i+off]);
+  });
+  let use;
+  if(found.length){use=found; LOG_METRICS=found.map(([k,l,u])=>[k,l,u]);}
+  else{use=METRICS.map(([k,l,u],i)=>[k,l,u,i+1]); LOG_METRICS=METRICS;}
+  const d={ts:[],...Object.fromEntries(use.map(([k])=>[k,[]]))};
+  lines.slice(1).forEach(ln=>{
+    ln=ln.replace(/\r$/,""); if(!ln)return;
     const p=ln.split(",");
     d.ts.push(+p[0]);
-    METRICS.forEach(([k],i)=>{const v=p[i+1]; d[k].push(v===undefined||v===""?null:+v)});
+    use.forEach(([k,,,idx])=>{const v=p[idx]; d[k].push(v===undefined||v===""?null:+v)});
   });
   CSV[id]=d; return d;
 }
@@ -268,7 +288,7 @@ async function renderLog(){
   $(DOM.asub).textContent=ss.length+" selected";
   if(!ss.length)return;
   const cs=await Promise.all(ss.map(s=>loadCsv(s.id)));
-  const M=METRICS.find(x=>x[0]===lo.m);
+  const M=LOG_METRICS.find(x=>x[0]===lo.m)||LOG_METRICS[0]||METRICS[0];
   const arrs=cs.map(c=>c?c[lo.m].slice(Math.round(lo.trim/(ss[0].interval_s||1))).filter(v=>typeof v==="number"):[]);
   const S2=arrs.map(st);
   const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${x?f2(x[k]):"unavailable"}</td>`).join("")}</tr>`;
@@ -282,7 +302,7 @@ async function renderLog(){
   const cfgs=ss.map(s=>({...flat(s.config||{}),tag:s.tag||"none",interval_s:s.interval_s}));
   const keys=[...new Set(cfgs.flatMap(c=>Object.keys(c)))].filter(k=>new Set(cfgs.map(c=>JSON.stringify(c[k]))).size>1);
   const hasData=arrs.some(a=>a.length);
-  $(DOM.an).innerHTML=`<div class="ctl"><label>Metric <select id="mt">${METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
+  $(DOM.an).innerHTML=`<div class="ctl"><label>Metric <select id="mt">${LOG_METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
     <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
     <label><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label></div>
     ${hasData?`<svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>`:""}
