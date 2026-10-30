@@ -13,3 +13,4 @@ Satu baris per langkah. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — B5 prototype `overview_v6.html` pindah ke `docs/prototype/`.
 - 2026-10-30 — B6 `.gitignore` hanya menambah `.venv/`, `**/.venv/`, `**/node_modules/` (baris lama tidak dihapus).
 - 2026-10-30 — B7 `server/requirements.txt` dari pin venv nyata: fastapi 0.162.0, uvicorn 0.54.0, psutil 7.2.2, nvidia-ml-py 13.615.71.
+- 2026-10-30 — B8a `README.md` root: ringkasan, peta folder, cara run (`server/.venv`), test (`tests/npm test`), link fork.
