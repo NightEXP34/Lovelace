@@ -130,7 +130,10 @@ function part(b){
   if(b.t==="stats"){
     el.innerHTML=T+`<div class="big">${b.items.map(x=>`<div><span>${x[1]}</span><b></b></div>`).join("")}</div>`;
     const bs=[...el.querySelectorAll("b")];
-    return{el,up:()=>b.items.forEach((x,i)=>bs[i].innerHTML=fx(S[x[0]],x[3]||0)+`<small>${x[2]}</small>`)};
+    return{el,up:()=>b.items.forEach((x,i)=>{
+      const v=x[4]?x[4](S):S[x[0]];
+      bs[i].innerHTML=typeof v==="number"?fx(v,x[3]||0)+`<small>${x[2]||""}</small>`:`<span class="na">${v==null?"unavailable":v}</span>`;
+    })};
   }
   if(b.t==="chart"){
     el.innerHTML=T+`<svg class="sp" viewBox="0 0 200 60" preserveAspectRatio="none"></svg><div class="legend">${b.series.map(s=>`<span><i style="background:var(${s[2]})"></i>${s[1]}</span>`).join("")}</div>`;
@@ -166,7 +169,7 @@ function part(b){
 /* ---- overview layout: one panel per component ---- */
 const warnG=s=>s.thr!=null&&s.thr!=="none";
 const drive=(i)=>[
-  {t:"stats",span:2,title:`Drive ${i}: nvme${i}n1`,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"Read+write IOPS"],["a"+i,"Await","ms",1]]},
+  {t:"stats",span:2,title:`Drive ${i}: nvme${i}n1`,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"IOPS","IOPS"],["a"+i,"Await","ms",1,s=>s["a"+i+"Idle"]?"idle":null]]},
   {t:"chart",title:"Throughput",min:0,series:[["r"+i,"Read","--a"],["w"+i,"Write","--b"]]},
   {t:"dl",title:"Device",rows:[
     ["Model",s=>s.drives[i].name],["Link",s=>s.drives[i].link],["Link max",s=>s.drives[i].linkMax],

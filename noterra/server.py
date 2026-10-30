@@ -275,6 +275,9 @@ def drive_metrics(idx, dt):
     out["q"] = infl
     ops_ms = rate(f"{dev}:opsms", rms + wms, dt)
     out["a"] = (ops_ms / out["ops"]) if (ops_ms is not None and out["ops"]) else None
+    # ops rate known and zero => the drive did no I/O in this interval ("idle",
+    # not "unavailable": we did measure it, there was simply nothing to await)
+    out["idle"] = out["ops"] is not None and out["ops"] == 0
 
     blk = Path("/sys/block") / dev
     out["model"] = rd(Path("/sys/class/nvme") / f"nvme{idx}" / "model")
@@ -497,9 +500,9 @@ def snapshot():
         "memTot": mem["memTot"], "swapU": mem["swapU"], "swapTot": mem["swapTot"],
         "majF": vms["majF"], "minF": vms["minF"], "swp": vms["swp"],
         "r0": d0.get("r"), "w0": d0.get("w"), "i0": d0.get("ops"), "a0": d0.get("a"),
-        "u0": d0.get("u"), "q0": d0.get("q"), "t0": d0.get("temp"),
+        "a0Idle": d0.get("idle"), "u0": d0.get("u"), "q0": d0.get("q"), "t0": d0.get("temp"),
         "r1": d1.get("r"), "w1": d1.get("w"), "i1": d1.get("ops"), "a1": d1.get("a"),
-        "u1": d1.get("u"), "q1": d1.get("q"), "t1": d1.get("temp"),
+        "a1Idle": d1.get("idle"), "u1": d1.get("u"), "q1": d1.get("q"), "t1": d1.get("temp"),
         "drives": [drive_view(d0), drive_view(d1)],
         "snap": system_snap(),
     })
