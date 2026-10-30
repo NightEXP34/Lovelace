@@ -269,6 +269,15 @@ ok(dm.querySelector(".w-spark svg path")?.getAttribute("d"), "minimal: sparkline
 ok(dm.querySelector("#status").textContent.includes("mock"), "minimal: status mock (client.js + shell.js)");
 mini.window.close();
 
+/* ---- L4 headless: hanya client.js, tanpa shell/theme ---- */
+const headlessHtml = readFileSync("../web/examples/headless.html", "utf8");
+const hl = domFor(headlessHtml, { url: "http://localhost/examples/headless.html",
+  resources: { interceptors: [fileInterceptor] } });
+await sleep(1200);
+const hout = hl.window.document.querySelector("#out")?.textContent || "";
+ok(hout.includes("CPU temp") && hout.includes("GPU power"), "headless: tiga nilai live tanpa shell");
+hl.window.close();
+
 dom.window.close();
 console.log("ALL PASS");
 process.exit(0);

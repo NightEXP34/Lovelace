@@ -24,7 +24,7 @@ web/                   # UI yang diserve GET /
   core/core.css        # fallback gaya (dimuat sebelum theme.css)
   themes/default/      # theme L3 (overview.js) + layout.json
   themes/minimal/      # contoh L2 tanpa JavaScript
-examples/headless.html # contoh L4
+web/examples/headless.html # contoh L4
 tests/
   test-web.mjs         # smoke test headless (jsdom) terhadap web/index.html
   check-layout.mjs     # cek cepat widget komposit

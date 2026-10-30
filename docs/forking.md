@@ -99,7 +99,7 @@ Theme hanya membaca `ctx`; jangan fetch/parse data sendiri.
 ## 7. Headless (L4)
 
 Kalau ingin UI framework lain, pakai `web/core/client.js` saja — lihat
-`examples/headless.html`. Tidak ada DOM di client:
+`web/examples/headless.html`. Tidak ada DOM di client:
 
 ```js
 const N = window.Noterra, C = N.ctx;

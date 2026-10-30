@@ -22,8 +22,8 @@ perSOna/
 ├── web/
 │   ├── index.html           # shell UI
 │   ├── core/                # client.js, widgets.js, shell.js, core.css
-│   └── themes/              # default (L3), minimal (L2 tanpa JS)
-├── examples/headless.html   # contoh L4
+│   ├── themes/              # default (L3), minimal (L2 tanpa JS)
+│   └── examples/headless.html   # contoh L4
 ├── tests/
 │   ├── test-web.mjs         # jsdom frontend
 │   ├── check-layout.mjs     # cek cepat widget komposit

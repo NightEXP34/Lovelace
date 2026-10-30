@@ -25,7 +25,7 @@ web/
     theme.css
     layout.json         # opsional (L2)
     overview.js         # opsional (L3)
-examples/headless.html  # contoh L4 (di root repo)
+  examples/headless.html # contoh L4
 ```
 
 `web/index.html` memuat `core.css`, lalu `client.js`, `widgets.js`, `shell.js`.
@@ -133,7 +133,7 @@ Theme bisa mendaftarkan widget komposit sendiri (contoh:
 </script>
 ```
 
-Contoh utuh: `examples/headless.html` (tiga nilai live). `client.js` tidak
+Contoh utuh: `web/examples/headless.html` (tiga nilai live). `client.js` tidak
 menyentuh DOM; `start()` idempoten.
 
 ## `theme.json`
