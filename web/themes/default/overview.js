@@ -414,6 +414,7 @@ function compositePanel(name,spec){
   });
 }
 compositePanel("cpu-panel",PANELS[0]);
+compositePanel("memory-panel",PANELS[2]);
 
 window.Noterra.addTheme("default",{mount,update,chips});
 })();
