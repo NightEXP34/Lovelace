@@ -221,7 +221,7 @@ const near=(v,m,f)=>typeof v==="number"&&typeof m==="number"&&m>0&&v>=m*f;
 
 const PANELS=[
  {title:"CPU",sub:s=>(s.snap.cpuModel||"CPU")+", "+((S.pu||[]).length)+" P + "+((S.eu||[]).length)+" E cores (dynamic from kernel)",
-  l:[{t:"hd",g:{key:"cpuU",max:()=>100,unit:"%",label:"utilization · inner = power vs PL1",
+  l:[{t:"hd",g:{key:"cpuU",max:()=>100,unit:"%",label:"utilization",
        in:{key:"cpuW",max:()=>pl1(C.data)||dynMax("cpuW"),unit:"W",d:1,name:"power"}},
      stats:[["cpuT","Temp","°C"],["migr","Migrations","/s"],["pfa","P clock","GHz",2],["efa","E clock","GHz",2,s=>{const a=(S.ef||[]).filter(x=>typeof x==="number");return a.length?avg(a):null}]]},
    {t:"cores"},
@@ -239,7 +239,7 @@ const PANELS=[
   ]},
 
  {title:"GPU",sub:s=>(s.snap.gpuName||"NVIDIA GPU")+(s.snap.nvml?"":" (NVML unavailable)"),
-  l:[{t:"hd",g:{key:"gU",max:()=>100,unit:"%",label:"utilization · inner = power vs limit",
+  l:[{t:"hd",g:{key:"gU",max:()=>100,unit:"%",label:"utilization",
        in:{key:"gW",max:()=>gLim(C.data)||dynMax("gW"),unit:"W",d:1,name:"power"}},
      stats:[["gT","Temp","°C"],["gClk","SM clock","MHz"],["gMemClk","Mem clock","MHz"],["vram","VRAM","GiB",1]]},
    {t:"chips",items:["Idle","Power cap","Thermal","HW slowdown"],
@@ -263,7 +263,7 @@ const PANELS=[
   ]},
 
  {title:"Memory",sub:s=>s.snap.kernel?"kernel "+s.snap.kernel:"",
-  l:[{t:"hd",g:{key:"ramU",max:()=>typeof S.memTot==="number"?S.memTot:dynMax("ramU"),unit:"GiB used",label:"RAM usage · inner = swap",d:1,
+  l:[{t:"hd",g:{key:"ramU",max:()=>typeof S.memTot==="number"?S.memTot:dynMax("ramU"),unit:"GiB used",label:"RAM usage",d:1,
        in:{key:"swapU",max:()=>S.swapTot,unit:"GiB",d:1,name:"swap"}},
      stats:[["cache","Page cache","GiB",1],["avail","Available","GiB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
    {t:"bars",items:[
