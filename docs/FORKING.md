@@ -42,7 +42,7 @@ Edit `web/themes/game/layout.json`:
 ```json
 {"cols":12,"gap":10,"items":[
   {"widget":"value","bind":"cpuT","x":0,"y":0,"w":3,"h":1},
-  {"widget":"bar","bind":"gpuPresent","x":3,"y":0,"w":3,"h":1}
+  {"widget":"bar","bind":"cpuU","x":3,"y":0,"w":3,"h":1}
 ]}
 ```
 
