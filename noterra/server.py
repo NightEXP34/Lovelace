@@ -561,18 +561,30 @@ def drive_metrics(idx, dt):
 
 # ---- GPU --------------------------------------------------------------------
 
-def throttle_names(bits):
-    names = []
+def throttle_bits(bits):
+    """Decode bitmask NVML jadi daftar nama reason + boolean untuk chip UI.
+
+    Konstanta NVML di pynvml bernama `nvmlClocksThrottleReason*` (bukan
+    NVML_CLOCK_THROTTLE_REASON_* yang tidak ada di paket ini).
+    """
+    names, flags = [], {}
     for attr, val in vars(pynvml).items():
-        if attr.startswith("NVML_CLOCK_THROTTLE_REASON_") and isinstance(val, int) and val:
-            if bits & val and attr != "NVML_CLOCK_THROTTLE_REASON_TOTAL":
-                names.append(attr.replace("NVML_CLOCK_THROTTLE_REASON_", "").replace("_", " ").lower())
-    return ", ".join(sorted(names)) if names else "none"
+        if not attr.startswith("nvmlClocksThrottleReason"):
+            continue
+        name = attr[len("nvmlClocksThrottleReason"):]
+        if not isinstance(val, int) or not val or name in ("None", "All"):
+            continue
+        label = re.sub(r"(?<!^)(?=[A-Z])", " ", name).lower()
+        if bits & val:
+            names.append(label)
+        flags[name] = bool(bits & val)
+    return (", ".join(sorted(names)) if names else "none"), flags
 
 def gpu_metrics():
     out = dict(gT=None, gW=None, gClk=None, gMemClk=None, gClkMax=None, gU=None,
                gMU=None, vram=None, vramTot=None, gLim=None, pstate=None, thr=None,
                fan=None, pcieGen=None, pcieWidth=None, name=None,
+               thrIdle=None, thrPower=None, thrThermal=None, thrHw=None,
                pcieMax=None, pcieMaxGen=None, pcieMaxWidth=None, prx=None, ptx=None,
                pcu=None, gbw=None, gpeak=None, pctheory=None, vbw=None)
     keys = list(out)
@@ -630,7 +642,12 @@ def gpu_metrics():
         except Exception as e:
             avail("pstate", f"NVML nvmlDeviceGetPerformanceState: {e}")
         try:
-            out["thr"] = throttle_names(pynvml.nvmlDeviceGetCurrentClocksThrottleReasons(h))
+            bits = pynvml.nvmlDeviceGetCurrentClocksThrottleReasons(h)
+            out["thr"], fl = throttle_bits(bits)
+            out["thrIdle"] = fl.get("GpuIdle")
+            out["thrPower"] = bool(fl.get("SwPowerCap") or fl.get("HwPowerBrakeSlowdown"))
+            out["thrThermal"] = bool(fl.get("SwThermalSlowdown") or fl.get("HwThermalSlowdown"))
+            out["thrHw"] = fl.get("HwSlowdown")
             avail("thr")
         except Exception as e:
             avail("thr", f"NVML nvmlDeviceGetCurrentClocksThrottleReasons: {e}")
@@ -870,6 +887,8 @@ def build_snapshot():
         "gClkMax": gpu["gClkMax"], "gU": gpu["gU"], "gMU": gpu["gMU"],
         "vram": gpu["vram"], "vramTot": gpu["vramTot"], "gLim": gpu["gLim"], "gLimDef": gpu.get("gLimDef"),
         "pstate": gpu["pstate"], "thr": gpu["thr"], "fan": gpu["fan"],
+        "thrIdle": gpu["thrIdle"], "thrPower": gpu["thrPower"],
+        "thrThermal": gpu["thrThermal"], "thrHw": gpu["thrHw"],
         "pcieGen": gpu["pcieGen"], "pcieWidth": gpu["pcieWidth"], "pcieMax": gpu["pcieMax"],
         "vbw": gpu["vbw"], "prx": gpu["prx"], "ptx": gpu["ptx"], "pcu": gpu["pcu"],
         "gbw": gpu["gbw"], "gpeak": gpu["gpeak"], "pctheory": gpu["pctheory"],

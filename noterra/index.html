@@ -17,7 +17,8 @@
   --a:#7f95ff;--b:#ff9b5e;--ok:#4cc16b;--warn:#f2a93b;--bad:#ff6b9d;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);display:grid;grid-template-columns:170px 1fr;min-height:100vh}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.4 var(--sans);display:grid;grid-template-columns:170px minmax(0,1fr);min-height:100vh}
 nav{padding:20px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
 nav h1{font-size:15px;margin:0 8px 18px;font-weight:650}
 nav button{all:unset;cursor:pointer;padding:8px 10px;border-radius:var(--r-ctl);color:var(--mute)}
@@ -27,36 +28,81 @@ nav button:focus-visible,select:focus-visible,input:focus-visible{outline:2px so
 .foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--mute)}
 select,input,.btn{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:6px 10px}
 .btn{cursor:pointer}.btn:disabled,input:disabled{opacity:.5;cursor:not-allowed}
-main{padding:22px 26px;max-width:1500px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-.p{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-panel);padding:18px 20px;min-width:0}
-.p>h2{font-size:16px;margin:0;font-weight:650}
-.sub{color:var(--mute);font-size:12px;margin:2px 0 16px}
-h3{font-size:12px;font-weight:600;color:var(--mute);margin:0 0 10px}
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px 26px}
-.big{display:flex;gap:24px;flex-wrap:wrap}
-.big div span{display:block;font-size:12px;color:var(--mute)}
-.big div b{font:600 22px/1.2 var(--mono);font-variant-numeric:tabular-nums}
-.big small{font:12px var(--sans);color:var(--mute);font-weight:400;margin-left:3px}
-.big .na,.dd-na{font:400 13px/1.2 var(--mono);color:var(--mute)}
+main{padding:12px 14px;min-width:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.top h1{font-size:15px;margin:0 12px 0 0;font-weight:650}
+.chip{font-size:13px;padding:4px 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--mute)}
+.chip b{color:var(--ink);font-weight:500}.chip.warn b{color:var(--warn)}
+.grow{flex:1}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) clamp(260px,19vw,330px);gap:10px;min-height:0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;min-height:0}
+.p,.rc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-panel);padding:16px 18px;min-height:0;overflow:hidden}
+.p{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:10px 18px}
+.p header{grid-column:1/-1;display:flex;align-items:baseline;gap:10px}
+.p h2,.rc h2{font-size:16px;margin:0;font-weight:650}
+.p header span{color:var(--mute);font-size:13px}
+.col{display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-width:0;min-height:0}
+.hd{display:flex;gap:14px;align-items:center}
+.gw{flex:none;width:clamp(120px,min(9.5vw,15vh),160px)}.gw svg{width:100%;display:block}
+.stats{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;min-width:0}
+.stats span{display:block;font-size:12px;color:var(--mute)}
+.stats b{font:600 21px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.stats small{font:12px var(--sans);color:var(--mute);font-weight:400;margin-left:2px}
+.stats .na,.dd-na{font:400 13px/1.2 var(--mono);color:var(--mute)}
 .na,.dd-na,[title]{cursor:help}
-svg.sp{width:100%;height:84px;display:block}
-svg.sp path{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:6px}
-.legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
-dl{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0;font-size:13px}
-dt{color:var(--mute)}dd{margin:0;font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.hint2{font-size:12px;color:var(--mute)}
+.cores>div{display:flex;gap:5px;margin-bottom:5px}
+.cc{flex:1;height:clamp(42px,5.2vh,60px);background:var(--bg);border-radius:5px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2}
+.cc i{position:absolute;left:0;right:0;bottom:0;background:var(--a);opacity:.28;transition:height .6s}
+.cores>div+div .cc i{background:var(--b)}
+.cc b{font-size:11px;color:var(--mute);font-weight:500;position:relative}
+.cc u{text-decoration:none;font:600 15px var(--mono);position:relative}
+.cc s{text-decoration:none;font-size:11px;color:var(--mute);position:relative}
+.bars{display:flex;flex-direction:column;gap:8px}
+.br{display:grid;grid-template-columns:96px 1fr;gap:0 8px;align-items:center}
+.br span{color:var(--mute);font-size:12px}
+.bar{height:10px;background:var(--bg);border-radius:4px;overflow:hidden;display:flex}
+.bar i{height:100%;display:block;transition:width .6s}
+.br em{grid-column:2;font:normal 12px var(--mono);color:var(--mute);margin-top:2px}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.cp{font-size:12px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.cp.on{border-color:var(--warn);color:var(--warn)}
+.ch{display:flex;flex-direction:column;flex:1;min-height:0;gap:6px}
+.tabs{display:flex;gap:2px;align-items:center;flex-wrap:wrap}
+.tabs button{all:unset;cursor:pointer;font-size:13px;padding:4px 10px;border-radius:5px;color:var(--mute)}
+.tabs button[aria-pressed=true]{background:var(--bg);color:var(--ink)}
+.tabs .lg{margin-left:auto;font-style:normal;font-size:12px;color:var(--mute);display:flex;gap:8px}
+.lg i{display:inline-block;width:8px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+svg.sp{width:100%;flex:1;min-height:90px;display:block}
+svg path.l{fill:none;stroke-width:1.5;vector-effect:non-scaling-stroke}
+dl{display:grid;gap:7px 14px;margin:0;font-size:13px;margin-top:auto}
+dl.pr{grid-template-columns:auto 1fr}
+dl.tb{grid-template-columns:auto 1fr 1fr}
+dt{color:var(--mute)}dt.h{color:var(--ink);font-weight:600;text-align:right}
+dd{margin:0;font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 dd.warn{color:var(--warn)}
-.cr{display:grid;grid-template-columns:28px 58px 1fr 44px;gap:8px;align-items:center;padding:4px 0;font-size:12px;border-bottom:1px solid var(--line)}
-.cr:last-child{border:0}
-.cr span{font-family:var(--mono)}.cr span:first-child{color:var(--mute)}.cr span:last-child{text-align:right}
-.bar{height:7px;background:var(--bg);border-radius:4px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--a)}
-.ec .bar i{background:var(--b)}
+aside{display:flex;flex-direction:column;gap:10px;min-height:0}
+.rc{display:flex;flex-direction:column;gap:10px}
+.rc h2{font-size:15px}
+.rc.tl{flex:1}
+.tr{flex:1;display:grid;grid-template-columns:84px 1fr 60px;gap:8px;align-items:center;min-height:24px;border-bottom:1px solid var(--line)}
+.tr:last-child{border:0}
+.tr span{color:var(--mute);font-size:12px}.tr b{font:600 13px var(--mono);text-align:right}
+.tr svg{width:100%;height:100%;min-height:20px}
+.ev{display:grid;grid-template-columns:8px 56px 1fr;gap:8px;align-items:center;font-size:12px;height:18px}
+.ev span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev i{width:7px;height:7px;border-radius:50%;background:var(--ok)}.ev i.w{background:var(--warn)}
+.ev time{color:var(--mute);font-family:var(--mono)}
+.hint{font-size:13px;color:var(--mute);display:flex;gap:8px;align-items:center}
+.hint i{width:8px;height:8px;border-radius:50%;background:var(--ok)}.hint.warn i{background:var(--warn)}
+/* ---- log tab ---- */
 .bar-top{display:flex;gap:10px;align-items:center;margin-bottom:16px}
-.bar-top .grow{flex:1}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;color:var(--mute);font-weight:500;padding:9px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:13px}
+table.n td:not(:first-child),table.n th:not(:first-child){text-align:right}
+table.n td:not(:first-child){font-family:var(--mono)}
+tr.grp td{background:var(--bg);font-weight:600}
 .empty{color:var(--mute);text-align:center;padding:48px 0}
 .stack{display:grid;gap:16px}
 .tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
@@ -67,18 +113,14 @@ th{text-align:left;color:var(--mute);font-weight:500;padding:9px 10px;border-bot
 .fld:focus-within{outline:2px solid var(--a);outline-offset:2px}
 .fld input{width:38px;height:100%;padding:0;border:0;background:transparent;text-align:right;font-family:var(--mono);outline:0;-moz-appearance:textfield;appearance:textfield}
 .fld input::-webkit-inner-spin-button,.fld input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-svg.sp.lg{height:200px;margin-bottom:0}
-td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:13px}
-table.n td:not(:first-child),table.n th:not(:first-child){text-align:right}
-table.n td:not(:first-child){font-family:var(--mono)}
-tr.grp td{background:var(--bg);font-weight:600}
+svg.sp.lg{height:200px;flex:none}
 input[type=checkbox]{accent-color:var(--a)}
 .timer{font-family:var(--mono);color:var(--mute);min-width:52px}
 .btn.on{background:var(--bad);border-color:var(--bad);color:#fff}
-.hint{color:var(--mute);font-size:12px;margin-top:8px}
-@media(max-width:1100px){.grid{grid-template-columns:1fr}}
+.hint.lg{color:var(--mute);font-size:12px;margin-top:8px}
+@media(max-width:1100px),(max-height:760px){html,body{height:auto}main{grid-template-rows:auto auto auto}
+ .wrap{grid-template-columns:1fr}.grid{grid-template-columns:1fr;grid-template-rows:none}.p{overflow:visible}aside{display:grid}.tr{min-height:30px}}
 @media(max-width:900px){body{grid-template-columns:1fr}nav{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}nav h1{width:100%;margin-bottom:6px}.foot{margin:0 0 0 auto;flex-direction:row}}
-@media(max-width:600px){.cols{grid-template-columns:1fr}.cols>*{grid-column:auto!important}}
 </style>
 </head>
 <body>
@@ -91,14 +133,16 @@ input[type=checkbox]{accent-color:var(--a)}
 <script>
 const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.min(b,Math.max(a,v)), avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
 const fx=(v,d=0)=>typeof v==="number"?v.toFixed(d):"unavailable";
+const val=(v,d=0)=>typeof v==="number"?v.toFixed(d):"—";
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mmss=t=>String(t/60|0).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
+const mk=h=>{const d=document.createElement("div");d.innerHTML=h;return d};
 
 const th=$("#theme"); th.value=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";
 (th.onchange=()=>document.documentElement.dataset.theme=th.value)();
 
 /* ---- live sampler: fetch the collector API every second ---- */
-let S={snap:{},drives:[{},{}]}, H={}, R={}, cur=[], online=false;
+let S={snap:{},drives:[{},{}]}, H={}, R={}, cur=[], online=false, rec=null;
 async function sample(){
   try{
     const r=await fetch("/api/snapshot",{cache:"no-store"});
@@ -110,9 +154,10 @@ async function sample(){
       if(typeof v==="number"){(H[k]=H[k]||[]).push(v); if(H[k].length>60)H[k].shift()}
     }
     cur.forEach(x=>x.up());
-    refreshSubs();
+    refreshSubs(); rail(); chipsTop();
   }catch(e){
     online=false; $("#status").textContent="Backend: offline — run server.py";
+    chipsTop();
   }
 }
 setInterval(sample,1000); sample();
@@ -126,122 +171,200 @@ function spark(svg,keys,cols,min){
   const pairs=keys.map((k,i)=>[H[k]||[],cols[i]]).filter(([d])=>d.length>1);
   if(!pairs.length){svg.innerHTML="";return}
   const all=pairs.flatMap(([d])=>d), mn=min??Math.min(...all), span=(Math.max(...all)-mn)||1, h=svg.viewBox.baseVal.height;
-  svg.innerHTML=pairs.map(([d,c])=>`<path stroke="var(${c})" d="${d.map((v,j)=>`${j?"L":"M"}${(j/Math.max(d.length-1,1)*200).toFixed(1)},${(h-2-(v-mn)/span*(h-4)).toFixed(1)}`).join("")}"/>`).join("");
+  svg.innerHTML=pairs.map(([d,c])=>`<path class="l" style="stroke:var(${c})" d="${d.map((v,j)=>`${j?"L":"M"}${(j/Math.max(d.length-1,1)*200).toFixed(1)},${(h-2-(v-mn)/span*(h-4)).toFixed(1)}`).join("")}"/>`).join("");
 }
 
-/* ---- parts: each returns {el, up()} ---- */
-function part(b){
-  const el=document.createElement("div"); el.style.gridColumn="span "+(b.span||1);
-  const T=b.title?`<h3>${b.title}</h3>`:"";
-  if(b.t==="stats"){
-    el.innerHTML=T+`<div class="big">${b.items.map(x=>`<div><span>${x[1]}</span><b></b></div>`).join("")}</div>`;
-    const bs=[...el.querySelectorAll("b")];
-    return{el,up:()=>b.items.forEach((x,i)=>{
-      const v=x[4]?x[4](S):S[x[0]];
-      if(typeof v==="number"){bs[i].innerHTML=fx(v,x[3]||0)+`<small>${x[2]||""}</small>`;bs[i].removeAttribute("title")}
-      else{bs[i].innerHTML=`<span class="na">${v==null?"unavailable":v}</span>`;
-        bs[i].title=v==null?(R[x[0]]||"tidak ada sumber data"):"tidak ada I/O di interval ini"}
-    })};
-  }
-  if(b.t==="chart"){
-    el.innerHTML=T+`<svg class="sp" viewBox="0 0 200 60" preserveAspectRatio="none"></svg><div class="legend">${b.series.map(s=>`<span><i style="background:var(${s[2]})"></i>${s[1]}</span>`).join("")}</div>`;
-    const sv=el.querySelector("svg");
-    return{el,up:()=>spark(sv,b.series.map(s=>s[0]),b.series.map(s=>s[2]),b.min)};
-  }
-  if(b.t==="dl"){
-    el.innerHTML=T+`<dl>${b.rows.map(r=>`<dt>${r[0]}</dt><dd></dd>`).join("")}</dl>`;
-    const ds=[...el.querySelectorAll("dd")];
-    return{el,up:()=>b.rows.forEach((r,i)=>{
-      const v=typeof r[1]==="function"?r[1](S):r[1];
-      const na=v==null||v==="unavailable";
-      ds[i].textContent=na?"unavailable":v;
-      ds[i].className=(r[2]&&r[2](S)?"warn ":"")+(na?"dd-na":"");
-      ds[i].title=na?(R[r[3]]||"tidak ada sumber data"):"";
-    })};
-  }
-  if(b.t==="cores"){
-    el.className=b.cls; el.innerHTML=T;
-    let rows=[];
-    return{el,up:()=>{
-      const u=S[b.u]||[],f=S[b.f]||[],tp=S[b.T]||[];
-      if(rows.length!==u.length){
-        el.innerHTML=T+[...Array(u.length)].map((_,i)=>`<div class="cr"><span>${b.pre}${i}</span><span></span><div class="bar"><i></i></div><span></span></div>`).join("");
-        rows=[...el.querySelectorAll(".cr")];
+/* skala gauge dari DATA NYATA (ring buffer 60 sampel + nilai terkini), bukan konstanta */
+const dynMax=k=>{const arr=H[k]||[],cur=S[k];const all=arr.concat(typeof cur==="number"?[cur]:[]);
+  return all.length?Math.max(...all):null};
+
+/* ---- rpm-style gauge: 270° sweep; skala + ambang dari sumber nyata ---- */
+const pt=(a,r)=>[75+r*Math.cos(a*Math.PI/180),66+r*Math.sin(a*Math.PI/180)];
+const arc=(a0,a1,r)=>{const p=pt(a0,r),q=pt(a1,r);return`M${p[0].toFixed(1)},${p[1].toFixed(1)}A${r},${r} 0 ${a1-a0>180?1:0} 1 ${q[0].toFixed(1)},${q[1].toFixed(1)}`};
+function gauge(g){
+  const ring=(r,w,c)=>`<path d="${arc(135,405,r)}" fill="none" style="stroke:var(--line)" stroke-width="${w}" stroke-linecap="round"/><path class="${c}" fill="none" stroke-width="${w}" stroke-linecap="round"/>`;
+  const el=mk(`<svg viewBox="0 0 150 124">${ring(54,9,"v")}${g.in?ring(41,5,"w"):""}<text x="75" y="72" text-anchor="middle" style="fill:var(--ink);font:600 24px var(--mono)"></text><text x="75" y="88" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)">${g.unit}</text><text x="75" y="118" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)">${g.label}</text></svg>`);
+  const v=el.querySelector(".v"), w=el.querySelector(".w"), tx=el.querySelector("text");
+  const draw=(p,x,m,wn,bd,r)=>{
+    if(typeof x!=="number"||typeof m!=="number"||m<=0){p.setAttribute("d","");return}
+    p.setAttribute("d",arc(135,135+270*clamp(x/m,.005,1),r));
+    p.style.stroke=bd?"var(--bad)":wn?"var(--warn)":"var(--a)";
+  };
+  return{el,up:()=>{
+    const x=S[g.key], m=g.max?g.max():dynMax(g.key);
+    draw(v,x,m,g.warn(S),g.bad(S),54);
+    tx.textContent=val(x,g.d||0); tx.setAttribute("title",x==null?(R[g.key]||"tidak ada sumber data"):"");
+    if(g.in){const ix=S[g.in.key], im=g.in.max?g.in.max():dynMax(g.in.key);
+      draw(w,ix,im,g.in.warn(S),g.in.bad(S),41);
+      el.querySelector("svg").setAttribute("title",ix==null?(R[g.in.key]||""):"")}
+  }};
+}
+
+/* ---- blocks: each returns {el, up()} ---- */
+const B={
+ hd:b=>{const g=gauge(b.g),el=mk(`<div class="hd"><div class="gw"></div><div class="stats">${b.stats.map(s=>`<div><span>${s[1]}</span><b></b></div>`).join("")}</div></div>`);
+  el.querySelector(".gw").append(g.el);const bs=[...el.querySelectorAll("b")];
+  return{el,up:()=>{g.up();b.stats.forEach((s,i)=>{
+    const v=s[4]?s[4](S):S[s[0]];
+    if(typeof v==="number"){bs[i].innerHTML=fx(v,s[3]||0)+`<small>${s[2]||""}</small>`;bs[i].removeAttribute("title")}
+    else{bs[i].innerHTML=`<span class="na">${v==null?"unavailable":v}</span>`;
+      bs[i].title=v==null?(R[s[0]]||"tidak ada sumber data"):"tidak ada I/O di interval ini"}
+  })}}},
+ cores:()=>{const el=mk(`<div></div>`);el.className="cores";
+  return{el,up:()=>{
+    const P=S.pu||[],E=S.eu||[];
+    if(el.dataset.n!==String(P.length+E.length)){
+      const cell=(p,k)=>`<div>${[...Array(k)].map((_,i)=>`<div class="cc"><i></i><b>${p}${i}</b><u></u><s></s></div>`).join("")}</div>`;
+      el.innerHTML=cell("P",P.length)+cell("E",E.length)+`<div class="hint2">GHz dan °C per core dari snapshot. Fill = utilisasi. "—" = tidak ada sumber.</div>`;
+      el.dataset.n=String(P.length+E.length);
+    }
+    const cc=[...el.querySelectorAll(".cc")];
+    cc.forEach((x,i)=>{
+      const src=i<P.length?[S.pf[i],S.pt[i],S.pu[i]]:[S.ef[i-P.length],S.et[i-P.length],S.eu[i-P.length]];
+      const u=x.querySelector("i"),f=x.querySelector("u"),t=x.querySelector("s");
+      u.style.height=(typeof src[2]==="number"?src[2]:0)+"%";
+      f.textContent=val(src[0],2); f.title=src[0]==null?(R["pfa"]||R["ef"]||"tidak ada sumber clock"):"";
+      t.textContent=val(src[1])+"°"; t.title=src[1]==null?(R["pt"]||"tidak ada sensor suhu core ini"):"";
+    });
+  }}},
+ bars:b=>{const el=mk(`<div class="bars">${b.items.map(it=>`<div class="br"><span>${it.l}</span><div class="bar">${it.c.map(c=>`<i style="background:var(${c})"></i>`).join("")}</div><em></em></div>`).join("")}</div>`);
+  const rows=[...el.querySelectorAll(".br")];
+  return{el,up:()=>b.items.forEach((it,i)=>{
+    // f() mengembalikan [v0, v1, ..., den] dengan den = penyebut nyata (limit dari snapshot / peak terukur)
+    const f=it.f(S), den=f[f.length-1];
+    rows[i].querySelectorAll(".bar i").forEach((x,j)=>{
+      const ok=typeof f[j]==="number"&&typeof den==="number"&&den>0;
+      x.style.width=ok?clamp(f[j]/den*100,0,100)+"%":"0%"});
+    rows[i].querySelector("em").textContent=it.t(S);
+    rows[i].querySelector("em").title=it.tip?it.tip(S):"";
+  })};
+ },
+ chips:b=>{const el=mk(`<div class="chips">${b.items.map(x=>`<span class="cp">${x}</span>`).join("")}</div>`);
+  const c=[...el.querySelectorAll(".cp")];
+  return{el,up:()=>{
+    b.on(S).forEach((raw,i)=>{
+      const v=raw===true||raw===false?raw:null;
+      c[i].className="cp"+(v===true?" on":"");
+      c[i].textContent=b.items[i]+(v===null?" —":"");
+      c[i].setAttribute("title",v===null?(b.tip?b.tip(S,i):"tidak ada sumber (NVML)"):"NVML throttle reasons")});
+  }}},
+ chart:b=>{let ti=0;const el=mk(`<div class="ch"><div class="tabs">${b.tabs.map(x=>`<button>${x.n}</button>`).join("")}<em class="lg"></em></div><svg class="sp" viewBox="0 0 200 50" preserveAspectRatio="none"></svg></div>`);
+  const sv=el.querySelector("svg"),btn=[...el.querySelectorAll("button")],lg=el.querySelector(".lg");
+  const draw=()=>spark(sv,b.tabs[ti].s.map(s=>s[0]),b.tabs[ti].s.map(s=>s[2]),b.tabs[ti].min);
+  const tab=i=>{ti=i;btn.forEach((x,j)=>x.setAttribute("aria-pressed",j===i));lg.innerHTML=b.tabs[i].s.map(s=>`<span><i style="background:var(${s[2]})"></i>${s[1]}</span>`).join("");draw()};
+  btn.forEach((x,i)=>x.onclick=()=>tab(i));tab(0);return{el,up:draw}},
+ dl:b=>{const hdr=b.hdr?`<dt></dt>${b.hdr.map(h=>`<dt class="h">${h}</dt>`).join("")}`:"";
+  const el=mk(`<dl class="${b.hdr?"tb":"pr"}">${hdr}${b.rows.map(r=>`<dt>${r[0]}</dt>`+(b.hdr?"<dd></dd><dd></dd>":"<dd></dd>")).join("")}</dl>`);
+  const dd=[...el.querySelectorAll("dd")];
+  // format row: pr [label, fn, warnFn|null, key] · tb [label, fn0, fn1, warnFn|null, key0, key1]
+  return{el,up:()=>{let j=0;
+    b.rows.forEach(r=>{
+      const n=b.hdr?2:1;
+      const warn=r[n+1]?r[n+1](S):false;
+      for(let c=0;c<n;c++){
+        const raw=r[1+c], v=typeof raw==="function"?raw(S):raw;
+        const na=v==null||v==="unavailable";
+        dd[j].textContent=na?"unavailable":v;
+        dd[j].className=(warn?"warn ":"")+(na?"dd-na":"");
+        dd[j].title=na?(R[r[n+2+c]]||"tidak ada sumber data"):"";
+        j++;
       }
-      rows.forEach((r,i)=>{const c=r.children;
-        c[1].textContent=fx(f[i],2)+" GHz";
-        c[2].firstChild.style.width=(typeof u[i]==="number"?u[i]:0)+"%";
-        c[3].textContent=fx(tp[i])+"°C"});
-    }};
-  }
+    })}};
+ }
+};
+function panel(c){
+  const el=document.createElement("section");el.className="p";el.innerHTML=`<header><h2>${c.title}</h2><span></span></header><div class="col"></div><div class="col"></div>`;
+  const cols=el.querySelectorAll(".col"),us=[];
+  [c.l,c.r].forEach((side,k)=>side.forEach(b=>{const x=B[b.t](b);cols[k].append(x.el);us.push(x.up)}));
+  return{el,us,sub:el.querySelector("span")};
 }
 
-/* ---- overview layout: one panel per component ---- */
-const warnG=s=>s.thr!=null&&s.thr!=="none";
-const drive=(i)=>[
-  {t:"stats",span:2,title:`Drive ${i}: nvme${i}n1`,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"IOPS","IOPS"],["a"+i,"Await","ms",1,s=>s["a"+i+"Idle"]?"idle":null]]},
-  {t:"chart",title:"Throughput",min:0,series:[["r"+i,"Read","--a"],["w"+i,"Write","--b"]]},
-  {t:"dl",title:"Device",rows:[
-    ["Model",s=>s.drives[i].name,null,`d${i}model`],["Link",s=>s.drives[i].link,null,`d${i}link`],["Link max",s=>s.drives[i].linkMax,null,`d${i}linkMax`],
-    ["Size",s=>s.drives[i].sizeGB==null?null:fx(s.drives[i].sizeGB,1)+" GB",null,`d${i}size`],
-    ["Utilization",s=>s["u"+i]==null?null:fx(s["u"+i])+" %",null,"u"+i],["Queue depth",s=>s["q"+i]==null?null:fx(s["q"+i],1),null,"q"+i],
-    ["Temperature",s=>s["t"+i]==null?null:fx(s["t"+i])+" °C",null,"t"+i],
-    ["Capacity used",s=>{const dv=s.drives[i];if(dv.capUsed!=null)return fx(dv.capUsed)+" %";return dv.mount==null?"not mounted":null},null,`d${i}capUsed`],
-    ["I/O scheduler",s=>s.drives[i].sched,null,`d${i}sched`],["Readahead",s=>s.drives[i].readahead,null,`d${i}readahead`]]}];
+/* ---- sinyal nyata untuk ambang gauge/chip ---- */
+const cpuThrottling=s=>s.cpuThr!=null&&s.cpuThr!=="none";
+const gpuThermal=s=>s.thrThermal===true||s.thrHw===true;
+const gpuPowerCap=s=>s.thrPower===true;
+const pl1=s=>typeof s.pl1==="number"?s.pl1:null;
+const gLim=s=>typeof s.gLim==="number"?s.gLim:null;
+const near=(v,m,f)=>typeof v==="number"&&typeof m==="number"&&m>0&&v>=m*f;
+
 const PANELS=[
- {title:"CPU",sub:s=>s.snap.cpuModel||"CPU",parts:[
-  {t:"stats",span:2,items:[["cpuT","Package temp","°C"],["cpuW","Package power","W",1],["cpuU","Utilization","%"],["pfa","Avg P-core clock","GHz",2],["migr","Migrations","/s"]]},
-  {t:"chart",title:"Temperature and power",series:[["cpuT","Temp (°C)","--b"],["cpuW","Power (W)","--a"]]},
-  {t:"chart",title:"Load and idle",min:0,series:[["cpuU","Utilization (%)","--a"],["idle","Idle residency (%)","--b"]]},
-  {t:"cores",title:"Performance cores",cls:"pc",pre:"P",u:"pu",f:"pf",T:"pt"},
-  {t:"cores",title:"Efficiency cores",cls:"ec",pre:"E",u:"eu",f:"ef",T:"et"},
-  {t:"dl",title:"Scheduler and power",rows:[
-    ["Governor",s=>s.snap.governor],["EPP",s=>s.snap.epp],["Turbo",s=>s.snap.turbo],
-    ["PL1 / PL2",s=>{const a=s.pl1==null?null:fx(s.pl1,1)+" W (PL1)";const b=s.pl2==null?null:fx(s.pl2,1)+" W (PL2)";const x=[a,b].filter(Boolean);return x.length?x.join(" / "):null},null,"pl1"],["Core pinning",s=>s.snap.pinning],["Driver",s=>s.snap.driver]]},
-  {t:"dl",title:"Kernel activity",rows:[
-    ["Context switches",s=>s.ctx==null?null:fx(s.ctx)+" /s",null,"ctx"],
-    ["Thread migrations",s=>s.migr==null?null:fx(s.migr)+" /s",null,"migr"],
-    ["Interrupts",s=>s.irq==null?null:fx(s.irq)+" /s",null,"irq"],
-    ["Idle residency",s=>s.idle==null?null:fx(s.idle)+" % ("+s.idleName+")",null,"idle"],
-    ["Throttle",s=>s.cpuThr,null,"cpuThr"]]}]},
- {title:"GPU",sub:s=>(s.snap.gpuName||"NVIDIA GPU")+(s.snap.nvml?"":" (NVML unavailable)"),parts:[
-  {t:"stats",span:2,items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GiB",2]]},
-  {t:"chart",title:"Temperature and power",series:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},
-  {t:"chart",title:"Utilization",min:0,series:[["gU","GPU (%)","--a"],["gMU","Memory controller (%)","--b"]]},
-  {t:"chart",title:"VRAM bandwidth in use",min:0,series:[["vbw","GB/s","--a"]]},
-  {t:"chart",title:"PCIe traffic",min:0,series:[["prx","Receive (GB/s)","--a"],["ptx","Transmit (GB/s)","--b"]]},
-  {t:"dl",title:"VRAM",rows:[
-    ["Used / total",s=>s.vram==null?null:fx(s.vram,2)+" / "+fx(s.vramTot,2)+" GiB",null,"vram"],
-    ["Memory clock",s=>s.gMemClk==null?null:s.gMemClk+" MHz",null,"gMemClk"],
-    ["Bus width",s=>s.gbw==null?null:s.gbw+" bit",null,"gbw"],["Peak bandwidth",s=>s.gpeak==null?null:fx(s.gpeak)+" GB/s (estimasi: bus width × clock ×2 DDR)",null,"gpeak"],
-    ["Bandwidth in use",s=>s.vbw==null?null:fx(s.vbw)+" GB/s (estimasi)",null,"vbw"],
-    ["Controller util",s=>s.gMU==null?null:fx(s.gMU)+" %",null,"gMU"]]},
-  {t:"dl",title:"PCIe",rows:[
-    ["Link now",s=>s.pcieGen==null?null:"Gen"+s.pcieGen+" x"+s.pcieWidth,null,"pcieGen"],
-    ["Link max",s=>s.pcieMax,null,"pcieMax"],
-    ["Receive",s=>s.prx==null?null:fx(s.prx,2)+" GB/s",null,"prx"],
-    ["Transmit",s=>s.ptx==null?null:fx(s.ptx,2)+" GB/s",null,"ptx"],
-    ["Theoretical",s=>s.pctheory==null?null:fx(s.pctheory,2)+" GB/s (dari link max)",null,"pctheory"],
-    ["Link used",s=>s.pcu==null?null:fx(s.pcu)+" %",null,"pcu"]]},
-  {t:"dl",span:2,title:"Power and throttle",rows:[
-    ["Draw / limit",s=>s.gW==null?null:fx(s.gW,1)+" W"+(s.gLim?" / "+fx(s.gLim)+" W"+(s.gLimDef?" (default)":""):""),null,"gW"],
-    ["SM clock max",s=>s.gClkMax==null?null:s.gClkMax+" MHz",null,"gClkMax"],
-    ["Fan",s=>s.fan==null?null:fx(s.fan)+" %",null,"fan"],
-    ["P-state",s=>s.pstate,null,"pstate"],
-    ["NVIDIA driver",s=>s.snap.gpuDriver],
-    ["Throttle reason",s=>s.thr,warnG,"thr"]]}]},
- {title:"Memory",sub:s=>s.snap.kernel?"kernel "+s.snap.kernel:"",parts:[
-  {t:"stats",span:2,items:[["ramU","Used","GiB",2],["cache","Page cache","GiB",2],["avail","Available","GiB",2],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
-  {t:"chart",title:"RAM",min:0,series:[["ramU","Used (GiB)","--a"],["cache","Page cache (GiB)","--b"]]},
-  {t:"chart",title:"Page faults",min:0,series:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]},
-  {t:"dl",title:"Capacity",rows:[
-    ["Total",s=>s.memTot==null?null:fx(s.memTot,2)+" GiB",null,"memTot"],["Used",s=>s.ramU==null?null:fx(s.ramU,2)+" GiB",null,"ramU"],
-    ["Page cache",s=>s.cache==null?null:fx(s.cache,2)+" GiB",null,"cache"],
-    ["Swap",s=>s.swapU==null||s.swapTot==null?null:fx(s.swapU,2)+" / "+fx(s.swapTot,2)+" GiB",null,"swapU"],
-    ["Transparent hugepages",s=>s.snap.thp],["Swappiness",s=>s.snap.swappiness]]},
-  {t:"dl",title:"Bandwidth",rows:[
-    ["Measured bandwidth",s=>s.ramBW==null?null:fx(s.ramBW,1)+" GB/s",null,"ramBW"],["Minor faults",s=>s.minF==null?null:fx(s.minF)+" /s",null,"minF"]]}]},
- {title:"Storage",sub:"NVMe drives",parts:[...drive(0),...drive(1)]}
+ {title:"CPU",sub:s=>(s.snap.cpuModel||"CPU")+", "+((S.pu||[]).length)+" P + "+((S.eu||[]).length)+" E cores (dinamis dari kernel)",
+  l:[{t:"hd",g:{key:"cpuT",max:()=>Math.max(dynMax("cpuT")||0,70),warn:()=>cpuThrottling(S),bad:()=>cpuThrottling(S),unit:"°C",label:"temp · ring = daya vs PL1",
+       in:{key:"cpuW",max:()=>pl1(S)||dynMax("cpuW"),warn:s=>near(s.cpuW,pl1(s),.9),bad:s=>near(s.cpuW,pl1(s),1)}},
+     stats:[["cpuU","Util","%"],["migr","Migrations","/s"],["pfa","P clock","GHz",2],["efa","E clock","GHz",2,s=>{const a=(S.ef||[]).filter(x=>typeof x==="number");return a.length?avg(a):null}]]},
+   {t:"cores"},
+   {t:"bars",items:[
+     {l:"Power / PL1",c:["--b"],f:s=>[s.cpuW,pl1(S)],t:s=>fx(s.cpuW,1)+" / "+fx(pl1(S),1)+" W",tip:s=>pl1(S)==null?(R["pl1"]||""):""},
+     {l:"Idle residency",c:["--a"],f:s=>[s.idle,100],t:s=>fx(s.idle)+" % "+(s.idleName||""),tip:s=>R["idle"]||""}]},
+  ],
+  r:[{t:"chart",tabs:[{n:"Temp and power",s:[["cpuT","Temp (°C)","--b"],["cpuW","Power (W)","--a"]]},{n:"Load and idle",min:0,s:[["cpuU","Util (%)","--a"],["idle","Idle (%)","--b"]]}]},
+   {t:"dl",rows:[
+     ["Governor",s=>s.snap.governor],["EPP",s=>s.snap.epp],["Turbo",s=>s.snap.turbo],
+     ["PL1 / PL2",s=>{const a=s.pl1==null?null:fx(s.pl1,1)+" W (PL1)",b=s.pl2==null?null:fx(s.pl2,1)+" W (PL2)";const x=[a,b].filter(Boolean);return x.length?x.join(" / "):null},null,"pl1"],
+     ["Context switches",s=>s.ctx==null?null:fx(s.ctx)+" /s",null,"ctx"],
+     ["Interrupts",s=>s.irq==null?null:fx(s.irq)+" /s",null,"irq"],
+     ["Throttle",s=>s.cpuThr,null,"cpuThr"]]},
+  ]},
+
+ {title:"GPU",sub:s=>(s.snap.gpuName||"NVIDIA GPU")+(s.snap.nvml?"":" (NVML unavailable)"),
+  l:[{t:"hd",g:{key:"gT",max:()=>Math.max(dynMax("gT")||0,60),warn:()=>gpuThermal(S),bad:()=>gpuThermal(S),unit:"°C",label:"temp · ring = daya vs limit",
+       in:{key:"gW",max:()=>gLim(S)||dynMax("gW"),warn:s=>near(s.gW,gLim(s),.9),bad:s=>near(s.gW,gLim(s),1)}},
+     stats:[["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","Util","%"],["vram","VRAM","GiB",1]]},
+   {t:"chips",items:["Idle","Power cap","Thermal","HW slowdown"],
+     on:s=>[s.thrIdle,s.thrPower,s.thrThermal,s.thrHw],tip:(s,i)=>R["thr"]||""},
+   {t:"bars",items:[
+     {l:"VRAM",c:["--a"],f:s=>[s.vram,s.vramTot],t:s=>fx(s.vram,2)+" / "+fx(s.vramTot,2)+" GiB",tip:s=>R["vram"]||""},
+     {l:"VRAM bw (est.)",c:["--b"],f:s=>[s.vbw,s.gpeak],t:s=>fx(s.vbw)+" / "+fx(s.gpeak)+" GB/s (estimasi)",tip:s=>R["vbw"]||""},
+     {l:"PCIe receive",c:["--a"],f:s=>[s.prx,s.pctheory],t:s=>fx(s.prx,2)+" / "+fx(s.pctheory,2)+" GB/s",tip:s=>R["prx"]||""},
+     {l:"PCIe transmit",c:["--b"],f:s=>[s.ptx,s.pctheory],t:s=>fx(s.ptx,2)+" / "+fx(s.pctheory,2)+" GB/s",tip:s=>R["ptx"]||""}]},
+  ],
+  r:[{t:"chart",tabs:[{n:"Temp and power",s:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},{n:"Util",min:0,s:[["gU","GPU (%)","--a"],["gMU","Mem ctrl (%)","--b"]]},{n:"VRAM bw",min:0,s:[["vbw","GB/s (est.)","--a"]]},{n:"PCIe",min:0,s:[["prx","Rx (GB/s)","--a"],["ptx","Tx (GB/s)","--b"]]}]},
+   {t:"dl",rows:[
+     ["Memory clock",s=>s.gMemClk==null?null:s.gMemClk+" MHz",null,"gMemClk"],
+     ["Bus width",s=>s.gbw==null?null:s.gbw+" bit",null,"gbw"],
+     ["P-state",s=>s.pstate,null,"pstate"],
+     ["PCIe now / max",s=>s.pcieGen==null?null:"Gen"+s.pcieGen+" x"+s.pcieWidth+(s.pcieMax?" / "+s.pcieMax:""),null,"pcieGen"],
+     ["Draw / limit",s=>s.gW==null?null:fx(s.gW,1)+" W"+(s.gLim?" / "+fx(s.gLim)+" W"+(s.gLimDef?" (default)":""):""),null,"gW"],
+     ["Throttle",s=>s.thr,g=>g.thr!=null&&g.thr!=="none","thr"],
+     ["Fan",s=>s.fan==null?null:fx(s.fan)+" %",null,"fan"],
+     ["NVIDIA driver",s=>s.snap.gpuDriver]]},
+  ]},
+
+ {title:"Memory",sub:s=>s.snap.kernel?"kernel "+s.snap.kernel:"",
+  l:[{t:"hd",g:{key:"ramU",max:()=>typeof S.memTot==="number"?S.memTot:dynMax("ramU"),warn:()=>near(S.ramU,S.memTot,.8),bad:()=>near(S.ramU,S.memTot,.93),unit:"GiB used",label:"RAM (total dari meminfo)",d:1},
+     stats:[["cache","Page cache","GiB",1],["avail","Available","GiB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
+   {t:"bars",items:[
+     {l:"RAM",c:["--a","--b"],f:s=>[s.ramU,s.cache,s.memTot],t:s=>`${fx(s.ramU,1)} used, ${fx(s.cache,1)} cache, dari ${fx(s.memTot,1)} GiB`,tip:s=>R["ramU"]||""},
+     {l:"Swap",c:["--warn"],f:s=>[s.swapU,s.swapTot],t:s=>fx(s.swapU,1)+" / "+fx(s.swapTot,1)+" GiB",tip:s=>R["swapU"]||""},
+     {l:"Major faults",c:["--b"],f:s=>[s.majF,dynMax("majF")],t:s=>fx(s.majF)+" /s (peak terukur "+fx(dynMax("majF"))+")",tip:s=>R["majF"]||""},
+     {l:"Minor faults",c:["--a"],f:s=>[s.minF,dynMax("minF")],t:s=>fx(s.minF)+" /s (peak terukur "+fx(dynMax("minF"))+")",tip:s=>R["minF"]||""}]},
+  ],
+  r:[{t:"chart",tabs:[{n:"RAM",min:0,s:[["ramU","Used (GiB)","--a"],["cache","Cache (GiB)","--b"]]},{n:"Page faults",min:0,s:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]}]},
+   {t:"dl",rows:[
+     ["Total",s=>s.memTot==null?null:fx(s.memTot,2)+" GiB",null,"memTot"],
+     ["Swap total",s=>s.swapTot==null?null:fx(s.swapTot,2)+" GiB",null,"swapTot"],
+     ["Measured bandwidth",s=>s.ramBW==null?null:fx(s.ramBW,1)+" GB/s",null,"ramBW"],
+     ["Hugepages",s=>s.snap.thp],["Swappiness",s=>s.snap.swappiness]]},
+  ]},
+
+ {title:"Storage",sub:s=>s.drives.map((d,i)=>`nvme${i}n1: ${d.name||"unavailable"}`).join(" · "),
+  l:[{t:"hd",g:{key:"r0",max:()=>dynMax("r0"),warn:()=>false,bad:()=>false,unit:"MB/s read",label:"drive 0 (skala = peak terukur)"},
+     stats:[["w0","Write","MB/s",1],["i0","IOPS","IOPS"],["a0","Await","ms",1,s=>s.a0Idle?"idle":null],["u0","Util","%"]]},
+   {t:"bars",items:[
+     {l:"D0 read",c:["--a"],f:s=>[s.r0,dynMax("r0")],t:s=>fx(s.r0)+" / "+fx(dynMax("r0"))+" MB/s (peak terukur)",tip:s=>R["r0"]||""},
+     {l:"D0 capacity",c:["--warn"],f:s=>[s.drives[0].capUsed,100],t:s=>s.drives[0].capUsed==null?(s.drives[0].mount==null?"not mounted":"unavailable"):fx(s.drives[0].capUsed)+" % of "+fx(s.drives[0].sizeGB,1)+" GB",tip:s=>R["d0capUsed"]||""},
+     {l:"D1 read",c:["--a"],f:s=>[s.r1,dynMax("r1")],t:s=>fx(s.r1,1)+" / "+fx(dynMax("r1"),1)+" MB/s (peak terukur)",tip:s=>R["r1"]||""},
+     {l:"D1 capacity",c:["--warn"],f:s=>[s.drives[1].capUsed,100],t:s=>s.drives[1].capUsed==null?(s.drives[1].mount==null?"not mounted":"unavailable"):fx(s.drives[1].capUsed)+" % of "+fx(s.drives[1].sizeGB,1)+" GB",tip:s=>R["d1capUsed"]||""}]},
+  ],
+  r:[{t:"chart",tabs:[{n:"Drive 0",min:0,s:[["r0","Read (MB/s)","--a"],["w0","Write (MB/s)","--b"]]},{n:"Drive 1",min:0,s:[["r1","Read (MB/s)","--a"],["w1","Write (MB/s)","--b"]]}]},
+   {t:"dl",hdr:["Drive 0","Drive 1"],rows:[
+     ["Model",s=>s.drives[0].name,s=>s.drives[1].name,null,"d0model","d1model"],
+     ["Link / max",s=>s.drives[0].link==null?null:s.drives[0].link+(s.drives[0].linkMax?" / "+s.drives[0].linkMax:""),s=>s.drives[1].link==null?null:s.drives[1].link+(s.drives[1].linkMax?" / "+s.drives[1].linkMax:""),null,"d0link","d1link"],
+     ["Queue",s=>fx(s.q0,1),s=>fx(s.q1,1),null,"q0","q1"],
+     ["Temp",s=>s.t0==null?null:fx(s.t0)+" °C",s=>s.t1==null?null:fx(s.t1)+" °C",null,"t0","t1"],
+     ["Scheduler",s=>s.drives[0].sched,s=>s.drives[1].sched,null,"d0sched","d1sched"],
+     ["Readahead",s=>s.drives[0].readahead,s=>s.drives[1].readahead,null,"d0readahead","d1readahead"]]},
+  ]},
 ];
 
 function show(id){
@@ -249,28 +372,88 @@ function show(id){
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
   const root=$("#root");
   if(id==="log"){renderLog();return}
-  root.innerHTML=`<div class="grid" id="g"></div>`;
-  PANELS.forEach(p=>{
-    const el=document.createElement("section"); el.className="p";
-    el.innerHTML=`<h2>${p.title}</h2><div class="sub"></div><div class="cols"></div>`;
-    const sub=el.querySelector(".sub");
-    p.parts.forEach(b=>{const x=part(b); cur.push(x); el.lastChild.append(x.el)});
-    $("#g").append(el);
-    sub.textContent=(typeof p.sub==="function"?p.sub(S):p.sub)||"";
+  root.innerHTML=`<div class="top"><h1>Monitor</h1>
+    <span class="chip" id="c-be">Backend <b>offline</b></span><span class="chip" id="c-thr">Throttle <b>—</b></span>
+    <span class="chip" id="c-link">GPU link <b>—</b></span><span class="chip" id="c-rec">Recording <b>off</b></span>
+    <span class="grow"></span></div>
+    <div class="wrap"><div class="grid" id="g"></div>
+    <aside><div class="rc tl"><h2>Timeline (last 60 s)</h2><div id="tl" style="display:flex;flex-direction:column;flex:1"></div></div>
+    <div class="rc"><h2>Events</h2><div id="ev" style="display:flex;flex-direction:column;gap:5px;height:133px;flex:none"></div></div>
+    <div class="rc"><h2>System</h2><dl class="pr" id="sys"></dl></div></aside></div>
+    <div class="hint" id="hint"><i></i><span></span></div>`;
+  PANELS.forEach(c=>{
+    const p=panel({title:c.title,sub:c.sub,l:c.l,r:c.r});
+    cur.push({up:()=>{p.us.forEach(f=>f());p.sub.textContent=(typeof c.sub==="function"?c.sub(S):c.sub)||""}});
+    $("#g").append(p.el);
   });
-  cur.forEach(x=>x.up());
+  buildRail(); cur.forEach(x=>x.up()); chipsTop(); rail();
 }
-function refreshSubs(){
-  document.querySelectorAll("#g .sub").forEach((el,i)=>{
-    const p=PANELS[i]; if(!p)return;
-    el.textContent=(typeof p.sub==="function"?p.sub(S):p.sub)||"";
+function refreshSubs(){cur.forEach(x=>x.up())}
+
+/* ---- rail kanan: timeline, events dari transisi nyata, system dari snap ---- */
+const TL=[["cpuT","CPU temp","°C",0],["gT","GPU temp","°C",0],["gW","GPU power","W",1],["gU","GPU util","%",0],
+  ["r0","NVMe read","MB/s",0],["prx","PCIe rx","GB/s",1],["majF","Major flt","/s",0]];
+function buildRail(){
+  $("#tl").innerHTML=TL.map(r=>`<div class="tr"><span>${r[1]}</span><svg viewBox="0 0 200 24" preserveAspectRatio="none"></svg><b></b></div>`).join("");
+}
+const clock=()=>new Date().toLocaleTimeString("en-GB",{timeZone:"Asia/Jakarta"});
+let EV=[],F={};
+function rail(){
+  document.querySelectorAll("#tl .tr").forEach((r,i)=>{
+    spark(r.querySelector("svg"),[TL[i][0]],["--a"]);
+    const v=S[TL[i][0]];
+    r.querySelector("b").textContent=val(v,TL[i][3]);
+    r.querySelector("b").title=v==null?(R[TL[i][0]]||"tidak ada sumber data"):"";
   });
+  const s=S;
+  if(online){
+    push("thr",s.thr!=null&&s.thr!=="none",`GPU throttle aktif: ${s.thr}`,"GPU throttle lepas");
+    push("burst",typeof s.r0==="number"&&s.r0>600,`NVMe read burst ${fx(s.r0)} MB/s (> 600 MB/s)`,"NVMe burst selesai");
+    push("cpuThr",cpuThrottling(s),`CPU thermal throttle: ${s.cpuThr}`,"CPU throttle lepas");
+    push("power",near(s.gW,gLim(s),.95),`GPU draw ${fx(s.gW,1)} W mendekati limit NVML`,"GPU draw turun di bawah limit");
+  }
+  $("#ev").innerHTML=Array.from({length:6},(_,i)=>EV[i]).map(e=>e?`<div class="ev"><i class="${e.warn?"w":""}"></i><time>${e.t}</time><span title="${esc(e.x)}">${esc(e.x)}</span></div>`:`<div class="ev"></div>`).join("");
+  $("#sys").innerHTML=[["Kernel",s.snap.kernel],["NVIDIA driver",s.snap.gpuDriver],["Governor",s.snap.governor],
+    ["Turbo",s.snap.turbo],["I/O scheduler",s.drives.map(d=>d.sched).filter(Boolean).join(" / ")||null],
+    ["Swappiness",s.snap.swappiness],["Pinning",s.snap.pinning],["NVML",s.snap.nvml?"aktif":"tidak aktif"]]
+    .map(r=>`<dt>${r[0]}</dt><dd>${r[1]==null?"unavailable":esc(String(r[1]))}</dd>`).join("");
+}
+function push(k,on,onMsg,offMsg){
+  const cur=on?1:0;
+  if(F[k]===undefined){F[k]=cur;return}
+  if(F[k]!==cur){EV.unshift({t:clock(),x:on?onMsg:offMsg,warn:cur===1});F[k]=cur}
+  if(EV.length>12)EV.pop();
+}
+
+/* ---- chip atas + hint bottleneck (rule eksplisit, data nyata) ---- */
+function chipsTop(){
+  const be=$("#c-be"); if(be){be.innerHTML=`Backend <b>${online?"live":"offline"}</b>`;be.className="chip"+(online?"":" warn")}
+  const tc=$("#c-thr");
+  if(tc){const thr=S.thr==null?"unavailable":S.thr;
+    tc.innerHTML=`Throttle <b>${thr}</b>`;tc.className="chip"+(S.thr!=null&&S.thr!=="none"?" warn":"");
+    tc.title=S.thr==null?(R["thr"]||"tidak ada sumber data"):""}
+  const lc=$("#c-link");
+  if(lc){const now=S.pcieGen==null?"—":"Gen"+S.pcieGen+" x"+S.pcieWidth;
+    lc.innerHTML=`GPU link <b>${now}${S.pcieMax?" → "+S.pcieMax:""}</b>`;
+    lc.title=S.pcieGen==null?(R["pcieGen"]||"tidak ada sumber data"):"link sekarang bisa turun saat idle (normal)"}
+  const rc2=$("#c-rec");
+  if(rc2){rc2.innerHTML=`Recording <b>${rec?("on "+(rec.samples||0)+" samples"):"off"}</b>`;
+    rc2.className="chip"+(rec?" warn":"")}
+  const h=$("#hint"); if(!h)return;
+  const rules=[];
+  const rd=Math.max(typeof S.r0==="number"?S.r0:-1, typeof S.r1==="number"?S.r1:-1);
+  if(rd>600&&typeof S.gU==="number"&&S.gU<50){rules.push(`page-bound: NVMe read ${fx(Math.max(rd,0))} MB/s (> 600) dan GPU util ${fx(S.gU)} % (< 50)`)}
+  if(S.thrThermal===true||cpuThrottling(S)){rules.push(`thermal-bound: throttle NVML=${S.thr}, CPU sysfs=${S.cpuThr?? "unavailable"}`)}
+  if(near(S.gW,gLim(S),.95)){rules.push(`power-bound: GPU draw ${fx(S.gW,1)} W ≥ 95% limit NVML ${fx(gLim(S),0)} W`)}
+  const w=rules.length>0;
+  h.className="hint"+(w?" warn":"");
+  h.querySelector("span").textContent=(w?rules.join(" · ")+" (aturan di atas dievaluasi dari data snapshot)":"Tidak ada aturan bottleneck yang picu (page-bound >600 MB/s + GPU <50%; thermal-bound dari throttle NVML/sysfs; power-bound ≥95% limit).");
 }
 
 /* ---- log: sesi persisten di server, folder logs/<tanggal>_<label>/ ---- */
 const METRICS=[["cpuT","CPU temp","°C","cpu_temp_c"],["cpuW","CPU power","W","cpu_power_w"],["gT","GPU temp","°C","gpu_temp_c"],["gW","GPU power","W","gpu_power_w"],["vbw","VRAM bandwidth","GB/s","vram_bw_gbs"],["prx","PCIe receive","GB/s","pcie_rx_gbs"],["majF","Major faults","/s","mem_major_faults_s"],["r0","NVMe 0 read","MB/s","nvme0_read_mbps"]];
 const COL=["--a","--b","--ok","--warn","--bad"];
-let SES=[],sel=new Set(),rec=null,CSV={},lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:""};
+let SES=[],sel=new Set(),CSV={},lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:""};
 const f2=v=>typeof v==="number"?fx(v,Math.abs(v)<10?2:1):"unavailable";
 function st(a){
   const v=a.filter(x=>typeof x==="number");
@@ -295,6 +478,7 @@ async function toggleRec(){
       if(!rec)return;
       await loadSessions();
       const t=$("#tm"); if(t)t.textContent=mmss(Math.round((rec.samples||0)*rec.iv));
+      chipsTop();
     },1000);
   } else {
     await fetch("/api/log/stop",{method:"POST",headers:{"content-type":"application/json"},
@@ -302,7 +486,7 @@ async function toggleRec(){
     clearInterval(rec.timer);
     rec=null; await loadSessions();
   }
-  renderLog();
+  chipsTop(); renderLog();
 }
 async function addMarker(){
   if(!rec)return;
@@ -321,7 +505,7 @@ async function loadCsv(id){
     if(!ln)return;
     const p=ln.split(",");
     d.ts.push(+p[0]);
-    METRICS.forEach(([k,,,col],i)=>{const v=p[i+1]; d[k].push(v===undefined||v===""?null:+v)});
+    METRICS.forEach(([k],i)=>{const v=p[i+1]; d[k].push(v===undefined||v===""?null:+v)});
   });
   CSV[id]=d; return d;
 }
@@ -341,9 +525,9 @@ async function renderLog(){
     <label>Interval <select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===(r?rec.iv:lo.iv)?"selected":""}>${v} s</option>`).join("")}</select></label>
     <button class="btn ${r?"on":""}" id="rc">${r?"Stop and save":"Start recording"}</button><span class="timer" id="tm">${r?mmss(Math.round((rec.samples||0)*rec.iv)):"00:00"}</span>
     <button class="btn" id="mk" ${r?"":"disabled"}>Add marker${r?" ("+(rec.mk||0)+")":""}</button><span class="grow"></span><button class="btn" id="ex" ${sel.size?"":"disabled"}>Export CSV</button></div>
-    <div class="stack"><section class="p"><h2>Sessions</h2><div class="sub">${SES.length} tersimpan di server (folder logs/). Interval & marker ikut tersimpan di meta.json.</div>
+    <div class="stack"><section class="p" style="display:block"><h2>Sessions</h2><div class="sub" style="margin:2px 0 16px">${SES.length} tersimpan di server (folder logs/). Interval & marker ikut tersimpan di meta.json.</div>
     ${SES.length?`<table><tr><th></th><th>Name</th><th>Tag</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr>${rows}</table>`:`<div class="empty">No logs yet. Start a recording to create one.</div>`}</section>
-    <section class="p"><h2>Analysis</h2><div class="sub" id="asub">0 selected</div><div id="an"><div class="empty">Select one or more sessions above to analyze them.</div></div></section></div>`;
+    <section class="p" style="display:block"><h2>Analysis</h2><div class="sub" id="asub" style="margin:2px 0 16px">0 selected</div><div id="an"><div class="empty">Select one or more sessions above to analyze them.</div></div></section></div>`;
   $("#lb").oninput=e=>lo.lb=e.target.value; $("#tg").oninput=e=>lo.tg=e.target.value; $("#iv").onchange=e=>lo.iv=+e.target.value;
   $("#rc").onclick=toggleRec; $("#ex").onclick=exportCsv; $("#mk").onclick=addMarker;
   root.querySelectorAll("[data-id]").forEach(c=>c.onchange=()=>{const id=+c.dataset.id;sel.has(id)?sel.delete(id):sel.add(id);renderLog()});
@@ -371,10 +555,10 @@ async function renderLog(){
     <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
     <label><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label></div>
     ${hasData?`<svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>`:""}
-    <div class="hint">${M[1]} (${M[2]}) dari CSV server. ${hasData?"Sample yang di-skip tidak masuk chart/statistik. Marker tersimpan di meta.json.":"Tidak ada sample untuk metrik ini — mungkin unavailable di mesin ini."}</div>
+    <div class="hint lg">${M[1]} (${M[2]}) dari CSV server. ${hasData?"Sample yang di-skip tidak masuk chart/statistik. Marker tersimpan di meta.json.":"Tidak ada sample untuk metrik ini — mungkin unavailable di mesin ini."}</div>
     <h3 style="margin-top:18px">Statistics</h3><table class="n"><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr>${tb}</table>
-    ${lo.grp?`<div class="hint">Untuk baris average, std dev = spread antar run.</div>`:""}
-    <h3 style="margin-top:18px">Perbedaan konfigurasi sesi</h3>${keys.length?`<table class="n"><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${cfgs.map(c=>`<td>${esc(String(c[k]))}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint">Semua sesi terpilih punya konfigurasi (governor/EPP/turbo/sysctl/power limit) yang sama.</div>`}`;
+    ${lo.grp?`<div class="hint lg">Untuk baris average, std dev = spread antar run.</div>`:""}
+    <h3 style="margin-top:18px">Perbedaan konfigurasi sesi</h3>${keys.length?`<table class="n"><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${cfgs.map(c=>`<td>${esc(String(c[k]))}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint lg">Semua sesi terpilih punya konfigurasi (governor/EPP/turbo/sysctl/power limit) yang sama.</div>`}`;
   $("#mt").onchange=e=>{lo.m=e.target.value;renderLog()}; $("#tr").onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $("#gp").onchange=e=>{lo.grp=e.target.checked;renderLog()};
   const ov=$("#ov");
   if(ov) overlay(ov,arrs,ss.map(s=>s.interval_s||1));
@@ -383,7 +567,7 @@ function overlay(svg,arrs,ivs){
   const keep=arrs.map((a,i)=>[a,ivs[i]]).filter(([a])=>a.length>1);
   if(!keep.length){svg.innerHTML="";return}
   const all=keep.flatMap(([a])=>a),mn=Math.min(...all),sp=(Math.max(...all)-mn)||1,D=Math.max(...keep.map(([a,i])=>a.length*ivs[i]));
-  svg.innerHTML=keep.map(([a,i])=>`<path stroke="var(${COL[i%5]})" d="${a.map((v,j)=>`${j?"L":"M"}${(j*ivs[i]/D*200).toFixed(1)},${(58-(v-mn)/sp*56).toFixed(1)}`).join("")}"/>`).join("");
+  svg.innerHTML=keep.map(([a,i])=>`<path class="l" style="stroke:var(${COL[i%5]})" d="${a.map((v,j)=>`${j?"L":"M"}${(j*ivs[i]/D*200).toFixed(1)},${(58-(v-mn)/sp*56).toFixed(1)}`).join("")}"/>`).join("");
 }
 
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>show(b.dataset.p));
