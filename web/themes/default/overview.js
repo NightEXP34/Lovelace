@@ -23,26 +23,33 @@ function spark(svg,keys,cols,min){
 /* ---- rpm-style gauge: 270° sweep; skala + ambang of registry/sumber nyata ---- */
 const pt=(a,r)=>[75+r*Math.cos(a*Math.PI/180),66+r*Math.sin(a*Math.PI/180)];
 const arc=(a0,a1,r)=>{const p=pt(a0,r),q=pt(a1,r);return`M${p[0].toFixed(1)},${p[1].toFixed(1)}A${r},${r} 0 ${a1-a0>180?1:0} 1 ${q[0].toFixed(1)},${q[1].toFixed(1)}`};
+let gaugeSeq=0;
 function gauge(g){
-  const ring=(r,w,c)=>`<path d="${arc(135,405,r)}" fill="none" style="stroke:var(--line)" stroke-width="${w}" stroke-linecap="round"/><path class="${c}" fill="none" stroke-width="${w}" stroke-linecap="round"/>`;
-  const el=mk(`<svg viewBox="0 0 150 124">${ring(54,9,"v")}${g.in?ring(41,5,"w"):""}<text x="75" y="77" text-anchor="middle" style="fill:var(--ink);font:600 24px var(--mono)"></text><text x="75" y="92" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text><text x="75" y="119" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text></svg>`);
+  const id="gg"+(++gaugeSeq);
+  const grad=`<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="15" y1="0" x2="135" y2="0"><stop offset="0%" style="stop-color:var(--ok)"/><stop offset="55%" style="stop-color:var(--warn)"/><stop offset="100%" style="stop-color:var(--bad)"/></linearGradient></defs>`;
+  const ring=(r,w,c)=>`<path d="${arc(135,405,r)}" fill="none" stroke="var(--line)" stroke-width="${w}" stroke-linecap="round"/><path class="${c}" fill="none" stroke="url(#${id})" stroke-width="${w}" stroke-linecap="round"/>`;
+  const el=mk(`<svg viewBox="0 0 150 124">${grad}${ring(54,9,"v")}${g.in?ring(41,5,"w"):""}<text x="75" y="77" text-anchor="middle" style="fill:var(--ink);font:600 24px var(--mono)"></text><text x="75" y="92" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text><text class="ring-sub" x="75" y="104" text-anchor="middle" style="fill:var(--mute);font:10px var(--mono)"></text><text x="75" y="119" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text></svg>`);
   const v=el.querySelector(".v"), w=el.querySelector(".w"), tx=el.querySelector("text");
-  const un=el.querySelectorAll("text")[1], lb=el.querySelectorAll("text")[2];
+  const un=el.querySelectorAll("text")[1], sub=el.querySelector(".ring-sub"), lb=el.querySelectorAll("text")[3];
   const key=()=>typeof g.key==="function"?g.key():g.key;
-  const draw=(p,x,m,wn,bd,r)=>{
+  const draw=(p,x,m,r)=>{
     if(typeof x!=="number"||typeof m!=="number"||m<=0){p.setAttribute("d","");return}
     p.setAttribute("d",arc(135,135+270*clamp(x/m,.005,1),r));
-    p.style.stroke=bd?"var(--bad)":wn?"var(--warn)":"var(--a)";
   };
   return{el,up:()=>{
     const k=key(), s=C.data, x=s[k], m=g.max?g.max():dynMax(k);
     un.textContent=typeof g.unit==="function"?g.unit():(g.unit||"");
     lb.textContent=typeof g.label==="function"?g.label():(g.label||"");
-    draw(v,x,m,g.warn(s),g.bad(s),54);
+    draw(v,x,m,54);
     tx.textContent=val(x,g.d||0); tx.setAttribute("title",x==null?(R[k]||"no data source"):"");
-    if(g.in){const ik=typeof g.in.key==="function"?g.in.key():g.in.key, ix=s[ik], im=g.in.max?g.in.max():dynMax(ik);
-      draw(w,ix,im,g.in.warn(s),g.in.bad(s),41);
-      el.querySelector("svg").setAttribute("title",ix==null?(R[ik]||""):"")}
+    if(g.in){
+      const ik=typeof g.in.key==="function"?g.in.key():g.in.key, ix=s[ik], im=g.in.max?g.in.max():dynMax(ik);
+      draw(w,ix,im,41);
+      sub.style.display="";
+      sub.textContent=(g.in.name||"power")+" "+(typeof ix==="number"?fx(ix,g.in.d||0)+" "+(g.in.unit||""):"unavailable");
+      sub.setAttribute("title",ix==null?(R[ik]||"no data source"):"");
+      el.querySelector("svg").setAttribute("title",ix==null?(R[ik]||""):"");
+    }else{sub.style.display="none"}
   }};
 }
 
@@ -57,6 +64,9 @@ const B={
     else{bs[i].innerHTML=`<span class="na">${v==null?"unavailable":v}</span>`;
       bs[i].title=v==null?(R[sk]||"no data source"):"no I/O in this interval"}
   })}}},
+ gauges:b=>{const el=mk(`<div class="gauge-pair"></div>`), box=el.firstElementChild;
+  const gs=(b.items||[]).map(it=>{const g=gauge(it);const w=document.createElement("div");w.className="gw";w.append(g.el);box.append(w);return g;});
+  return{el,up:()=>gs.forEach(g=>g.up())}},
  cores:()=>{const el=mk(`<div></div>`);el.className="cores";
   return{el,up:()=>{
     const P=C.data.pu||[],E=C.data.eu||[];
@@ -211,9 +221,9 @@ const near=(v,m,f)=>typeof v==="number"&&typeof m==="number"&&m>0&&v>=m*f;
 
 const PANELS=[
  {title:"CPU",sub:s=>(s.snap.cpuModel||"CPU")+", "+((S.pu||[]).length)+" P + "+((S.eu||[]).length)+" E cores (dynamic from kernel)",
-  l:[{t:"hd",g:{key:"cpuT",max:()=>Math.max(dynMax("cpuT")||0,70),warn:()=>cpuThrottling(C.data),bad:()=>cpuThrottling(C.data),unit:"°C",label:"temp · ring = power vs PL1",
-       in:{key:"cpuW",max:()=>pl1(C.data)||dynMax("cpuW"),warn:s=>near(s.cpuW,pl1(s),.9),bad:s=>near(s.cpuW,pl1(s),1)}},
-     stats:[["cpuU","Util","%"],["migr","Migrations","/s"],["pfa","P clock","GHz",2],["efa","E clock","GHz",2,s=>{const a=(S.ef||[]).filter(x=>typeof x==="number");return a.length?avg(a):null}]]},
+  l:[{t:"hd",g:{key:"cpuU",max:()=>100,unit:"%",label:"utilization · inner = power vs PL1",
+       in:{key:"cpuW",max:()=>pl1(C.data)||dynMax("cpuW"),unit:"W",d:1,name:"power"}},
+     stats:[["cpuT","Temp","°C"],["migr","Migrations","/s"],["pfa","P clock","GHz",2],["efa","E clock","GHz",2,s=>{const a=(S.ef||[]).filter(x=>typeof x==="number");return a.length?avg(a):null}]]},
    {t:"cores"},
    {t:"bars",items:[
      {l:"Power / PL1",c:["--b"],f:s=>[s.cpuW,pl1(C.data)],t:s=>fx(s.cpuW,1)+" / "+fx(pl1(C.data),1)+" W",tip:s=>pl1(C.data)==null?(R["pl1"]||""):""},
@@ -229,9 +239,9 @@ const PANELS=[
   ]},
 
  {title:"GPU",sub:s=>(s.snap.gpuName||"NVIDIA GPU")+(s.snap.nvml?"":" (NVML unavailable)"),
-  l:[{t:"hd",g:{key:"gT",max:()=>Math.max(dynMax("gT")||0,60),warn:()=>gpuThermal(C.data),bad:()=>gpuThermal(C.data),unit:"°C",label:"temp · ring = power vs limit",
-       in:{key:"gW",max:()=>gLim(C.data)||dynMax("gW"),warn:s=>near(s.gW,gLim(s),.9),bad:s=>near(s.gW,gLim(s),1)}},
-     stats:[["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","Util","%"],["vram","VRAM","GiB",1]]},
+  l:[{t:"hd",g:{key:"gU",max:()=>100,unit:"%",label:"utilization · inner = power vs limit",
+       in:{key:"gW",max:()=>gLim(C.data)||dynMax("gW"),unit:"W",d:1,name:"power"}},
+     stats:[["gT","Temp","°C"],["gClk","SM clock","MHz"],["gMemClk","Mem clock","MHz"],["vram","VRAM","GiB",1]]},
    {t:"chips",items:["Idle","Power cap","Thermal","HW slowdown"],
      on:s=>[s.thrIdle,s.thrPower,s.thrThermal,s.thrHw],tip:(s,i)=>R["thr"]||""},
    {t:"bars",items:[
@@ -253,7 +263,8 @@ const PANELS=[
   ]},
 
  {title:"Memory",sub:s=>s.snap.kernel?"kernel "+s.snap.kernel:"",
-  l:[{t:"hd",g:{key:"ramU",max:()=>typeof S.memTot==="number"?S.memTot:dynMax("ramU"),warn:()=>near(S.ramU,S.memTot,.8),bad:()=>near(S.ramU,S.memTot,.93),unit:"GiB used",label:"RAM (total from meminfo)",d:1},
+  l:[{t:"hd",g:{key:"ramU",max:()=>typeof S.memTot==="number"?S.memTot:dynMax("ramU"),unit:"GiB used",label:"RAM usage · inner = swap",d:1,
+       in:{key:"swapU",max:()=>S.swapTot,unit:"GiB",d:1,name:"swap"}},
      stats:[["cache","Page cache","GiB",1],["avail","Available","GiB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
    {t:"bars",items:[
      {l:"RAM",c:["--a","--b"],f:s=>[s.ramU,s.cache,S.memTot],t:s=>`${fx(s.ramU,1)} used, ${fx(s.cache,1)} cache, out of ${fx(S.memTot,1)} GiB`,tip:s=>R["ramU"]||""},
@@ -270,10 +281,11 @@ const PANELS=[
   ]},
 
  {title:"Storage",sub:s=>C.drives.length?C.drives.map(d=>`${d.dev||"drive"}: ${d.name||"unavailable"}`).join(" · "):"no drives in /sys/block",
-  l:[{t:"hd",g:{key:()=>"r"+storageIndex(),max:()=>dynMax("r"+storageIndex()),warn:()=>false,bad:()=>false,unit:"MB/s read",
-       label:()=>{const i=storageIndex(),d=C.drives[i]||{};return i===0?"drive 0 (scale = measured peak)":`drive ${i} · ${d.dev||("drive"+i)} (scale = measured peak)`}},
-     stats:[[()=>"w"+storageIndex(),"Write","MB/s",1],[()=>"i"+storageIndex(),"IOPS","IOPS"],
-       [()=>"a"+storageIndex(),"Await","ms",1,s=>s["a"+storageIndex()+"Idle"]?"idle":null],[()=>"u"+storageIndex(),"Util","%"]]},
+  l:[{t:"gauges",items:[
+       {key:()=>"w"+storageIndex(),max:()=>dynMax("w"+storageIndex()),unit:"MB/s",d:1,
+        label:()=>{const i=storageIndex(),d=C.drives[i]||{};return (d.dev||("drive"+i))+" write"}},
+       {key:()=>"r"+storageIndex(),max:()=>dynMax("r"+storageIndex()),unit:"MB/s",d:1,
+        label:()=>{const i=storageIndex(),d=C.drives[i]||{};return (d.dev||("drive"+i))+" read"}}]},
    {t:"dynBars",items:s=>{const out=[];
      C.drives.forEach((d,i)=>{
        out.push({l:`${d.dev||("drive"+i)} read`,c:["--a"],f:x=>[x["r"+i],dynMax("r"+i)],

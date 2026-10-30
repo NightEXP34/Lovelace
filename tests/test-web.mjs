@@ -116,6 +116,8 @@ ok([...d.querySelectorAll(".stats b")].map(x => x.textContent).every(t => !t.inc
 const cpuPanel = [...d.querySelectorAll(".p")].find(p => p.querySelector("h2").textContent === "CPU");
 ok(cpuPanel.querySelector(".gw svg")?.getAttribute("title").includes("RAPL"), "tooltip gauge dari alasan health");
 ok(cpuPanel.querySelector(".gw svg .v") && cpuPanel.querySelector(".gw svg .w"), "gauge CPU punya ring luar + ring dalam");
+ok(cpuPanel.querySelector(".gw svg .ring-sub")?.textContent.includes("power"), "gauge CPU menampilkan power di ring dalam");
+ok(cpuPanel.querySelector(".gw svg linearGradient"), "gauge memakai gradient hijau-merah");
 const coreClocks = [...d.querySelectorAll(".cc u")].map(x => x.textContent);
 const realClocks = [...(base.pf || []), ...(base.ef || [])].filter(v => typeof v === "number");
 ok(coreClocks.filter(t => /^\d+\.\d{2}$/.test(t)).length === nCores, "core cell render GHz dengan 2 desimal");
@@ -216,6 +218,8 @@ ok(badHost.querySelector(".layout-error")?.textContent.includes("tidak valid"), 
 
 /* ---- PART A regression: Storage tab harus memilih drive yang diklik ---- */
 const storage = [...d.querySelectorAll(".p")].find(p => p.querySelector("h2")?.textContent === "Storage");
+ok(storage.querySelectorAll(".gauge-pair .gw svg").length === 2, "storage punya 2 gauge (write/read)");
+ok(!storage.querySelector(".stats"), "storage tidak lagi memakai stats di kanan gauge");
 const stTabs = () => [...storage.querySelectorAll(".ch .tabs button")];
 const gaugeText = () => [...storage.querySelectorAll(".gw svg text")].map(t => t.textContent).join(" ");
 ok(stTabs().map(b => b.textContent).join(",") === "nvme0n1,nvme1n1",
@@ -224,7 +228,7 @@ stTabs()[1].click();
 await sleep(100);
 ok(stTabs()[1]?.getAttribute("aria-pressed") === "true", "storage: tab drive 1 aktif setelah diklik");
 ok(stTabs()[1]?.dataset.key === "r1", "storage: chart memakai series drive 1");
-ok(gaugeText().includes("drive 1"), "storage: gauge label ikut drive 1");
+ok(gaugeText().includes("nvme1n1"), "storage: gauge label ikut drive 1");
 await sleep(2200);
 ok(stTabs()[1]?.getAttribute("aria-pressed") === "true" && stTabs()[1]?.dataset.key === "r1",
   "storage: pilihan drive 1 bertahan setelah 2 tick update");
@@ -232,7 +236,7 @@ stTabs()[0].click();
 await sleep(100);
 ok(stTabs()[0]?.getAttribute("aria-pressed") === "true" && stTabs()[0]?.dataset.key === "r0",
   "storage: klik drive 0 mengembalikan pilihan");
-ok(gaugeText().includes("drive 0"), "storage: gauge kembali ke drive 0");
+ok(gaugeText().includes("nvme0n1"), "storage: gauge kembali ke drive 0");
 
 /* ---- tab Log (port assertion test.mjs) ---- */
 [...d.querySelectorAll("nav button")].find(b => b.dataset.p === "log").click();

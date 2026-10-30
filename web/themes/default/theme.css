@@ -41,6 +41,9 @@ main{padding:12px 14px;min-width:0;display:grid;grid-template-rows:auto minmax(0
 .col{display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-width:0;min-height:0}
 .hd{display:flex;gap:14px;align-items:center}
 .gw{flex:none;width:clamp(120px,min(9.5vw,15vh),160px)}.gw svg{width:100%;display:block}
+.gauge-pair{display:flex;gap:8px;align-items:center;min-width:0}
+.gauge-pair .gw{flex:1;width:auto;min-width:0}
+.gauge-pair .gw svg{width:100%}
 .stats{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;min-width:0}
 .stats span{display:block;font-size:12px;color:var(--mute)}
 .stats b{font:600 21px/1.2 var(--mono);font-variant-numeric:tabular-nums}
