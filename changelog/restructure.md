@@ -10,3 +10,4 @@ Satu baris per langkah. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — B2 backend pindah ke `server/` (`server.py`, `metrics_meta.json`, `fixtures/snapshot-sample.json`, `deploy/noterra.service`, README); `/legacy` dihapus; route in-process OK.
 - 2026-10-30 — B3 `nttest/` → `tests/` (git mv package*.json, test-web.mjs, check-layout.mjs; `mv node_modules`); path fixture/schema diperbarui; `npm test` hijau.
 - 2026-10-30 — B4 assertion `test.mjs` dipetakan/diport ke `tests/test-web.mjs`; `git rm nttest/test.mjs` + `git rm noterra/index.html`; komparator lama dihapus; test hijau.
+- 2026-10-30 — B5 prototype `overview_v6.html` pindah ke `docs/prototype/`.
