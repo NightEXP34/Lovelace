@@ -36,7 +36,7 @@ Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
 | Governor, EPP, turbo, driver | sysfs `cpufreq` + `intel_pstate` |
 | Throttle CPU | sysfs `thermal_throttle/{core,package}_throttle_count` (delta antar snapshot; pembanding: `turbostat --no-msr --no-perf`) |
 | Context switch, IRQ | `/proc/stat` ctxt, `/proc/interrupts` (delta) |
-| Thread migration | `/proc/schedstat` nb_push+nb_pull (delta; format diverifikasi, kalau tidak dikenali → unavailable) |
+| Thread migration | `/proc/<pid>/task/<tid>/sched` `se.nr_migrations` (delta per thread; ~1273 thread, ~15 ms/snapshot; thread short-lived yang mati sebelum terobservasi tidak terhitung). `/proc/schedstat` nb_push+nb_pull = 0 terus di kernel ini (mati); perf system-wide diblokir `perf_event_paranoid=4` tanpa root |
 | Idle residency | cpuidle sysfs state terdalam (mesin ini: **C3_ACPI**, bukan C6) |
 | GPU: suhu, daya, clock, util, VRAM, throttle, P-state, fan | NVML (`nvidia-ml-py`) — butuh `/dev/nvidia*` |
 | GPU PCIe link | sysfs PCI device (`current_link_speed/width`) — bekerja tanpa NVML |

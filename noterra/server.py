@@ -181,27 +181,65 @@ def idle_residency(dt):
         avail("idle")
     return name, (sum(vals) / len(vals) if vals else None)
 
-def migrations(dt):
-    """Thread migrations/s = /proc/schedstat nb_push+nb_pull deltas per cpu.
+_mig_prev = {}   # path thread -> nilai se.nr_migrations terakhir
 
-    The cpu line format can change between kernels; the counters are only
-    trusted when the observed values look like counts (<1e9). Otherwise the
-    metric stays unavailable instead of reporting nonsense.
+def migrations(dt):
+    """Thread migrations/s dari se.nr_migrations tiap thread (/proc/<pid>/task/<tid>/sched).
+
+    Kenapa sumber ini dipilih (diukur nyata di mesin ini):
+    - bisa dibaca tanpa root (mode 0444), ~1273 thread, ~14–15 ms per snapshot;
+    - terbukti merespons beban: delta 1116 migration saat 4 thread ganti
+      affinity 3000x (12000 perubahan) selama 3 detik;
+    - /proc/schedstat nb_push+nb_pull selalu 0 di kernel 7.0 ini (sumber mati);
+    - perf software event `migrations` (system-wide) diblokir
+      kernel.perf_event_paranoid=4 tanpa root/CAP_PERFMON; menurunkan sysctl
+      itu mengubah parameter tuning -> butuh konfirmasi pengguna, tidak dilakukan.
+    Caveat: thread yang mati sebelum terobservasi ikut hilang dari tracking,
+    jadi migrasi <1 interval untuk thread short-lived bisa ter-lewat (undercount kecil).
     """
-    total = 0
-    seen = 0
-    for ln in lines("/proc/schedstat"):
-        if not ln.startswith("cpu"):
-            continue
-        nums = [int(x) for x in ln.split()[1:]]
-        if len(nums) < 3 or nums[0] > 1e9 or nums[1] > 1e9 or nums[2] > 1e9:
-            _state.pop("migr", None)
-            return None
-        total += nums[1] + nums[2]
-        seen += 1
-    if seen == 0:
+    if dt is None:
+        avail("migr", PENDING)
         return None
-    return rate("migr", total, dt)
+    cur = {}
+    try:
+        pids = os.listdir("/proc")
+    except Exception:
+        avail("migr", "/proc tidak terbaca")
+        return None
+    for p in pids:
+        if not p.isdigit():
+            continue
+        tdir = f"/proc/{p}/task"
+        try:
+            tids = os.listdir(tdir)
+        except Exception:
+            continue
+        for t in tids:
+            path = f"{tdir}/{t}/sched"
+            try:
+                with open(path) as f:
+                    for ln in f:
+                        if ln.startswith("se.nr_migrations"):
+                            cur[path] = int(ln.split(":")[1])
+                            break
+            except Exception:
+                continue
+    if not cur:
+        avail("migr", "tidak ada /proc/<pid>/task/<tid>/sched yang terbaca")
+        return None
+    first = not _mig_prev
+    delta = 0
+    for path, v in cur.items():
+        pv = _mig_prev.get(path)
+        if pv is not None and v > pv:
+            delta += v - pv
+    _mig_prev.clear()
+    _mig_prev.update(cur)    # thread yang exit hilang; delta positif saja yang dihitung
+    if first:                # belum ada baseline: interval pertama tidak bisa dihitung
+        avail("migr", PENDING)
+        return None
+    avail("migr")
+    return delta / dt
 
 def irq_rate(dt):
     total = 0
