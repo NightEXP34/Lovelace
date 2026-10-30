@@ -326,10 +326,19 @@ function overlay(svg,arrs,ivs){
   svg.innerHTML=keep.map(([a,i])=>`<path class="l" style="stroke:var(${COL[i%5]})" d="${a.map((v,j)=>`${j?"L":"M"}${(j*ivs[i]/D*200).toFixed(1)},${(58-(v-mn)/sp*56).toFixed(1)}`).join("")}"/>`).join("");
 }
 
+/* ---- polling start-up: idempoten, cukup dipanggil sekali ---- */
+let STARTED=false;
+function start(){
+  if(STARTED)return;
+  STARTED=true;
+  sample(); health();
+  setInterval(sample,1000); setInterval(health,5000);
+}
+
 /* ---- titik masuk: daftar theme dari server, muat theme terpilih ---- */
 window.Noterra={
-  addTheme(name,th){theme=th; initPalette(); show(location.hash.slice(1));
-    setInterval(sample,1000); sample(); setInterval(health,5000); health();},
+  addTheme(name,th){theme=th; initPalette(); show(location.hash.slice(1)); start();},
+  start,
   ctx, registry:REG, fmt:{fx,val,esc,mmss,clamp,avg}, mk, themeName, mock:MOCK,
 };
 loadTheme();
