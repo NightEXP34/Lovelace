@@ -56,7 +56,7 @@ function csvToData(text) {
 }
 
 /* stub fetch identik per harness: hanya /api/snapshot yang menaikkan counter i */
-function installFetch(w, snapshotFn) {
+function installFetch(w, snapshotFn, cfg = {}) {
   let i = 0, recStarted = false, recStopped = false, startMode = "detailed";
   w.matchMedia = () => ({ matches: false });
   w.fetch = async (u, opts) => {
@@ -83,7 +83,7 @@ function installFetch(w, snapshotFn) {
         samples: recStopped ? 12 : 3, markers: [] };
       return { ok: true, json: async () => ({ sessions: recStarted ? [s] : [] }) };
     }
-    if (url.includes("/data")) return { ok: true, json: async () => csvToData(recStopped ? CSV_TEXT : CSV_PARTIAL) };
+    if (url.includes("/data")) return cfg.noData ? { ok: false, status: 404 } : { ok: true, json: async () => csvToData(recStopped ? CSV_TEXT : CSV_PARTIAL) };
     if (url.includes("samples.csv")) return { ok: true, text: async () => (recStopped ? CSV_TEXT : CSV_PARTIAL) };
     if (snapshotFn) return { ok: true, json: async () => snapshotFn };
     i++;
@@ -94,7 +94,7 @@ function installFetch(w, snapshotFn) {
 function domFor(html, wopts) {
   return new JSDOM(html, { url: wopts.url || "http://localhost/", runScripts: "dangerously",
     pretendToBeVisual: true, resources: wopts.resources,
-    beforeParse(w) { installFetch(w, wopts.snapshot); } });
+    beforeParse(w) { installFetch(w, wopts.snapshot, wopts); } });
 }
 /* ---- assertions fungsional pada web/ baru ---- */
 const dom = domFor(SHELL, { resources: { interceptors: [fileInterceptor] } });
@@ -309,6 +309,20 @@ await sleep(1200);
 const hout = hl.window.document.querySelector("#out")?.textContent || "";
 ok(hout.includes("CPU temp") && hout.includes("GPU power"), "headless: tiga nilai live tanpa shell");
 hl.window.close();
+
+/* ---- fallback CSV saat server lama belum punya /api/log/<id>/data ---- */
+const fb = domFor(SHELL, { resources: { interceptors: [fileInterceptor] }, noData: true });
+const dfb = fb.window.document;
+await sleep(2200);
+[...dfb.querySelectorAll("nav button")].find(b => b.dataset.p === "log").click();
+await sleep(400);
+dfb.querySelector("#rc").click();
+await sleep(2400);
+dfb.querySelector("#rc").click();
+await sleep(600);
+ok(dfb.body.textContent.includes("65.5"), "log fallback: CSV tetap terbaca tanpa endpoint /data");
+ok(dfb.querySelectorAll("#cmp .cmp-row").length > 0, "log fallback: matriks terisi dari CSV");
+fb.window.close();
 
 dom.window.close();
 console.log("ALL PASS");

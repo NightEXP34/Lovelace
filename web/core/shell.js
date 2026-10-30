@@ -197,11 +197,23 @@ function logMetricMeta(key){
   }
   return [key,key,""];
 }
+function csvToData(text){
+  const lines=text.replace(/\r/g,"").split("\n");
+  const columns=(lines.shift()||"").split(",").map(c=>c.trim());
+  const rows=lines.filter(l=>l!=="").map(l=>l.split(","));
+  return {columns,rows};
+}
 async function loadCsv(id){
   if(CSV[id])return CSV[id];
+  let j=null;
   const r=await fetch(`/api/log/${id}/data`,{cache:"no-store"});
-  if(!r.ok)return null;
-  const j=await r.json();
+  if(r.ok){try{j=await r.json()}catch(e){j=null}}
+  /* fallback untuk server lama yang belum punya /data */
+  if(!j||!Array.isArray(j.columns)||!j.columns.length){
+    const rr=await fetch(`/api/log/${id}/samples.csv`,{cache:"no-store"});
+    if(!rr.ok)return null;
+    j=csvToData(await rr.text());
+  }
   const cols=j.columns||[];
   const off=cols[0]==="timestamp_ms"?0:1;
   const found=[];
@@ -219,7 +231,12 @@ async function loadCsv(id){
   const d={ts:[],cols:use.map(([k,l,u])=>[k,l,u]),_m:use.map(([k,l,u])=>[k,l,u]),...Object.fromEntries(use.map(([k])=>[k,[]]))};
   (j.rows||[]).forEach(row=>{
     d.ts.push(+row[0]);
-    use.forEach(([k,,,idx])=>{const v=row[idx]; d[k].push(v===undefined?null:v)});
+    use.forEach(([k,,,idx])=>{
+      const v=row[idx];
+      if(v===undefined||v===null||v===""){d[k].push(null);return}
+      const n=+v;
+      d[k].push(Number.isFinite(n)?n:v);
+    });
   });
   CSV[id]=d; return d;
 }

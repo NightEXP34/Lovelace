@@ -26,3 +26,8 @@
 - Backend `GET /api/log/<id>/data` mengembalikan semua kolom+baris CSV sebagai
   JSON; UI memakainya untuk matriks pembanding semua metrik (per core/drive),
   sparkline, filter, baseline, dan daftar metrik tanpa data.
+- Fallback: kalau `/api/log/<id>/data` belum ada (server lama), UI membaca
+  `/samples.csv` dan mem-parsing sendiri; sesi lama kembali tampil.
+- Default theme: `html,body` memakai `min-height` (bukan `height:100%`) dan
+  nav `align-self:start` supaya sidebar Palette/status tetap sticky saat Log
+  panjang di-scroll.

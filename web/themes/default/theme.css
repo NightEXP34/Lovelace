@@ -14,9 +14,9 @@
   --a:#7f95ff;--b:#ff9b5e;--ok:#4cc16b;--warn:#f2a93b;--bad:#ff6b9d;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body{min-height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.4 var(--sans);display:grid;grid-template-columns:170px minmax(0,1fr);min-height:100vh}
-nav{padding:20px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+nav{padding:20px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;align-self:start}
 nav h1{font-size:15px;margin:0 8px 18px;font-weight:650}
 nav button{all:unset;cursor:pointer;padding:8px 10px;border-radius:var(--r-ctl);color:var(--mute)}
 nav button:hover{color:var(--ink)}
