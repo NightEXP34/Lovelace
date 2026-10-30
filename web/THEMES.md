@@ -184,16 +184,15 @@ lewat `var(--x, fallback)`).
 ## `/api/schema`
 
 `GET /api/schema` dan `/api/mock/schema` mengembalikan
-`noterra/metrics_meta.json`: `key → {label, unit, digits, source, scaleKey?}`.
+`server/metrics_meta.json`: `key → {label, unit, digits, source, scaleKey?}`.
 Core mem-fetch sekali saat start; key tanpa schema tetap masuk registry dengan
 `label = key`. Metrik baru cukup ditambah di adapter/snapshot + schema.
 
 ## test tanpa hardware
 
-Buka `/index.html?mock=1` (data `noterra/snapshot-sample.json`), atau
-`?theme=minimal&mock=1` untuk contoh L2. Test: `cd nttest && node test-web.mjs`
-dan `node test.mjs` (UI lama). `node check-layout.mjs <widget...>` untuk cek
-komposit layout.
+Buka `/index.html?mock=1` (data `server/fixtures/snapshot-sample.json`), atau
+`?theme=minimal&mock=1` untuk contoh L2. Test: `cd tests && npm test`.
+`node check-layout.mjs <widget...>` untuk cek komposit layout.
 
 ## peringatan
 

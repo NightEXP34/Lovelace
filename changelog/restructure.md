@@ -16,3 +16,4 @@ Satu baris per langkah. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — B8a `README.md` root: ringkasan, peta folder, cara run (`server/.venv`), test (`tests/npm test`), link fork.
 - 2026-10-30 — B8b `docs/noterra-architecture.md`: tree server/tests/docs-prototype, service path, todo refactor (folder selesai; modul/adapters terbuka).
 - 2026-10-30 — B8c `docs/FORKING.md`: run dari `server/`, fixture/schema baru, tes `cd tests && npm test`.
+- 2026-10-30 — B8d `web/THEMES.md`: schema `server/metrics_meta.json`, fixture server, test `tests/`.
