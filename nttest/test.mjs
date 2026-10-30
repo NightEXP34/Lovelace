@@ -54,6 +54,12 @@ const thRow = dlRows.find(([t]) => t === "Throttle");
 if (base.cpuThr != null) ok(thRow[1].textContent === base.cpuThr, `Throttle row shows real sysfs value (${base.cpuThr})`);
 else ok(thRow[1].classList.contains("dd-na") && thRow[1].getAttribute("title").includes("throttle"),
    "unavailable dl row rendered dim + tooltip reason from /api/health");
+const raRows = dlRows.filter(([t]) => t === "Readahead").map(([, dd]) => dd.textContent);
+if (base.drives[0].readahead != null)
+  ok(raRows.every(t => /KB$/.test(t)), `readahead rows show real KB values (${raRows.join(", ")})`);
+const capRows = dlRows.filter(([t]) => t === "Capacity used").map(([, dd]) => dd.textContent);
+ok(capRows.some(t => t === "not mounted") && capRows.some(t => /%$/.test(t)),
+  `unmounted drive renders "not mounted", mounted shows % (${capRows.join(" | ")})`);
 const plRow = dlRows.find(([t]) => t === "PL1 / PL2");
 if (base.pl1 != null) ok(plRow[1].textContent.includes("PL1") && plRow[1].textContent.includes("PL2"),
   `PL1/PL2 row shows real constraint watts (${plRow[1].textContent})`);

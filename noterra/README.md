@@ -47,14 +47,16 @@ Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
 | Major/minor fault, swap I/O | `/proc/vmstat` (delta) |
 | NVMe read/write/IOPS/await/util/queue | `/proc/diskstats` (delta) |
 | NVMe suhu | hwmon `nvme` per drive |
-| NVMe scheduler, ukuran, link, kapasitas | sysfs block/PCI + `/proc/mounts` |
+| NVMe scheduler, ukuran, link, kapasitas | sysfs block/PCI + `/proc/mounts`; drive tanpa mount → UI "not mounted" |
+| NVMe readahead | sysfs `queue/read_ahead_kb` (kernel ini ada; dulu path `readahead_kb` salah) |
+| Bandwidth RAM terukur | PMU `uncore_imc_free_running_{0,1}` via perf (butuh root/CAP_PERFMON; di sini diblokir `perf_event_paranoid=4` → unavailable dengan alasan) |
 | Kernel, driver NVIDIA, THP, swappiness, pinning | `uname`, `/proc/driver/nvidia`, sysfs, cgroup v2 |
 
 ## Yang jujur unavailable (tidak ada sumber nyata di mesin ini)
 
 - Fan GPU — NVML NotSupported di laptop ini (kipas diatur Embedded Controller, tidak lewat NVML).
 - VRAM bandwidth terpakai bukan pengukuran langsung: estimasi util controller × peak (berlabel "estimasi").
-- NVMe readahead — path sysfs salah: seharusnya `queue/read_ahead_kb` (diganti di langkah B).
+- Bandwidth RAM terukur — PMU IMC ada tapi perf diblokir `kernel.perf_event_paranoid=4` tanpa root.
 - Daya CPU tanpa root (RAPL `energy_uj` mode 0400).
 
 ## Catatan mesin ini (hasil pembacaan nyata, bukan asumsi)

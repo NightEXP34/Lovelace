@@ -9,6 +9,7 @@ Run:  .venv/bin/python server.py   (serves http://127.0.0.1:5130)
 """
 import os
 import re
+import subprocess
 import time
 from pathlib import Path
 
@@ -381,6 +382,62 @@ def vmstat_rates(dt):
     swp = (swpin + swpout) * 4096 / 1e6 if (swpin is not None and swpout is not None) else None
     return {"majF": maj, "minF": minf, "swp": swp}
 
+_perf_allowed = None
+
+def perf_allowed():
+    """Cek apakah perf boleh jalan (root/CAP_PERFMON atau perf_event_paranoid<=0)."""
+    global _perf_allowed
+    if _perf_allowed is None:
+        try:
+            r = subprocess.run(["perf", "stat", "-a", "-e", "cpu-migrations", "sleep", "0.2"],
+                               capture_output=True, timeout=3)
+            _perf_allowed = r.returncode == 0
+        except Exception:
+            _perf_allowed = False
+    return _perf_allowed
+
+def ram_bw(dt):
+    """Bandwidth RAM terukur via PMU uncore_imc_free_running_* (butuh perf diizinkan).
+
+    PMU ada di kernel ini (`/sys/bus/event_source/devices/uncore_imc_free_running_0/1`
+    = dua kanal), event data_read/data_write dengan unit MiB, scale 6.1035e-5 MiB
+    (= 64 byte per count). Sebagai user perf diblokir kernel.perf_event_paranoid=4;
+    menurunkan sysctl itu mengubah parameter tuning -> butuh konfirmasi pengguna,
+    tidak dilakukan. Jalur pengukuran di bawah hanya berjalan kalau perf diizinkan.
+    """
+    pmus = sorted(Path("/sys/bus/event_source/devices").glob("uncore_imc_free_running_*"))
+    if not pmus:
+        avail("ramBW", "PMU uncore_imc_free_running_* tidak ada di kernel/CPU ini")
+        return None
+    if not perf_allowed():
+        avail("ramBW", "PMU IMC ada tapi perf diblokir kernel.perf_event_paranoid=4 "
+                       "(butuh root/CAP_PERFMON; mengubah sysctl butuh konfirmasi pengguna)")
+        return None
+    if not dt:
+        avail("ramBW", PENDING)
+        return None
+    events = ",".join(f"{p.name}/data_read,{p.name}/data_write" for p in pmus)
+    try:
+        r = subprocess.run(["perf", "stat", "-a", "-e", events,
+                            "sleep", str(min(max(dt, 0.5), 3))],
+                           capture_output=True, text=True, timeout=8)
+        total = 0
+        parsed = False
+        for ln in r.stderr.splitlines():
+            m = re.match(r"([\d,.]+)\s*(MiB)?\s+uncore_imc_free_running_\d/data_(read|write)", ln.strip())
+            if not m:
+                continue
+            v = float(m.group(1).replace(",", ""))
+            total += v * (1048576 if m.group(2) else 64)   # MiB atau raw count × 64 byte
+            parsed = True
+        if parsed:
+            avail("ramBW", "unit PMU (MiB / 64 byte per count); GB/s desimal dari (read+write)/dt")
+            return total / dt / 1e9
+        avail("ramBW", f"perf jalan tapi output tidak ter-parse: {r.stderr[:120]}")
+    except Exception as e:
+        avail("ramBW", f"perf IMC gagal: {e}")
+    return None
+
 # ---- storage ----------------------------------------------------------------
 
 def drive_metrics(idx, dt):
@@ -429,7 +486,7 @@ def drive_metrics(idx, dt):
     m = re.search(r"\[(\w+)\]", out["sched"] or "")
     if m:
         out["sched"] = m.group(1)
-    ra = rd_int(blk / "queue/readahead_kb")
+    ra = rd_int(blk / "queue/read_ahead_kb")
     out["readahead"] = f"{ra} KB" if ra is not None else None
 
     out["temp"] = None
@@ -462,6 +519,7 @@ def drive_metrics(idx, dt):
             if mount is None or len(p[1]) < len(mount):
                 mount = p[1]
     out["capUsed"] = None
+    out["mount"] = mount
     if mount and os.path.isdir(mount):
         try:
             out["capUsed"] = psutil.disk_usage(mount).percent
@@ -486,7 +544,7 @@ def drive_metrics(idx, dt):
             if name == "capUsed":
                 avail(k, "drive tidak di-mount — tidak ada filesystem terpasang di drive ini")
             elif name == "readahead":
-                avail(k, "sysfs queue/readahead_kb tidak ada di kernel ini")
+                avail(k, "sysfs queue/read_ahead_kb tidak terbaca")
             elif name == "model":
                 avail(k, "/sys/class/nvme tidak menyediakan nama model")
             elif name == "sizeGB":
@@ -771,7 +829,8 @@ def build_snapshot():
     def drive_view(d):
         return {"name": d.get("model"), "sizeGB": d.get("sizeGB"), "link": d.get("link"),
                 "linkMax": d.get("linkMax"), "sched": d.get("sched"),
-                "readahead": d.get("readahead"), "capUsed": d.get("capUsed")}
+                "readahead": d.get("readahead"), "capUsed": d.get("capUsed"),
+                "mount": d.get("mount")}
 
     snap = system_snap()
     snap["gpuName"] = gpu["name"]
@@ -797,7 +856,7 @@ def build_snapshot():
         "gbw": gpu["gbw"], "gpeak": gpu["gpeak"], "pctheory": gpu["pctheory"],
         "ramU": mem["ramU"], "cache": mem["cache"], "avail": mem["avail"],
         "memTot": mem["memTot"], "swapU": mem["swapU"], "swapTot": mem["swapTot"],
-        "majF": vms["majF"], "minF": vms["minF"], "swp": vms["swp"],
+        "majF": vms["majF"], "minF": vms["minF"], "swp": vms["swp"], "ramBW": ram_bw(dt),
         "r0": d0.get("r"), "w0": d0.get("w"), "i0": d0.get("ops"), "a0": d0.get("a"),
         "a0Idle": d0.get("idle"), "u0": d0.get("u"), "q0": d0.get("q"), "t0": d0.get("temp"),
         "r1": d1.get("r"), "w1": d1.get("w"), "i1": d1.get("ops"), "a1": d1.get("a"),

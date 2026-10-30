@@ -186,7 +186,7 @@ const drive=(i)=>[
     ["Size",s=>s.drives[i].sizeGB==null?null:fx(s.drives[i].sizeGB,1)+" GB",null,`d${i}size`],
     ["Utilization",s=>s["u"+i]==null?null:fx(s["u"+i])+" %",null,"u"+i],["Queue depth",s=>s["q"+i]==null?null:fx(s["q"+i],1),null,"q"+i],
     ["Temperature",s=>s["t"+i]==null?null:fx(s["t"+i])+" °C",null,"t"+i],
-    ["Capacity used",s=>s.drives[i].capUsed==null?null:fx(s.drives[i].capUsed)+" %",null,`d${i}capUsed`],
+    ["Capacity used",s=>{const dv=s.drives[i];if(dv.capUsed!=null)return fx(dv.capUsed)+" %";return dv.mount==null?"not mounted":null},null,`d${i}capUsed`],
     ["I/O scheduler",s=>s.drives[i].sched,null,`d${i}sched`],["Readahead",s=>s.drives[i].readahead,null,`d${i}readahead`]]}];
 const PANELS=[
  {title:"CPU",sub:s=>s.snap.cpuModel||"CPU",parts:[
@@ -240,7 +240,7 @@ const PANELS=[
     ["Swap",s=>s.swapU==null||s.swapTot==null?null:fx(s.swapU,2)+" / "+fx(s.swapTot,2)+" GiB",null,"swapU"],
     ["Transparent hugepages",s=>s.snap.thp],["Swappiness",s=>s.snap.swappiness]]},
   {t:"dl",title:"Bandwidth",rows:[
-    ["Measured bandwidth",()=>null,null,"ramBW"],["Minor faults",s=>s.minF==null?null:fx(s.minF)+" /s",null,"minF"]]}]},
+    ["Measured bandwidth",s=>s.ramBW==null?null:fx(s.ramBW,1)+" GB/s",null,"ramBW"],["Minor faults",s=>s.minF==null?null:fx(s.minF)+" /s",null,"minF"]]}]},
  {title:"Storage",sub:"NVMe drives",parts:[...drive(0),...drive(1)]}
 ];
 
