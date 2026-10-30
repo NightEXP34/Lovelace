@@ -76,7 +76,9 @@ else
   ok(chips.some(t => t.includes("—")), "chip throttle tampil '—' + tooltip saat NVML gagal");
 
 /* rail kanan nyata */
-ok(d.querySelectorAll("#tl .tr").length === 7, "timeline rail 7 baris dari ring buffer");
+const tlExpect = 1 + (base.snap.gpuPresent ? 4 : 0) + 1 + base.drives.length;
+ok(d.querySelectorAll("#tl .tr").length === tlExpect,
+  `timeline rail dinamis dari hardware (${tlExpect} baris: cpu + gpu ${base.snap.gpuPresent ? "ada" : "tidak ada"} + majF + ${base.drives.length} drive)`);
 const railVals = [...d.querySelectorAll("#tl .tr b")].map(x => x.textContent);
 ok(railVals.every(t => !t.includes("undefined")), `timeline tidak ada "undefined" (${railVals.join(" | ")})`);
 ok(d.querySelectorAll("#ev .ev").length === 6, "events rail 6 slot");
@@ -111,6 +113,45 @@ if (base.ramBW == null) {
   ok(bw.classList.contains("dd-na") && bw.getAttribute("title").includes("perf"),
     "measured RAM bandwidth unavailable + tooltip perf");
 }
+
+/* simulasi hardware lain: tanpa GPU (NVML gagal, tidak ada PCI display), 3 drive SATA */
+const alt = { ...base, snap: { ...base.snap, gpuPresent: false, nvml: false },
+  gT: null, gW: null, gU: null, prx: null, gLim: null, thr: null, thrIdle: null,
+  drives: [
+    { dev: "sda", name: "Seagate Barracuda", sizeGB: 1000.2, link: null, linkMax: null, sched: "mq-deadline", readahead: "128 KB", capUsed: 71.2, mount: "/mnt/data" },
+    { dev: "sdb", name: "WD Green", sizeGB: 500.1, link: null, linkMax: null, sched: "mq-deadline", readahead: "128 KB", capUsed: null, mount: null },
+    { dev: "sdc", name: null, sizeGB: null, link: null, linkMax: null, sched: null, readahead: null, capUsed: null, mount: null }],
+  r2: 12.4, w2: 3.1, i2: 220, a2: 4.2, a2Idle: false, u2: 8, q2: 1, t2: null };
+const dom2 = new JSDOM(html, { url: "http://localhost/", runScripts: "dangerously", pretendToBeVisual: true,
+  beforeParse(window) {
+    window.matchMedia = () => ({ matches: false });
+    window.fetch = async u => String(u).includes("/api/health")
+      ? { ok: true, json: async () => ({ ok: true, nvml: false, items: { gT: "NVML init gagal (Driver Not Loaded)", fan: "NVML NotSupported", pcieGen: "NVML tidak tersedia dan tidak ada PCI display controller di sysfs" } }) }
+      : { ok: true, json: async () => alt };
+  } });
+const w2 = dom2.window, d2 = w2.document;
+await sleep(2200);
+const panels2 = [...d2.querySelectorAll(".p h2")].map(h => h.textContent);
+ok(!panels2.includes("GPU") && panels2.length === 3,
+  `hardware tanpa GPU: panel GPU tidak dibangun (${panels2.join(", ")})`);
+ok(d2.querySelectorAll("#tl .tr").length === 1 + 1 + 3,
+  "timeline tanpa GPU: cpu + majF + 3 drive = 5 baris");
+const tb2 = [...d2.querySelectorAll(".p dl.tb")];
+ok(tb2.length === 1 && tb2[0].querySelectorAll("dt.h").length === 3,
+  "tabel drive dinamis: 3 kolom mengikuti /sys/block");
+const sto2 = [...d2.querySelectorAll(".p")].find(p => p.querySelector("h2").textContent === "Storage");
+ok(sto2.querySelectorAll(".bars .br").length === 6,
+  "bar dinamis di panel Storage: 2 bar per drive (read + capacity) = 6");
+const tbVals = [...tb2[0].querySelectorAll("dd")].map(x => x.textContent);
+ok(tbVals.includes("sda") === false && tbVals.some(t => t === "Seagate Barracuda"),
+  "model drive nyata per kolom");
+ok([...sto2.querySelectorAll(".br em")].map(x => x.textContent).some(t => t === "not mounted"),
+  "drive tanpa mount tetap 'not mounted' di hardware lain");
+ok(!tbVals.includes("undefined") && ![...d2.querySelectorAll(".tr b")].some(t => t.textContent.includes("undefined")),
+  "hardware lain: tidak ada 'undefined' di tabel/timeline");
+const gpuMissing = [...tb2[0].querySelectorAll("dd")].filter(x => x.classList.contains("dd-na"));
+ok(gpuMissing.length > 0, "hardware lain: nilai tanpa sumber tampil dd-na (unavailable)");
+w2.close();
 
 /* tab Log (server-backed) tidak berubah */
 d.querySelectorAll("nav button")[1].click();

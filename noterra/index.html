@@ -148,11 +148,12 @@ async function sample(){
     const r=await fetch("/api/snapshot",{cache:"no-store"});
     if(!r.ok) throw new Error(r.status);
     const d=await r.json();
-    S={drives:[{},{}],snap:{},...d};
+    S={drives:[],snap:{},...d};
     online=true; $("#status").textContent="Backend: live";
     for(const k in d){const v=d[k];
       if(typeof v==="number"){(H[k]=H[k]||[]).push(v); if(H[k].length>60)H[k].shift()}
     }
+    buildPanels();
     cur.forEach(x=>x.up());
     refreshSubs(); rail(); chipsTop();
   }catch(e){
@@ -270,6 +271,74 @@ const B={
         j++;
       }
     })}};
+  },
+ /* block dinamis: jumlah item/kolom mengikuti snapshot (mis. jumlah drive dari /sys/block) */
+ dynBars:b=>{const el=mk(`<div class="bars"></div>`), box=el.firstElementChild;let n=-1,rows=[];
+  return{el,up:()=>{
+    const items=b.items(S);
+    if(items.length!==n){
+      n=items.length;
+      box.innerHTML=items.map(it=>`<div class="br"><span>${it.l}</span><div class="bar">${it.c.map(c=>`<i style="background:var(${c})"></i>`).join("")}</div><em></em></div>`).join("");
+      rows=[...box.querySelectorAll(".br")];
+    }
+    items.forEach((it,i)=>{
+      const f=it.f(S), den=f[f.length-1];
+      rows[i].querySelectorAll(".bar i").forEach((x,j)=>{
+        const ok=typeof f[j]==="number"&&typeof den==="number"&&den>0;
+        x.style.width=ok?clamp(f[j]/den*100,0,100)+"%":"0%";
+      });
+      rows[i].querySelector("em").textContent=it.t(S);
+      rows[i].querySelector("em").setAttribute("title",it.tip?it.tip(S):"");
+    });
+  }};
+ },
+ dynTable:b=>{const el=mk(`<dl class="tb"></dl>`), box=el.firstElementChild;let n=-1,dd=[];
+  // format row: [label, get(s,col), keyFn(s,col), warnFn|null]
+  return{el,up:()=>{
+    const cols=b.n(S);
+    if(cols!==n){
+      n=cols;
+      box.innerHTML=`<dt></dt>`+Array.from({length:cols},(_,i)=>`<dt class="h">${esc(b.hdr(S,i))}</dt>`).join("")
+        +b.rows.map(r=>`<dt>${r[0]}</dt>`+Array.from({length:cols},()=>"<dd></dd>").join("")).join("");
+      dd=[...box.querySelectorAll("dd")];
+    }
+    let j=0;
+    b.rows.forEach(r=>{
+      for(let c=0;c<cols;c++){
+        const v=r[1](S,c), na=v==null||v==="unavailable";
+        dd[j].textContent=na?"unavailable":v;
+        dd[j].className=(r[3]?r[3](S,c)?"warn ":"":"")+(na?"dd-na":"");
+        dd[j].setAttribute("title",na?(R[r[2](S,c)]||"tidak ada sumber data"):"");
+        j++;
+      }
+    });
+  }};
+ },
+ dynChart:b=>{let ti=0,tabs=[];
+  const el=mk(`<div class="ch"><div class="tabs"><em class="lg"></em></div><svg class="sp" viewBox="0 0 200 50" preserveAspectRatio="none"></svg></div>`);
+  const sv=el.querySelector("svg"), tb=el.querySelector(".tabs"), lg=el.querySelector(".lg");
+  const draw=()=>{
+    if(!tabs.length){lg.innerHTML="";return}
+    ti=Math.min(ti,tabs.length-1);
+    spark(sv,tabs[ti].s.map(x=>x[0]),tabs[ti].s.map(x=>x[2]),tabs[ti].min);
+    lg.innerHTML=tabs[ti].s.map(x=>`<span><i style="background:var(${x[2]})"></i>${x[1]}</span>`).join("");
+    [...tb.querySelectorAll("button")].forEach((x,j)=>x.setAttribute("aria-pressed",String(j===ti)));
+  };
+  return{el,up:()=>{
+    const t=b.tabs(S);
+    if(t.length!==tabs.length){
+      tabs=t;
+      [...tb.querySelectorAll("button")].forEach(x=>x.remove());
+      tabs.forEach((x,j)=>{
+        const btn=document.createElement("button");
+        btn.textContent=x.n;
+        btn.onclick=()=>{ti=j;draw()};
+        tb.prepend(btn);
+      });
+      ti=0;
+    }
+    draw();
+  }};
  }
 };
 function panel(c){
@@ -347,23 +416,28 @@ const PANELS=[
      ["Hugepages",s=>s.snap.thp],["Swappiness",s=>s.snap.swappiness]]},
   ]},
 
- {title:"Storage",sub:s=>s.drives.map((d,i)=>`nvme${i}n1: ${d.name||"unavailable"}`).join(" · "),
+ {title:"Storage",sub:s=>s.drives.length?s.drives.map(d=>`${d.dev||"drive"}: ${d.name||"unavailable"}`).join(" \u00b7 "):"tidak ada drive di /sys/block",
   l:[{t:"hd",g:{key:"r0",max:()=>dynMax("r0"),warn:()=>false,bad:()=>false,unit:"MB/s read",label:"drive 0 (skala = peak terukur)"},
      stats:[["w0","Write","MB/s",1],["i0","IOPS","IOPS"],["a0","Await","ms",1,s=>s.a0Idle?"idle":null],["u0","Util","%"]]},
-   {t:"bars",items:[
-     {l:"D0 read",c:["--a"],f:s=>[s.r0,dynMax("r0")],t:s=>fx(s.r0)+" / "+fx(dynMax("r0"))+" MB/s (peak terukur)",tip:s=>R["r0"]||""},
-     {l:"D0 capacity",c:["--warn"],f:s=>[s.drives[0].capUsed,100],t:s=>s.drives[0].capUsed==null?(s.drives[0].mount==null?"not mounted":"unavailable"):fx(s.drives[0].capUsed)+" % of "+fx(s.drives[0].sizeGB,1)+" GB",tip:s=>R["d0capUsed"]||""},
-     {l:"D1 read",c:["--a"],f:s=>[s.r1,dynMax("r1")],t:s=>fx(s.r1,1)+" / "+fx(dynMax("r1"),1)+" MB/s (peak terukur)",tip:s=>R["r1"]||""},
-     {l:"D1 capacity",c:["--warn"],f:s=>[s.drives[1].capUsed,100],t:s=>s.drives[1].capUsed==null?(s.drives[1].mount==null?"not mounted":"unavailable"):fx(s.drives[1].capUsed)+" % of "+fx(s.drives[1].sizeGB,1)+" GB",tip:s=>R["d1capUsed"]||""}]},
+    {t:"dynBars",items:s=>{const out=[];
+      s.drives.forEach((d,i)=>{
+        out.push({l:`${d.dev||("drive"+i)} read`,c:["--a"],f:x=>[x["r"+i],dynMax("r"+i)],
+          t:x=>fx(x["r"+i])+" / "+fx(dynMax("r"+i))+" MB/s (peak terukur)",tip:x=>R["r"+i]||""});
+        out.push({l:`${d.dev||("drive"+i)} capacity`,c:["--warn"],f:x=>[d.capUsed,100],
+          t:x=>d.capUsed==null?(d.mount==null?"not mounted":"unavailable"):fx(d.capUsed)+" % of "+fx(d.sizeGB,1)+" GB",
+          tip:x=>R["d"+i+"capUsed"]||""})});
+      return out}},
   ],
-  r:[{t:"chart",tabs:[{n:"Drive 0",min:0,s:[["r0","Read (MB/s)","--a"],["w0","Write (MB/s)","--b"]]},{n:"Drive 1",min:0,s:[["r1","Read (MB/s)","--a"],["w1","Write (MB/s)","--b"]]}]},
-   {t:"dl",hdr:["Drive 0","Drive 1"],rows:[
-     ["Model",s=>s.drives[0].name,s=>s.drives[1].name,null,"d0model","d1model"],
-     ["Link / max",s=>s.drives[0].link==null?null:s.drives[0].link+(s.drives[0].linkMax?" / "+s.drives[0].linkMax:""),s=>s.drives[1].link==null?null:s.drives[1].link+(s.drives[1].linkMax?" / "+s.drives[1].linkMax:""),null,"d0link","d1link"],
-     ["Queue",s=>fx(s.q0,1),s=>fx(s.q1,1),null,"q0","q1"],
-     ["Temp",s=>s.t0==null?null:fx(s.t0)+" °C",s=>s.t1==null?null:fx(s.t1)+" °C",null,"t0","t1"],
-     ["Scheduler",s=>s.drives[0].sched,s=>s.drives[1].sched,null,"d0sched","d1sched"],
-     ["Readahead",s=>s.drives[0].readahead,s=>s.drives[1].readahead,null,"d0readahead","d1readahead"]]},
+  r:[{t:"dynChart",tabs:s=>s.drives.map((d,i)=>({n:d.dev||("drive"+i),min:0,
+        s:[["r"+i,"Read (MB/s)","--a"],["w"+i,"Write (MB/s)","--b"]]}))},
+    {t:"dynTable",n:s=>s.drives.length,hdr:(s,i)=>s.drives[i].dev||("drive"+i),rows:[
+      ["Model",(s,c)=>s.drives[c].name,(s,c)=>"d"+c+"model"],
+      ["Link / max",(s,c)=>{const d=s.drives[c];return d.link==null?null:d.link+(d.linkMax?" / "+d.linkMax:"")},(s,c)=>"d"+c+"link"],
+      ["Queue",(s,c)=>s["q"+c]==null?null:fx(s["q"+c],1),(s,c)=>"q"+c],
+      ["Temp",(s,c)=>s["t"+c]==null?null:fx(s["t"+c])+" \u00b0C",(s,c)=>"t"+c],
+      ["Scheduler",(s,c)=>s.drives[c].sched,(s,c)=>"d"+c+"sched"],
+      ["Readahead",(s,c)=>s.drives[c].readahead,(s,c)=>"d"+c+"readahead"],
+      ["Await",(s,c)=>s["a"+c]==null?(s["a"+c+"Idle"]?"idle":null):fx(s["a"+c],1)+" ms",(s,c)=>"a"+c]]},
   ]},
 ];
 
@@ -381,19 +455,42 @@ function show(id){
     <div class="rc"><h2>Events</h2><div id="ev" style="display:flex;flex-direction:column;gap:5px;height:133px;flex:none"></div></div>
     <div class="rc"><h2>System</h2><dl class="pr" id="sys"></dl></div></aside></div>
     <div class="hint" id="hint"><i></i><span></span></div>`;
-  PANELS.forEach(c=>{
-    const p=panel({title:c.title,sub:c.sub,l:c.l,r:c.r});
-    cur.push({up:()=>{p.us.forEach(f=>f());p.sub.textContent=(typeof c.sub==="function"?c.sub(S):c.sub)||""}});
-    $("#g").append(p.el);
-  });
+  PSIG=""; buildPanels();
   buildRail(); cur.forEach(x=>x.up()); chipsTop(); rail();
 }
 function refreshSubs(){cur.forEach(x=>x.up())}
 
 /* ---- rail kanan: timeline, events dari transisi nyata, system dari snap ---- */
-const TL=[["cpuT","CPU temp","°C",0],["gT","GPU temp","°C",0],["gW","GPU power","W",1],["gU","GPU util","%",0],
-  ["r0","NVMe read","MB/s",0],["prx","PCIe rx","GB/s",1],["majF","Major flt","/s",0]];
+const P_CPU=PANELS[0],P_GPU=PANELS[1],P_MEM=PANELS[2],P_STO=PANELS[3];
+let PSIG="";
+function buildPanels(){
+  // panel & rail mengikuti hardware: GPU hanya kalau terdeteksi, drive dinamis dari /sys/block
+  const sig=(S.snap&&S.snap.gpuPresent?"gpu":"nogpu")+"|"+(S.drives||[]).length+"|"+((S.pu||[]).length)+"|"+((S.eu||[]).length)+"|"+(S.drives||[]).map(d=>d.dev).join(",");
+  if(sig===PSIG)return;
+  PSIG=sig;
+  const g=$("#g"); if(!g)return;
+  g.innerHTML=""; cur=[];
+  const list=[P_CPU];
+  if(S.snap&&S.snap.gpuPresent)list.push(P_GPU);
+  list.push(P_MEM,P_STO);
+  list.forEach(c=>{
+    const p=panel({title:c.title,sub:c.sub,l:c.l,r:c.r});
+    cur.push({up:()=>{p.us.forEach(f=>f());p.sub.textContent=(typeof c.sub==="function"?c.sub(S):c.sub)||""}});
+    g.append(p.el);
+  });
+  buildRail();
+}
+function tlRows(){
+  const gpu=S.snap&&S.snap.gpuPresent, rows=[];
+  rows.push(["cpuT","CPU temp","\u00b0C",0]);
+  if(gpu)rows.push(["gT","GPU temp","\u00b0C",0],["gW","GPU power","W",1],["gU","GPU util","%",0],["prx","PCIe rx","GB/s",1]);
+  rows.push(["majF","Major flt","/s",0]);
+  (S.drives||[]).forEach((d,i)=>rows.push(["r"+i,(d.dev||("drive"+i))+" read","MB/s",0]));
+  return rows;
+}
+let TL=[];
 function buildRail(){
+  TL=tlRows();
   $("#tl").innerHTML=TL.map(r=>`<div class="tr"><span>${r[1]}</span><svg viewBox="0 0 200 24" preserveAspectRatio="none"></svg><b></b></div>`).join("");
 }
 const clock=()=>new Date().toLocaleTimeString("en-GB",{timeZone:"Asia/Jakarta"});
@@ -441,7 +538,7 @@ function chipsTop(){
     rc2.className="chip"+(rec?" warn":"")}
   const h=$("#hint"); if(!h)return;
   const rules=[];
-  const rd=Math.max(typeof S.r0==="number"?S.r0:-1, typeof S.r1==="number"?S.r1:-1);
+  const rd=Math.max(-1,...(S.drives||[]).map((d,i)=>typeof S["r"+i]==="number"?S["r"+i]:-1));
   if(rd>600&&typeof S.gU==="number"&&S.gU<50){rules.push(`page-bound: NVMe read ${fx(Math.max(rd,0))} MB/s (> 600) dan GPU util ${fx(S.gU)} % (< 50)`)}
   if(S.thrThermal===true||cpuThrottling(S)){rules.push(`thermal-bound: throttle NVML=${S.thr}, CPU sysfs=${S.cpuThr?? "unavailable"}`)}
   if(near(S.gW,gLim(S),.95)){rules.push(`power-bound: GPU draw ${fx(S.gW,1)} W ≥ 95% limit NVML ${fx(gLim(S),0)} W`)}
