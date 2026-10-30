@@ -38,7 +38,10 @@ Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
 | Context switch, IRQ | `/proc/stat` ctxt, `/proc/interrupts` (delta) |
 | Thread migration | `/proc/<pid>/task/<tid>/sched` `se.nr_migrations` (delta per thread; ~1273 thread, ~15 ms/snapshot; thread short-lived yang mati sebelum terobservasi tidak terhitung). `/proc/schedstat` nb_push+nb_pull = 0 terus di kernel ini (mati); perf system-wide diblokir `perf_event_paranoid=4` tanpa root |
 | Idle residency | cpuidle sysfs state terdalam (mesin ini: **C3_ACPI**, bukan C6) |
-| GPU: suhu, daya, clock, util, VRAM, throttle, P-state, fan | NVML (`nvidia-ml-py`) — butuh `/dev/nvidia*` |
+| GPU: suhu, daya, clock, util, VRAM, throttle, P-state, fan, bus width | NVML (`nvidia-ml-py`) — butuh `/dev/nvidia*` |
+| GPU power limit | NVML `nvmlDeviceGetPowerManagementLimit`; di mesin ini NotSupported → pakai default limit NVML (ditandai "(default)" di UI) |
+| GPU PCIe link max + rx/tx | NVML `GetMaxPcieLinkGeneration/Width` + `GetPcieThroughput(RX/TX)` (KB/s → GB/s) |
+| GPU VRAM peak bandwidth | estimasi: bus width NVML × memory clock × 2 (DDR); bandwidth terpakai = util controller × peak (label "estimasi") |
 | GPU PCIe link | sysfs PCI device (`current_link_speed/width`) — bekerja tanpa NVML |
 | Memori, swap | `/proc/meminfo` |
 | Major/minor fault, swap I/O | `/proc/vmstat` (delta) |
@@ -49,7 +52,8 @@ Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
 
 ## Yang jujur unavailable (tidak ada sumber nyata di mesin ini)
 
-- PCIe rx/tx GPU dan VRAM bandwidth — belum punya sumber yang dibaca (NVML throughput dicoba di langkah B).
+- Fan GPU — NVML NotSupported di laptop ini (kipas diatur Embedded Controller, tidak lewat NVML).
+- VRAM bandwidth terpakai bukan pengukuran langsung: estimasi util controller × peak (berlabel "estimasi").
 - NVMe readahead — path sysfs salah: seharusnya `queue/read_ahead_kb` (diganti di langkah B).
 - Daya CPU tanpa root (RAPL `energy_uj` mode 0400).
 

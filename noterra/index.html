@@ -213,18 +213,18 @@ const PANELS=[
   {t:"dl",title:"VRAM",rows:[
     ["Used / total",s=>s.vram==null?null:fx(s.vram,2)+" / "+fx(s.vramTot,2)+" GiB",null,"vram"],
     ["Memory clock",s=>s.gMemClk==null?null:s.gMemClk+" MHz",null,"gMemClk"],
-    ["Bus width",()=>null,null,"gbw"],["Peak bandwidth",()=>null,null,"gpeak"],
+    ["Bus width",s=>s.gbw==null?null:s.gbw+" bit",null,"gbw"],["Peak bandwidth",s=>s.gpeak==null?null:fx(s.gpeak)+" GB/s (estimasi: bus width × clock ×2 DDR)",null,"gpeak"],
     ["Bandwidth in use",s=>s.vbw==null?null:fx(s.vbw)+" GB/s (estimasi)",null,"vbw"],
     ["Controller util",s=>s.gMU==null?null:fx(s.gMU)+" %",null,"gMU"]]},
   {t:"dl",title:"PCIe",rows:[
     ["Link now",s=>s.pcieGen==null?null:"Gen"+s.pcieGen+" x"+s.pcieWidth,null,"pcieGen"],
-    ["Link max",()=>null,null,"pcieMax"],
+    ["Link max",s=>s.pcieMax,null,"pcieMax"],
     ["Receive",s=>s.prx==null?null:fx(s.prx,2)+" GB/s",null,"prx"],
     ["Transmit",s=>s.ptx==null?null:fx(s.ptx,2)+" GB/s",null,"ptx"],
-    ["Theoretical",()=>null,null,"pctheory"],
+    ["Theoretical",s=>s.pctheory==null?null:fx(s.pctheory,2)+" GB/s (dari link max)",null,"pctheory"],
     ["Link used",s=>s.pcu==null?null:fx(s.pcu)+" %",null,"pcu"]]},
   {t:"dl",span:2,title:"Power and throttle",rows:[
-    ["Draw / limit",s=>s.gW==null?null:fx(s.gW,1)+" W"+(s.gLim?" / "+fx(s.gLim)+" W":""),null,"gW"],
+    ["Draw / limit",s=>s.gW==null?null:fx(s.gW,1)+" W"+(s.gLim?" / "+fx(s.gLim)+" W"+(s.gLimDef?" (default)":""):""),null,"gW"],
     ["SM clock max",s=>s.gClkMax==null?null:s.gClkMax+" MHz",null,"gClkMax"],
     ["Fan",s=>s.fan==null?null:fx(s.fan)+" %",null,"fan"],
     ["P-state",s=>s.pstate,null,"pstate"],

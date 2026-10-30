@@ -48,6 +48,8 @@ def lines(path):
     except Exception:
         return []
 
+GT = {1: 2.5, 2: 5.0, 3: 8.0, 4: 16.0, 5: 32.0, 6: 64.0}   # GT/s per PCIe generation
+
 def gen_of(speed):
     """'8.0 GT/s PCIe' -> 3 ; unknown -> None."""
     if not speed:
@@ -510,7 +512,9 @@ def throttle_names(bits):
 def gpu_metrics():
     out = dict(gT=None, gW=None, gClk=None, gMemClk=None, gClkMax=None, gU=None,
                gMU=None, vram=None, vramTot=None, gLim=None, pstate=None, thr=None,
-               fan=None, pcieGen=None, pcieWidth=None, name=None)
+               fan=None, pcieGen=None, pcieWidth=None, name=None,
+               pcieMax=None, pcieMaxGen=None, pcieMaxWidth=None, prx=None, ptx=None,
+               pcu=None, gbw=None, gpeak=None, pctheory=None, vbw=None)
     keys = list(out)
     if NVML:
         try:
@@ -552,8 +556,16 @@ def gpu_metrics():
             avail("vram", f"NVML nvmlDeviceGetMemoryInfo: {e}")
             avail("vramTot", f"NVML nvmlDeviceGetMemoryInfo: {e}")
         nv("gLim", pynvml.nvmlDeviceGetPowerManagementLimit, h, scale=1000)
+        if out["gLim"] is None:
+            # limit aktif tidak dilaporkan GPU laptop ini; default limit bisa dibaca
+            try:
+                out["gLim"] = pynvml.nvmlDeviceGetPowerManagementDefaultLimit(h) / 1000
+                out["gLimDef"] = True
+                avail("gLim", "NVML NotSupported untuk limit aktif; nilai ini default limit (NVML)")
+            except Exception as e:
+                avail("gLim", f"NVML power limit (aktif & default) gagal: {e}")
         try:
-            out["pstate"] = str(pynvml.nvmlDeviceGetPerformanceState(h))
+            out["pstate"] = "P" + str(pynvml.nvmlDeviceGetPerformanceState(h))
             avail("pstate")
         except Exception as e:
             avail("pstate", f"NVML nvmlDeviceGetPerformanceState: {e}")
@@ -570,6 +582,36 @@ def gpu_metrics():
                          "(kipas diatur Embedded Controller, tidak lewat NVML)")
         nv("pcieGen", pynvml.nvmlDeviceGetCurrPcieLinkGeneration, h)
         nv("pcieWidth", pynvml.nvmlDeviceGetCurrPcieLinkWidth, h)
+        try:
+            g = pynvml.nvmlDeviceGetMaxPcieLinkGeneration(h)
+            w = pynvml.nvmlDeviceGetMaxPcieLinkWidth(h)
+            out["pcieMaxGen"], out["pcieMaxWidth"] = g, w
+            out["pcieMax"] = f"Gen{g} x{w}"
+            avail("pcieMax")
+        except Exception as e:
+            avail("pcieMax", f"NVML nvmlDeviceGetMaxPcieLinkGeneration/Width: {e}")
+        try:
+            rx = pynvml.nvmlDeviceGetPcieThroughput(h, pynvml.NVML_PCIE_UTIL_RX_BYTES)
+            tx = pynvml.nvmlDeviceGetPcieThroughput(h, pynvml.NVML_PCIE_UTIL_TX_BYTES)
+            out["prx"] = rx * 1024 / 1e9    # KB/s -> GB/s (decimal)
+            out["ptx"] = tx * 1024 / 1e9
+            avail("prx"); avail("ptx")
+        except Exception as e:
+            msg = f"NVML nvmlDeviceGetPcieThroughput: {e}"
+            avail("prx", msg); avail("ptx", msg)
+        try:
+            bw = pynvml.nvmlDeviceGetMemoryBusWidth(h)          # bit
+            out["gbw"] = bw
+            if bw and out["gMemClk"]:
+                # GDDR6 double-data-rate: MT/s = 2 × clock MHz; byte/MT = bus width/8
+                out["gpeak"] = bw / 8 * (out["gMemClk"] / 1000) * 2   # GB/s (estimasi DDR)
+                avail("gpeak", "estimasi: bus width × memory clock × 2 (DDR), dari NVML")
+            else:
+                avail("gpeak", "NVML bus width atau memory clock tidak terbaca")
+            avail("gbw")
+        except Exception as e:
+            avail("gbw", f"NVML nvmlDeviceGetMemoryBusWidth: {e}")
+            avail("gpeak", f"NVML nvmlDeviceGetMemoryBusWidth: {e}")
     else:
         for k in keys:
             avail(k, "NVML init gagal (Driver Not Loaded): /dev/nvidia* tidak terlihat; "
@@ -583,8 +625,32 @@ def gpu_metrics():
             avail("pcieGen", "NVML tidak tersedia dan sysfs PCI GPU tidak terbaca")
         if w is None:
             avail("pcieWidth", "NVML tidak tersedia dan sysfs PCI GPU tidak terbaca")
-    # PCIe rx/tx throughput dan VRAM bandwidth: sumbernya ditambah di langkah B
-    out.update(vbw=None, prx=None, ptx=None, pcu=None)
+        mg = gen_of(rd(pci / "max_link_speed"))
+        mw = rd_int(pci / "max_link_width")
+        if mg and mw:
+            out["pcieMaxGen"], out["pcieMaxWidth"] = mg, mw
+            out["pcieMax"] = f"Gen{mg} x{mw}"
+            avail("pcieMax")
+        else:
+            avail("pcieMax", "NVML gagal dan sysfs PCI max_link_speed/width tidak terbaca")
+    # theoretical bandwidth dari LINK MAX (link sekarang bisa turun saat idle — normal)
+    if out.get("pcieMaxGen") and out.get("pcieMaxWidth"):
+        enc = 0.8 if out["pcieMaxGen"] <= 2 else 128 / 130
+        out["pctheory"] = GT[out["pcieMaxGen"]] * out["pcieMaxWidth"] / 8 * enc
+        avail("pctheory")
+    else:
+        avail("pctheory", "link max (generation/width) tidak terbaca")
+    # VRAM bandwidth terpakai = ESTIMASI dari util controller × peak turunan NVML
+    if out["gMU"] is not None and out.get("gpeak"):
+        out["vbw"] = out["gMU"] / 100 * out["gpeak"]
+        avail("vbw", "estimasi: memory-controller util × peak bandwidth (bukan pengukuran langsung)")
+    else:
+        avail("vbw", "belum ada peak bandwidth (NVML bus width/memory clock) untuk estimasi")
+    if out["prx"] is not None and out["ptx"] is not None and out.get("pctheory"):
+        out["pcu"] = (out["prx"] + out["ptx"]) / out["pctheory"] * 100
+        avail("pcu")
+    else:
+        avail("pcu", "rx/tx throughput NVML belum tersedia untuk hitung persen link")
     return out
 
 # ---- system snapshot --------------------------------------------------------
@@ -724,10 +790,11 @@ def build_snapshot():
         "pl1": lims.get("pl1"), "pl2": lims.get("pl2"), "plPeak": lims.get("plpeak"),
         "gT": gpu["gT"], "gW": gpu["gW"], "gClk": gpu["gClk"], "gMemClk": gpu["gMemClk"],
         "gClkMax": gpu["gClkMax"], "gU": gpu["gU"], "gMU": gpu["gMU"],
-        "vram": gpu["vram"], "vramTot": gpu["vramTot"], "gLim": gpu["gLim"],
+        "vram": gpu["vram"], "vramTot": gpu["vramTot"], "gLim": gpu["gLim"], "gLimDef": gpu.get("gLimDef"),
         "pstate": gpu["pstate"], "thr": gpu["thr"], "fan": gpu["fan"],
-        "pcieGen": gpu["pcieGen"], "pcieWidth": gpu["pcieWidth"],
-        "vbw": None, "prx": None, "ptx": None, "pcu": None,
+        "pcieGen": gpu["pcieGen"], "pcieWidth": gpu["pcieWidth"], "pcieMax": gpu["pcieMax"],
+        "vbw": gpu["vbw"], "prx": gpu["prx"], "ptx": gpu["ptx"], "pcu": gpu["pcu"],
+        "gbw": gpu["gbw"], "gpeak": gpu["gpeak"], "pctheory": gpu["pctheory"],
         "ramU": mem["ramU"], "cache": mem["cache"], "avail": mem["avail"],
         "memTot": mem["memTot"], "swapU": mem["swapU"], "swapTot": mem["swapTot"],
         "majF": vms["majF"], "minF": vms["minF"], "swp": vms["swp"],
