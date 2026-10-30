@@ -68,20 +68,24 @@ N.addWidget("bar",{
 N.addWidget("sparkline",{
   mount(el,p,ctx){
     el.classList.add("w-spark");
-    el.innerHTML=`<div class="w-label"></div><svg viewBox="0 0 100 30" preserveAspectRatio="none"><path class="l" fill="none" stroke="var(--a,#3b5bdb)" stroke-width="1.5"/></svg>`;
-    el._l=el.querySelector(".w-label"); el._p=el.querySelector("path");
+    el.innerHTML=`<div class="w-label"></div><svg viewBox="0 0 100 30" preserveAspectRatio="none"><path class="l" fill="none" stroke="var(--a,#3b5bdb)" stroke-width="1.5"/></svg><div class="w-na" style="display:none"></div>`;
+    el._l=el.querySelector(".w-label"); el._p=el.querySelector("path"); el._na=el.querySelector(".w-na");
   },
   update(el,p,ctx){
-    const r=reg(ctx,p.bind), arr=ctx.hist(p.bind);
+    const r=reg(ctx,p.bind), arr=ctx.hist(p.bind), v=ctx.data[p.bind];
     el._l.textContent=labelOf(p,r,p.bind);
-    if(!arr||arr.length<2){el._p.setAttribute("d","");el._l.title=why(ctx,p.bind,r);return;}
+    if(!num(v)||!arr||arr.length<2){
+      el._p.setAttribute("d",""); el._l.removeAttribute("title");
+      el._na.style.display=""; el._na.textContent="unavailable"; el._na.title=why(ctx,p.bind,r);
+      return;
+    }
+    el._na.style.display="none"; el._na.removeAttribute("title");
     const mn=Math.min(...arr), span=(Math.max(...arr)-mn)||1;
     el._p.setAttribute("d",arr.map((v,j)=>{
       const x=(j/Math.max(arr.length-1,1)*100).toFixed(1);
       const y=(28-(v-mn)/span*26).toFixed(1);
       return `${j?"L":"M"}${x},${y}`;
     }).join(""));
-    el._l.removeAttribute("title");
   }
 });
 
@@ -102,7 +106,7 @@ N.addWidget("gauge",{
     const max=num(p.max)?p.max:ctx.max(p.bind);
     if(s==null||!num(v)||!num(max)||max<=0){
       el._p.setAttribute("d","");
-      el._t.textContent=s==null?"—":s;
+      el._t.textContent=s==null?"unavailable":s;
       el._t.setAttribute("title",s==null?why(ctx,p.bind,r):"skala belum tersedia");
       return;
     }
