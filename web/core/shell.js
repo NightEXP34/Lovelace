@@ -286,7 +286,7 @@ ctx.on("offline",()=>{
 ctx.mk=mk;
 Object.assign(N,{
   addTheme(name,th){
-    const file=params.get("layout")||((!th.mount&&themeMeta&&themeMeta.layout)?themeMeta.layout:null);
+    const file=params.get("layout")||(themeMeta&&themeMeta.layout)||null;
     if(file){
       theme=null;
       addView("overview",{label:"Overview",order:0,...layoutView(name,file)});

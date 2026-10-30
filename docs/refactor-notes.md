@@ -44,6 +44,8 @@ CSV, bukan `meta.columns`, dan memakai offset `i+1` untuk nilai kolom.
   tidak berubah. `themes/default/layout.json` ditambahkan dan bisa dipilih
   lewat `?layout=layout.json`; ini memenuhi jalur layout tanpa memindahkan
   default ke renderer (precedence: `?layout` > `theme.json.layout` > mount).
+  `theme.json.layout` sengaja menang atas `mount` sesuai precedence brief;
+  theme default tidak mencantumkan field `layout`, jadi tetap memakai mount.
 - `/api/themes` hanya meneruskan field `theme.json` yang relevan (`entry`,
   `css`, `layout`) tanpa menjalankan script theme.
 

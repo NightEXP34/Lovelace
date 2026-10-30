@@ -74,8 +74,7 @@ widget primitif. Contoh lengkap: `web/themes/minimal/` (tanpa JS).
 - Widget tak dikenal → placeholder `.w-missing` bertuliskan nama widget.
 - `bind` tak dikenal → `unavailable` + tooltip alasan.
 - JSON invalid → `.layout-error`, tidak pernah crash.
-- Precedence Overview: `?layout=<file>` > `theme.json.layout` (hanya kalau
-  theme tidak punya `mount`) > `theme.mount`.
+- Precedence Overview: `?layout=<file>` > `theme.json.layout` > `theme.mount`.
 
 ### Widget primitif & props
 
@@ -149,7 +148,8 @@ menyentuh DOM; `start()` idempoten.
 - `entry` opsional (default `overview.js` bila file itu ada); tanpa `entry`
   dan dengan `layout`, core memakai jalur L2.
 - `css` opsional (default `theme.css`).
-- `layout` opsional, dipakai kalau theme tidak punya `mount`.
+- `layout` opsional; kalau ada, menang atas `mount` (precedence `?layout` >
+  `theme.json.layout` > `mount`).
 
 Server `GET /api/themes` memindai `web/themes/*/theme.json` dan meneruskan
 `entry`, `css`, `layout` (tidak menjalankan script theme).
