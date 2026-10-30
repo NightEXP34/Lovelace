@@ -108,15 +108,26 @@ Fokus UAS: P/E core pinning, titik ekuilibrium clock/power GPU, dan power govern
 
 Dua repo terpisah:
 
-**Repo A — `monitor` (webapp)**
+**Repo A — `perSOna` / Lovelace (webapp)**
 ```
-monitor/
+perSOna/
   README.md
-  core/          # collector, storage, API (generik, tanpa asumsi LLM)
-  adapters/      # strata/, (game/ untuk fork teman)
-  web/           # frontend
-  docs/
+  server/        # collector, API, adapter (generik, tanpa asumsi LLM)
+    server.py
+    metrics_meta.json
+    requirements.txt
+    fixtures/
+    deploy/      # contoh unit systemd
+  web/           # frontend (client/widgets/shell + themes)
+  tests/         # smoke test jsdom
+  docs/          # arsitektur, fork, catatan
+  logs/          # sesi rekaman
+  changelog/
 ```
+
+Catatan: struktur lama `monitor/core/` + `monitor/adapters/` diganti menjadi
+`server/` (backend) dan `web/` (frontend) supaya tidak ada dua folder `core/`.
+Adapter engine/game nanti masuk `server/adapters/`.
 
 **Repo B — `os-tuning-docs` (dokumentasi perubahan OS)**
 ```
