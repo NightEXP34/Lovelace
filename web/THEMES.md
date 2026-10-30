@@ -33,6 +33,20 @@ Isi `ctx`:
 `#status` (teks status backend). Id tab Log (`#iv`, `#lb`, `#tg`, …) dibuat
 oleh core saat tab Log dirender, bukan oleh `index.html`.
 
+## core.css — kelas & variabel fallback
+
+`web/core/core.css` dimuat **sebelum** `theme.css`. Isinya gaya netral untuk
+kontrak tab Log/widget supaya theme baru tidak wajib menulis semuanya:
+
+- kelas: `.btn` (`.btn.on`, `:disabled`), `.p`, `.tag`, `.bar-top`, `.stack`,
+  `.ctl`, `.hint` (`.hint.warn`), `.empty`, `.grow`, `.sub`, `.fld`, `.timer`,
+  `table/th/td`, `tr.grp`, `svg.sp`, `svg path.l`, dan kelas widget `.w-*`.
+- variabel token: `--a`, `--b`, `--ok`, `--warn`, `--bad`, `--bg`, `--surface`,
+  `--line`, `--ink`, `--mute` (masing-masing dipakai lewat `var(--x, fallback)`).
+
+Theme cukup meng-override token di `theme.css`; selector yang sama di
+`theme.css` menang karena dimuat belakangan.
+
 ## theme.json (di `web/themes/<nama>/theme.json`)
 
 ```json

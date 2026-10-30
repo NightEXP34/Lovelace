@@ -1,0 +1,70 @@
+/* core.css — fallback netral untuk kelas/variabel yang dipakai core (terutama
+   tab Log) dan widget primitif. Dimuat SEBELUM theme.css supaya theme tetap
+   menang untuk selector yang sama. Semua nilai memakai var(--x, fallback),
+   jadi theme yang hanya mengatur token tetap konsisten. */
+
+:root{
+  --a:#3b5bdb;--b:#e8590c;--ok:#2b9348;--warn:#e08a00;--bad:#d6336c;
+  --bg:#f2f3f5;--surface:#fff;--line:#e2e4e9;--ink:#15171c;--mute:#6a7180;
+}
+
+.btn{
+  font:inherit;color:var(--ink,#15171c);background:var(--surface,#fff);
+  border:1px solid var(--line,#e2e4e9);border-radius:6px;padding:6px 10px;cursor:pointer;
+}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.on{background:var(--bad,#d6336c);border-color:var(--bad,#d6336c);color:#fff}
+
+.p{
+  background:var(--surface,#fff);border:1px solid var(--line,#e2e4e9);
+  border-radius:10px;padding:14px;min-width:0;
+}
+.p h2{font-size:15px;margin:0 0 8px}
+
+.tag{
+  font-size:11px;padding:2px 8px;border-radius:99px;
+  border:1px solid var(--line,#e2e4e9);color:var(--mute,#6a7180);
+}
+.bar-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.stack{display:grid;gap:14px}
+.ctl{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.hint{font-size:12px;color:var(--mute,#6a7180)}
+.hint.warn{color:var(--warn,#e08a00)}
+.empty{color:var(--mute,#6a7180);text-align:center;padding:32px 0}
+.grow{flex:1}
+.sub{color:var(--mute,#6a7180);font-size:12px}
+.fld{
+  display:inline-flex;align-items:center;gap:4px;padding:0 8px;
+  background:var(--surface,#fff);border:1px solid var(--line,#e2e4e9);border-radius:6px;
+}
+.timer{font-family:var(--mono,monospace);color:var(--mute,#6a7180);min-width:52px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--mute,#6a7180);font-weight:500;padding:8px;border-bottom:1px solid var(--line,#e2e4e9)}
+td{padding:8px;border-bottom:1px solid var(--line,#e2e4e9)}
+tr.grp td{background:var(--bg,#f2f3f5);font-weight:600}
+svg.sp{width:100%;display:block}
+svg.sp.lg{height:200px;flex:none}
+svg path.l{fill:none;stroke-width:1.5;vector-effect:non-scaling-stroke}
+
+/* widget primitif (layout.json) — hanya geometri dasar, warna dari token */
+.w{min-width:0;min-height:0}
+.w-value{display:flex;flex-direction:column;justify-content:center;gap:2px}
+.w-value .w-label{font-size:12px;color:var(--mute,#6a7180)}
+.w-value .w-num{font:600 20px/1.2 var(--mono,monospace);font-variant-numeric:tabular-nums}
+.w-value .w-unit{font-size:12px;color:var(--mute,#6a7180);margin-left:4px}
+.w-value .w-na{font:400 13px/1.2 var(--mono,monospace);color:var(--mute,#6a7180);cursor:help}
+.w-bar .w-track{height:10px;background:var(--bg,#f2f3f5);border-radius:4px;overflow:hidden}
+.w-bar .w-fill{height:100%;background:var(--a,#3b5bdb);transition:width .4s}
+.w-bar .w-caption{font-size:12px;color:var(--mute,#6a7180);margin-top:4px}
+.w-spark svg{width:100%;height:100%;min-height:24px;display:block}
+.w-gauge svg{width:100%;height:100%;display:block}
+.w-gauge text{font-family:var(--mono,monospace)}
+.w-missing{
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  border:1px dashed var(--bad,#d6336c);border-radius:8px;color:var(--bad,#d6336c);
+  font-size:12px;padding:8px;
+}
+.layout-error{
+  border:1px solid var(--bad,#d6336c);border-radius:8px;padding:12px;
+  color:var(--bad,#d6336c);font-size:13px;
+}
