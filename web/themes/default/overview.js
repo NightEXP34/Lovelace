@@ -8,6 +8,8 @@ const {fx,val,esc,mmss,clamp,avg}=N.fmt;
 const mk=N.mk;
 
 let C=null, S=null, R=null;   // ctx, ctx.data, ctx.reasons — di-refresh tiap update
+let storageSel=0;             // index drive terpilih di panel Storage (bertahan antar update)
+const storageIndex=()=>Math.min(storageSel,Math.max(0,((C&&C.drives)||[]).length-1));
 const H=k=>C.hist(k);
 const dynMax=k=>C.max(k);
 
@@ -23,20 +25,24 @@ const pt=(a,r)=>[75+r*Math.cos(a*Math.PI/180),66+r*Math.sin(a*Math.PI/180)];
 const arc=(a0,a1,r)=>{const p=pt(a0,r),q=pt(a1,r);return`M${p[0].toFixed(1)},${p[1].toFixed(1)}A${r},${r} 0 ${a1-a0>180?1:0} 1 ${q[0].toFixed(1)},${q[1].toFixed(1)}`};
 function gauge(g){
   const ring=(r,w,c)=>`<path d="${arc(135,405,r)}" fill="none" style="stroke:var(--line)" stroke-width="${w}" stroke-linecap="round"/><path class="${c}" fill="none" stroke-width="${w}" stroke-linecap="round"/>`;
-  const el=mk(`<svg viewBox="0 0 150 124">${ring(54,9,"v")}${g.in?ring(41,5,"w"):""}<text x="75" y="72" text-anchor="middle" style="fill:var(--ink);font:600 24px var(--mono)"></text><text x="75" y="88" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)">${g.unit}</text><text x="75" y="118" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)">${g.label}</text></svg>`);
+  const el=mk(`<svg viewBox="0 0 150 124">${ring(54,9,"v")}${g.in?ring(41,5,"w"):""}<text x="75" y="72" text-anchor="middle" style="fill:var(--ink);font:600 24px var(--mono)"></text><text x="75" y="88" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text><text x="75" y="118" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text></svg>`);
   const v=el.querySelector(".v"), w=el.querySelector(".w"), tx=el.querySelector("text");
+  const un=el.querySelectorAll("text")[1], lb=el.querySelectorAll("text")[2];
+  const key=()=>typeof g.key==="function"?g.key():g.key;
   const draw=(p,x,m,wn,bd,r)=>{
     if(typeof x!=="number"||typeof m!=="number"||m<=0){p.setAttribute("d","");return}
     p.setAttribute("d",arc(135,135+270*clamp(x/m,.005,1),r));
     p.style.stroke=bd?"var(--bad)":wn?"var(--warn)":"var(--a)";
   };
   return{el,up:()=>{
-    const s=C.data, x=s[g.key], m=g.max?g.max():dynMax(g.key);
+    const k=key(), s=C.data, x=s[k], m=g.max?g.max():dynMax(k);
+    un.textContent=typeof g.unit==="function"?g.unit():(g.unit||"");
+    lb.textContent=typeof g.label==="function"?g.label():(g.label||"");
     draw(v,x,m,g.warn(s),g.bad(s),54);
-    tx.textContent=val(x,g.d||0); tx.setAttribute("title",x==null?(R[g.key]||"tidak ada sumber data"):"");
-    if(g.in){const ix=s[g.in.key], im=g.in.max?g.in.max():dynMax(g.in.key);
+    tx.textContent=val(x,g.d||0); tx.setAttribute("title",x==null?(R[k]||"tidak ada sumber data"):"");
+    if(g.in){const ik=typeof g.in.key==="function"?g.in.key():g.in.key, ix=s[ik], im=g.in.max?g.in.max():dynMax(ik);
       draw(w,ix,im,g.in.warn(s),g.in.bad(s),41);
-      el.querySelector("svg").setAttribute("title",ix==null?(R[g.in.key]||""):"")}
+      el.querySelector("svg").setAttribute("title",ix==null?(R[ik]||""):"")}
   }};
 }
 
@@ -45,10 +51,11 @@ const B={
  hd:b=>{const g=gauge(b.g),el=mk(`<div class="hd"><div class="gw"></div><div class="stats">${b.stats.map(s=>`<div><span>${s[1]}</span><b></b></div>`).join("")}</div></div>`);
   el.querySelector(".gw").append(g.el);const bs=[...el.querySelectorAll("b")];
   return{el,up:()=>{g.up();b.stats.forEach((s,i)=>{
-    const v=s[4]?s[4](C.data):C.data[s[0]];
+    const sk=typeof s[0]==="function"?s[0]():s[0];
+    const v=s[4]?s[4](C.data):C.data[sk];
     if(typeof v==="number"){bs[i].innerHTML=fx(v,s[3]||0)+`<small>${s[2]||""}</small>`;bs[i].removeAttribute("title")}
     else{bs[i].innerHTML=`<span class="na">${v==null?"unavailable":v}</span>`;
-      bs[i].title=v==null?(R[s[0]]||"tidak ada sumber data"):"tidak ada I/O di interval ini"}
+      bs[i].title=v==null?(R[sk]||"tidak ada sumber data"):"tidak ada I/O di interval ini"}
   })}}},
  cores:()=>{const el=mk(`<div></div>`);el.className="cores";
   return{el,up:()=>{
@@ -157,12 +164,16 @@ const B={
  dynChart:b=>{let ti=0,tabs=[];
   const el=mk(`<div class="ch"><div class="tabs"><em class="lg"></em></div><svg class="sp" viewBox="0 0 200 50" preserveAspectRatio="none"></svg></div>`);
   const sv=el.querySelector("svg"), tb=el.querySelector(".tabs"), lg=el.querySelector(".lg");
+  const sel=()=>typeof b.sel==="function"?b.sel():b.sel;
+  const sync=()=>{const w=sel(); if(typeof w==="number"&&w>=0&&w<tabs.length)ti=w;};
   const draw=()=>{
     if(!tabs.length){lg.innerHTML="";return}
+    sync();
     ti=Math.min(ti,tabs.length-1);
     spark(sv,tabs[ti].s.map(x=>x[0]),tabs[ti].s.map(x=>x[2]),tabs[ti].min);
     lg.innerHTML=tabs[ti].s.map(x=>`<span><i style="background:var(${x[2]})"></i>${x[1]}</span>`).join("");
-    [...tb.querySelectorAll("button")].forEach((x,j)=>x.setAttribute("aria-pressed",String(j===ti)));
+    const cur=tabs[ti].s[0]?tabs[ti].s[0][0]:"";
+    [...tb.querySelectorAll("button")].forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.key===cur)));
   };
   return{el,up:()=>{
     const t=b.tabs(C.data);
@@ -172,8 +183,10 @@ const B={
       tabs.forEach((x,j)=>{
         const btn=document.createElement("button");
         btn.textContent=x.n;
-        btn.onclick=()=>{ti=j;draw()};
-        tb.prepend(btn);
+        btn.dataset.key=x.s[0]?x.s[0][0]:"";
+        btn.dataset.drive=x.n;
+        btn.onclick=()=>{ti=j;draw();if(b.onSelect)b.onSelect(j)};
+        tb.insertBefore(btn,lg);   /* urutan index, bukan prepend (bug Storage) */
       });
       ti=0;
     }
@@ -257,8 +270,10 @@ const PANELS=[
   ]},
 
  {title:"Storage",sub:s=>C.drives.length?C.drives.map(d=>`${d.dev||"drive"}: ${d.name||"unavailable"}`).join(" · "):"tidak ada drive di /sys/block",
-  l:[{t:"hd",g:{key:"r0",max:()=>dynMax("r0"),warn:()=>false,bad:()=>false,unit:"MB/s read",label:"drive 0 (skala = peak terukur)"},
-     stats:[["w0","Write","MB/s",1],["i0","IOPS","IOPS"],["a0","Await","ms",1,s=>s.a0Idle?"idle":null],["u0","Util","%"]]},
+  l:[{t:"hd",g:{key:()=>"r"+storageIndex(),max:()=>dynMax("r"+storageIndex()),warn:()=>false,bad:()=>false,unit:"MB/s read",
+       label:()=>{const i=storageIndex(),d=C.drives[i]||{};return i===0?"drive 0 (skala = peak terukur)":`drive ${i} · ${d.dev||("drive"+i)} (skala = peak terukur)`}},
+     stats:[[()=>"w"+storageIndex(),"Write","MB/s",1],[()=>"i"+storageIndex(),"IOPS","IOPS"],
+       [()=>"a"+storageIndex(),"Await","ms",1,s=>s["a"+storageIndex()+"Idle"]?"idle":null],[()=>"u"+storageIndex(),"Util","%"]]},
    {t:"dynBars",items:s=>{const out=[];
      C.drives.forEach((d,i)=>{
        out.push({l:`${d.dev||("drive"+i)} read`,c:["--a"],f:x=>[x["r"+i],dynMax("r"+i)],
@@ -268,7 +283,7 @@ const PANELS=[
          tip:x=>R["d"+i+"capUsed"]||""})});
      return out}},
   ],
-  r:[{t:"dynChart",tabs:s=>C.drives.map((d,i)=>({n:d.dev||("drive"+i),min:0,
+  r:[{t:"dynChart",sel:()=>storageIndex(),onSelect:i=>{storageSel=i;refreshSubs();},tabs:s=>C.drives.map((d,i)=>({n:d.dev||("drive"+i),min:0,
         s:[["r"+i,"Read (MB/s)","--a"],["w"+i,"Write (MB/s)","--b"]]}))},
    {t:"dynTable",n:s=>C.drives.length,hdr:(s,i)=>C.drives[i].dev||("drive"+i),rows:[
      ["Model",(s,c)=>C.drives[c].name,(s,c)=>"d"+c+"model"],

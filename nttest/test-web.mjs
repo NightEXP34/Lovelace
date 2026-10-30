@@ -111,12 +111,27 @@ async function runSequence(html, wopts) {
   return { dom, caps, clicked };
 }
 
+/* UI lama punya bug urutan tab Storage (reversed); UI baru sengaja
+   memperbaikinya. Normalisasi HANYA container tab Storage agar sisa DOM tetap
+   dibandingkan identik; pemilihan drive diuji terpisah di regresi PART A. */
+function normalizeStorageTabs(html) {
+  const m = html.indexOf("<h2>Storage</h2>");
+  if (m < 0) return html;
+  const start = html.indexOf('<div class="tabs">', m);
+  if (start < 0) return html;
+  const end = html.indexOf("</div>", start);
+  if (end < 0) return html;
+  return html.slice(0, start) + '<div class="tabs">[storage-tabs]</div>' + html.slice(end + 6);
+}
+
 function compare(a, b, label) {
   if (a.theme !== b.theme) fail(`${label}: theme "${a.theme}" vs "${b.theme}"`);
   for (const k of ["nav", "root"]) {
-    if (a[k] !== b[k]) {
-      const i = firstDiff(a[k], b[k]);
-      console.error(`diff di ${k} (offset ${i}, panjang lama ${a[k].length} baru ${b[k].length})\n--- lama: ${a[k].slice(Math.max(i - 60, 0), i + 160)}\n--- baru: ${b[k].slice(Math.max(i - 60, 0), i + 160)}`);
+    const av = k === "root" ? normalizeStorageTabs(a[k]) : a[k];
+    const bv = k === "root" ? normalizeStorageTabs(b[k]) : b[k];
+    if (av !== bv) {
+      const i = firstDiff(av, bv);
+      console.error(`diff di ${k} (offset ${i}, panjang lama ${av.length} baru ${bv.length})\n--- lama: ${av.slice(Math.max(i - 60, 0), i + 160)}\n--- baru: ${bv.slice(Math.max(i - 60, 0), i + 160)}`);
       fail(`${label}: DOM ${k} tidak sama dengan sebelum refactor`);
     }
   }
@@ -215,6 +230,26 @@ ok((bindHost.querySelector(".w-na")?.getAttribute("title") || "").length > 0, "l
 const badHost = d.createElement("div");
 N.renderLayout(badHost, "{bukan json", N.ctx);
 ok(badHost.querySelector(".layout-error")?.textContent.includes("tidak valid"), "layout: JSON invalid jadi error box (tidak crash)");
+
+/* ---- PART A regression: Storage tab harus memilih drive yang diklik ---- */
+const storage = [...d.querySelectorAll(".p")].find(p => p.querySelector("h2")?.textContent === "Storage");
+const stTabs = () => [...storage.querySelectorAll(".ch .tabs button")];
+const gaugeText = () => [...storage.querySelectorAll(".gw svg text")].map(t => t.textContent).join(" ");
+ok(stTabs().map(b => b.textContent).join(",") === "nvme0n1,nvme1n1",
+  "storage: urutan tab sesuai index drive (drive 0 dulu)");
+stTabs()[1].click();
+await sleep(100);
+ok(stTabs()[1]?.getAttribute("aria-pressed") === "true", "storage: tab drive 1 aktif setelah diklik");
+ok(stTabs()[1]?.dataset.key === "r1", "storage: chart memakai series drive 1");
+ok(gaugeText().includes("drive 1"), "storage: gauge label ikut drive 1");
+await sleep(2200);
+ok(stTabs()[1]?.getAttribute("aria-pressed") === "true" && stTabs()[1]?.dataset.key === "r1",
+  "storage: pilihan drive 1 bertahan setelah 2 tick update");
+stTabs()[0].click();
+await sleep(100);
+ok(stTabs()[0]?.getAttribute("aria-pressed") === "true" && stTabs()[0]?.dataset.key === "r0",
+  "storage: klik drive 0 mengembalikan pilihan");
+ok(gaugeText().includes("drive 0"), "storage: gauge kembali ke drive 0");
 
 let customLog = false;
 N.addView("log", { label: "Log", order: 10, mount(root) {
