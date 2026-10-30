@@ -1,0 +1,8 @@
+{
+  "name": "minimal",
+  "author": "noterra fork kit",
+  "version": "1.0",
+  "palettes": ["light", "dark"],
+  "description": "Contoh L2: tanpa JavaScript, Overview disusun dari layout.json memakai widget primitif.",
+  "layout": "layout.json"
+}

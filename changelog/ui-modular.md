@@ -19,3 +19,5 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — 2.5f `themes/default/layout.json` mereproduksi Overview lewat komposit; `?layout=layout.json` lolos cek (4 panel, rail 8 baris, 0 error).
 - 2026-10-30 — 3.1 data dipisah ke `client.js` tanpa DOM (fetch/registry/ctx + `ctx.on`), shell DOM ke `shell.js`; `core.js` jadi shim loader; `index.html` memuat client→widgets→shell; test identik.
 - 2026-10-30 — 3.2 `web/examples/headless.html` memakai hanya `client.js`, menampilkan 3 nilai live (mock/nyata).
+- 2026-10-30 — 4.1 theme `web/themes/minimal/` (theme.json + layout.json + theme.css, tanpa JS) tampil di mock mode.
+- 2026-10-30 — 4.2 test-web diperluas: widget registry, layout valid/unknown widget/unknown bind/JSON invalid, override view log, theme minimal mock.

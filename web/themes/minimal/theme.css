@@ -1,0 +1,13 @@
+/* Minimal — cukup token; core.css menyediakan fallback kelas/widget. */
+:root{
+  --bg:#f7f8fa;--surface:#fff;--line:#e3e6eb;--ink:#181b20;--mute:#6b7280;
+  --a:#2563eb;--b:#ea580c;--ok:#16a34a;--warn:#ca8a04;--bad:#dc2626;
+  --r-panel:12px;--r-ctl:8px;
+}
+[data-theme="dark"]{
+  --bg:#111318;--surface:#191c22;--line:#2a2f38;--ink:#e8eaf0;--mute:#9aa1ad;
+  --a:#7aa2ff;--b:#ff9b64;--ok:#4ade80;--warn:#fbbf24;--bad:#fb7185;
+}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 system-ui,sans-serif}
+main{padding:14px}
+.w-value,.w-bar,.w-gauge,.w-spark{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-panel);padding:12px}

@@ -48,9 +48,16 @@ function installFetch(w, snapshotFn) {
   w.matchMedia = () => ({ matches: false });
   w.fetch = async (u, opts) => {
     const url = String(u), method = (opts && opts.method) || "GET";
-    if (url.includes("/api/schema")) return { ok: true, json: async () => SCHEMA };
-    if (url.includes("/api/themes")) return { ok: true, json: async () => ({ themes: [{ name: "default", palettes: ["light", "dark"] }] }) };
-    if (url.includes("/api/health")) return { ok: true, json: async () => HEALTH };
+    if (url.includes("/api/schema") || url.includes("/api/mock/schema")) return { ok: true, json: async () => SCHEMA };
+    if (url.includes("/api/themes")) return { ok: true, json: async () => ({ themes: [
+      { name: "default", entry: "overview.js", palettes: ["light", "dark"] },
+      { name: "minimal", entry: null, layout: "layout.json", palettes: ["light", "dark"] }] }) };
+    if (url.includes("/api/health") || url.includes("/api/mock/health")) return { ok: true, json: async () => HEALTH };
+    if (url.includes("themes/")) {
+      try { return { ok: true, text: async () => readFileSync(path.join(WEB, new URL(url, "http://localhost/").pathname), "utf8") }; }
+      catch { return { ok: false }; }
+    }
+    if (url.includes("/api/mock/snapshot")) return { ok: true, json: async () => base };
     if (url.includes("/api/log/start")) { recStarted = true; return { ok: true, json: async () => ({ id: SESSION.id, dir: "logs/test" }) }; }
     if (url.includes("/api/log/stop")) { recStopped = true; return { ok: true, json: async () => ({ id: SESSION.id, status: "saved", samples: 12 }) }; }
     if (url.includes("/api/log/marker")) return { ok: true, json: async () => ({ id: SESSION.id, markers: [{ ts_ms: 1, since_s: 1.5, note: "" }] }) };
@@ -67,7 +74,7 @@ function installFetch(w, snapshotFn) {
 }
 
 function domFor(html, wopts) {
-  return new JSDOM(html, { url: "http://localhost/", runScripts: "dangerously",
+  return new JSDOM(html, { url: wopts.url || "http://localhost/", runScripts: "dangerously",
     pretendToBeVisual: true, resources: wopts.resources,
     beforeParse(w) { installFetch(w, wopts.snapshot); } });
 }
@@ -183,6 +190,56 @@ ok([...d2.querySelectorAll(".p dl.tb dd")].some(x => x.classList.contains("dd-na
 ok([...altNew.dom.window.Noterra.registry.values()].filter(e => e.kind === "drive").map(e => e.dev).join(",") === "sda,sdb,sdc",
   "registry drive mengikuti hardware lain (sda,sdb,sdc)");
 altNew.dom.window.close(); altOld.dom.window.close();
+
+/* ---- Phase 4: widget registry, layout renderer, view override ---- */
+for (const w of ["value", "bar", "sparkline", "gauge"])
+  ok(N.widgets.has(w), `widget registry punya "${w}"`);
+const host = d.createElement("div");
+d.body.append(host);
+N.renderLayout(host, { cols: 12, gap: 8, items: [
+  { widget: "value", bind: "cpuT", x: 0, y: 0, w: 3, h: 1 },
+  { widget: "gauge", bind: "cpuT", x: 3, y: 0, w: 3, h: 2 }] }, N.ctx);
+ok(host.querySelector(".w-value .w-num")?.textContent.trim().length > 0, "layout valid: widget value merender angka");
+ok(host.querySelector(".w-value .w-label")?.textContent === "CPU temp", "layout valid: label dari schema");
+ok(host.querySelector(".w-gauge svg path.w-val")?.getAttribute("d"), "layout valid: gauge menggambar arc");
+
+const missingHost = d.createElement("div");
+N.renderLayout(missingHost, { items: [{ widget: "tidak-ada", x: 0, y: 0, w: 2, h: 1 }] }, N.ctx);
+ok(missingHost.querySelector(".w-missing")?.textContent.includes("tidak-ada"), "layout: widget tak dikenal jadi placeholder");
+
+const bindHost = d.createElement("div");
+N.renderLayout(bindHost, { items: [{ widget: "value", bind: "__tidak_ada__", x: 0, y: 0, w: 2, h: 1 }] }, N.ctx);
+ok(bindHost.querySelector(".w-na")?.textContent === "unavailable", "layout: bind tak dikenal tampil unavailable");
+ok((bindHost.querySelector(".w-na")?.getAttribute("title") || "").length > 0, "layout: bind tak dikenal punya tooltip alasan");
+
+const badHost = d.createElement("div");
+N.renderLayout(badHost, "{bukan json", N.ctx);
+ok(badHost.querySelector(".layout-error")?.textContent.includes("tidak valid"), "layout: JSON invalid jadi error box (tidak crash)");
+
+let customLog = false;
+N.addView("log", { label: "Log", order: 10, mount(root) {
+  customLog = true; root.innerHTML = '<div id="custom-log">log versi theme</div>';
+} });
+[...d.querySelectorAll("nav button")].find(b => b.dataset.p === "log").click();
+await sleep(80);
+ok(customLog && d.querySelector("#custom-log")?.textContent.includes("versi theme"), "theme bisa override view log");
+
+/* ---- theme minimal L2 (tanpa JavaScript) di mode mock ---- */
+const mini = domFor(SHELL, { url: "http://localhost/?theme=minimal&mock=1",
+  resources: { interceptors: [fileInterceptor] } });
+const dm = mini.window.document;
+await sleep(2200);
+const Nm = mini.window.Noterra;
+ok(Nm.themeName() === "minimal", "theme minimal dipilih dari ?theme=minimal");
+ok(dm.querySelectorAll("#root .layout > .w").length === 4, "minimal: 4 item layout dirender");
+ok(!dm.querySelector("#root .layout-error"), "minimal: tanpa error layout");
+ok(dm.querySelector(".w-value .w-num")?.textContent.trim().length > 0, "minimal: value dari snapshot mock");
+ok(dm.querySelector(".w-gauge svg path.w-val")?.getAttribute("d"), "minimal: gauge dari snapshot mock");
+ok(dm.querySelector(".w-bar .w-caption")?.textContent.length > 0, "minimal: bar + caption");
+ok(dm.querySelector(".w-spark svg path")?.getAttribute("d"), "minimal: sparkline dari ring buffer");
+ok(dm.querySelector("#status").textContent.includes("mock"), "minimal: status mock (client.js + shell.js)");
+mini.window.close();
+
 dom.window.close();
 console.log("ALL PASS");
 process.exit(0);
