@@ -397,5 +397,23 @@ function update(ctx){
 function chips(ctx){
   C=ctx; S=ctx.data; R=ctx.reasons; chipsTop();
 }
+/* ---- widget komposit untuk layout.json / theme lain ---- */
+function compositePanel(name,spec){
+  N.addWidget(name,{
+    mount(el,props,ctx){
+      C=ctx; S=ctx.data; R=ctx.reasons;
+      const p=panel(spec);
+      el.append(p.el);
+      el._up=()=>{p.us.forEach(f=>f());p.sub.textContent=(typeof spec.sub==="function"?spec.sub(C.data):spec.sub)||"";};
+      el._up();
+    },
+    update(el,props,ctx){
+      C=ctx; S=ctx.data; R=ctx.reasons;
+      if(el._up)el._up();
+    }
+  });
+}
+compositePanel("cpu-panel",PANELS[0]);
+
 window.Noterra.addTheme("default",{mount,update,chips});
 })();
