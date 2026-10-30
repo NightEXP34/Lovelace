@@ -51,4 +51,47 @@ CSV, bukan `meta.columns`, dan memakai offset `i+1` untuk nilai kolom.
 
 ## Status sub-task
 
-(belum ada; diisi sambil jalan)
+Selesai (satu commit per langkah, branch `ui-modular`):
+
+- 1.1 `Noterra.start()` idempoten; `addTheme` registrasi lalu start.
+- 1.2 `theme.json` `entry`/`css`; `/api/themes` meneruskan `entry`/`css`/`layout`.
+- 1.3 view registry `addView`, nav dinamis, `log` bawaan + bisa dioverride.
+- 1.4 objek `DOM` untuk semua id; id wajib didokumentasikan.
+- 1.5 `core.css` fallback, dimuat sebelum `theme.css`.
+- 1.6 `metrics_meta.json` + `/api/schema` + `/api/mock/schema`.
+- 1.7 parser CSV berdasarkan nama header (`HEADER_TO_KEY`, offset timestamp).
+- 2.1–2.4 `addWidget`, 4 widget primitif, `renderLayout`, pemilihan layout.
+- 2.5 `cpu-panel`, `memory-panel`, `storage-panel`, `gpu-panel`, `rail` +
+  `themes/default/layout.json`.
+- 3.1 `client.js` (tanpa DOM) + `shell.js` (DOM); `core.js` jadi shim loader;
+  `index.html` memuat `core.css` → `client.js` → `widgets.js` → `shell.js`.
+- 3.2 `web/examples/headless.html` (tiga nilai live, hanya `client.js`).
+- 4.1 `web/themes/minimal/` tanpa JavaScript.
+- 4.2 test-web diperluas (widget, layout valid/unknown/JSON invalid, minimal,
+  override `log`).
+- 4.3 `web/THEMES.md` ditulis ulang untuk L1–L4.
+- 4.4 `docs/FORKING.md`.
+- 4.5 path basi `docs/noterra-architecture.md` + todo refactor ditandai `[~]`.
+
+### Test
+
+Baseline dan akhir sama: `test-web.mjs` **ALL PASS**, `test.mjs`
+**ALL PASS**, `py_compile server.py` OK. `check-layout.mjs` (dev tool) lolos
+5 komposit. Route server diverifikasi in-process (`api_schema`, `api_themes`,
+`mock_schema`), tanpa menjalankan server/port apa pun.
+
+### Open items / catatan
+
+- `themes/default/layout.json` mereproduksi 4 panel + rail (bukan top chip
+  status/hint bottleneck; keduanya masih bagian chrome `overview.js`).
+  `?layout=layout.json` sengaja dipakai sebagai jalur demonstrasi, default
+  tetap `overview.js` agar DOM default identik.
+- Refactor backend `core/` + `adapters/` (collector vs adapter engine/game)
+  belum dikerjakan; frontend sudah siap menerima key baru lewat registry/schema.
+- `nttest/check-layout.mjs` adalah alat cek cepat tambahan; cakupan utama tetap
+  di `test-web.mjs`.
+- Root `changelog/` kosong tidak dihapus; entri ada di
+  `changelog/ui-modular.md` (keputusan §2.7).
+- `noterra/index.html` masih diserve di `/legacy` dan dipakai `test.mjs`
+  sebagai pembanding; belum dihapus (menunggu keputusan pengguna).
+- Tidak ada server yang dijalankan/dihentikan di sesi ini; tidak ada push.
