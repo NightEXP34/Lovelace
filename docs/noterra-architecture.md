@@ -3,7 +3,8 @@
 Monitor hardware Lovelace — webapp localhost yang membaca status mesin secara
 nyata. Diatur sesuai rencana Repo A di `docs/agents.md`: **core generik**
 (collector, penyimpanan, API tanpa asumsi LLM) + **adapter** yang pluggable
-(Strata untuk UAS, game untuk fork teman).
+(adapter engine di kemudian hari, mis. game untuk fork teman). Scope
+sekarang = monitoring hardware murni; adapter engine LLM dikecualikan sampai nanti.
 
 ## Komponen
 
@@ -134,36 +135,46 @@ Unavailable dengan alasan (via /api/health):
 
 ## Todolist
 
+Scope saat ini (keputusan pengguna 2026-10-30): **monitoring hardware murni
+dulu saja** — metrik engine LLM (Strata), adapter engine, dan tab hipotesis
+yang bergantung engine dikecualikan dari scope sampai nanti. Arsitektur tetap
+netral (collector/API tidak menyebut engine) supaya adapter bisa ditambahkan
+di kemudian hari tanpa mengubah core.
+
 - [x] **Persistensi sesi** di server — folder `logs/<tanggal>_<label>/` dengan
-      samples.csv + meta.json (marker, interval, status); UI Log tab baca dari API.
-- [ ] **Adapter Strata** (`adapters/strata/`): baca HTTP API Strata untuk
-      tok/s prefill/decode, slot, model termuat; metrik tak tersedia →
-      unavailable; jangan hardcode di core.
-- [x] **Verifikasi NVML** — NVML bekerja saat device node terlihat (sesi
-      harness full-access): seluruh metrik GPU terisi; di sandbox tanpa
-      `/dev/nvidia*` tetap unavailable dengan alasan.
-- [~] **RAPL**: PL1/PL2/peak constraint terisi tanpa root; daya package
-      (`energy_uj`) masih butuh root/CAP_DAC_READ_SEARCH — unit systemd
-      disiapkan, belum dijalankan (sudo diblokir di sesi harness).
+      samples.csv + meta.json v1 (marker, interval, snapshot konfigurasi);
+      UI Log tab baca dari API.
+- [x] **Verifikasi NVML** — NVML bekerja saat device node terlihat; seluruh
+      metrik GPU terisi (termasuk decode bit throttle reasons + chip UI).
 - [x] **Throttle reason CPU** — sysfs thermal_throttle (delta), pembanding
       `turbostat --no-msr --no-perf` bekerja tanpa root.
 - [x] **Thread migration** — sumber `/proc/*/task/*/sched` nr_migrations
       (schedstat mati di kernel ini); overhead diukur ~15 ms/snapshot.
 - [x] **PCIe rx/tx GPU** — NVML `GetPcieThroughput` terisi; persen link dari
       throughput ÷ theoretical(link max).
-- [ ] **Deteksi bottleneck rule-based** di UI (page-bound: PCIe/NVMe jenuh +
-      GPU idle; thermal-bound: suhu dekat batas + clock turun) — tampilkan
-      aturan yang picu, bukan hanya kesimpulan.
-- [ ] **Tab hipotesis** (hipotesis → tweak → A/B → hasil) sesuai spec 6.3.
-- [~] **Ekspor CSV ke folder log repo** — recording server-side sudah menulis
-      CSV di `logs/`; masih perlu format baseline resmi (`baseline/`, `results/`).
-- [ ] **Interval sampling configurable** untuk polling live (recording sudah
-      bisa 0.5/1/5 s).
-- [~] **Marker sesi ikut di CSV export** — marker tersimpan di meta.json;
-      kolom timestamp marker di CSV belum.
-- [~] **Uji overhead** collector — 45 ms/snapshot saat idle; masih perlu uji
-      sambil inference berjalan.
-- [ ] **Baseline resmi**: ≥3 run cold + warm saat Strata jalan, snapshot
-      konfigurasi otomatis tersimpan.
+- [x] **Layout Overview v6** — port prototype ke UI dengan data nyata
+      (gauge skala dinamis dari ring buffer, penyebut bar dari sumber nyata).
+- [ ] **Marker ikut CSV export** — kolom timestamp marker di CSV (marker
+      sudah ada di meta.json).
+- [ ] **Events persisten** — transisi status (throttle, burst NVMe) ditulis ke
+      folder sesi (mis. events.json) supaya bertahan lewat reload.
+- [ ] **Interval polling live configurable** — recording sudah 0.5/1/5 s;
+      polling live masih hard 1 s.
+- [ ] **Export JSON** — spec menyebut CSV/JSON; baru CSV.
+- [ ] **Aturan thermal-bound + clock turun** — tambahkan sinyal "SM clock
+      turun saat bit thermal aktif" ke aturan bottleneck (dari data NVML).
+- [~] **RAPL package power** — butuh root/CAP_DAC_READ_SEARCH; unit
+      `noterra/noterra.service` disiapkan, belum dijalankan (butuh aksi root di
+      host; energy_uj tidak di-chmod).
+- [ ] **Bandwidth RAM terukur** — PMU IMC ada; butuh perf diizinkan
+      (menurunkan perf_event_paranoid = parameter tuning → butuh konfirmasi
+      pengguna). Tanpa itu tetap unavailable dengan alasan.
+- [ ] **Baseline A/B tuning OS** — ≥3 run cold/warm untuk eksperimen
+      governor/EPP/pinning/readahead (protokol drop_caches), sebagai alat
+      verifikasi tweak hardware — bukan metrik engine.
 - [ ] **Refactor core/adapter** sesuai struktur Repo A (`core/`,
       `adapters/`, `web/`) saat fork teman dibutuhkan.
+
+Dikecualikan dari scope sekarang (bukan hilang permanen, hanya tidak dikerjakan):
+adapter Strata / metrik engine (tok/s, joule per token, waktu hingga warm) dan
+tab hipotesis yang memakai engine.

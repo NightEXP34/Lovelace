@@ -249,3 +249,14 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
   wrapper hilang class.
 - jsdom suite diperbarui untuk layout baru (16 assertion nyata dari fixture):
   ALL PASS. `--check` final: 76 key → 72 available, 4 unavailable, 1 idle.
+
+## 2026-10-30 — Keputusan scope: monitoring hardware murni
+
+Pengguna menyatakan project ini murni untuk monitoring hardware dulu; engine
+LLM (Strata) dikecualikan. docs/noterra-architecture.md: Todolist ditulis ulang
+(scope note + item engine dihapus ke bagian "dikecualikan"), README diberi
+catatan scope. Item tersisa yang murni hardware: marker di CSV export, events
+persisten, interval polling live, export JSON, aturan thermal-bound + clock
+turun, verifikasi RAPL via unit systemd (butuh root di host), bandwidth RAM
+(perf diblokir paranoid=4; ubah sysctl butuh konfirmasi pengguna), baseline A/B
+tuning OS cold/warm.

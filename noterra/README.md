@@ -91,3 +91,10 @@ ring buffer 60 sampel, penyebut bar dari PL1/limit NVML/theoretical link max/
 peak terukur, chip dari bit throttle NVML, events dari transisi status nyata.
 Nilai tanpa sumber tetap "unavailable"/"—" dengan tooltip alasan dari
 `/api/health`; tidak ada konstanta mock yang diizinkan bertahan.
+
+## Scope (keputusan pengguna, 2026-10-30)
+
+Project ini murni **monitoring hardware dulu saja**: semua metrik, log, dan
+analisis dari sumber OS/NVML nyata. Engine LLM (Strata) dan metrik turunan
+engine dikecualikan dari scope sekarang — arsitektur tetap netral supaya
+adapter bisa ditambahkan kemudian tanpa mengubah core.
