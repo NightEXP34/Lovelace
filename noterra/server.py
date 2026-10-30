@@ -54,6 +54,17 @@ def lines(path):
 
 GT = {1: 2.5, 2: 5.0, 3: 8.0, 4: 16.0, 5: 32.0, 6: 64.0}   # GT/s per PCIe generation
 
+def pci_display():
+    """Cari display controller (PCI class 0x03xx) di sysfs — alamat tidak
+    di-hardcode, jadi bekerja di mesin lain."""
+    for d in sorted(Path("/sys/bus/pci/devices").glob("*")):
+        try:
+            if rd(d / "class").startswith("0x03"):
+                return d
+        except Exception:
+            continue
+    return None
+
 def gen_of(speed):
     """'8.0 GT/s PCIe' -> 3 ; unknown -> None."""
     if not speed:
@@ -297,14 +308,35 @@ def cpu_throttle(dt):
 
 # ---- RAPL package power -----------------------------------------------------
 
+def powercap_base():
+    """Cari device powercap yang punya energy_uj (vendor apa pun: intel-rapl,
+    amd_rapl, dsb). Domain MMIO (`*-mmio:*`) diprioritaskan belakangan: di
+    mesin ini MSR domain (`intel-rapl:0`) adalah sumber PL1/PL2 standar; MMIO
+    bisa memuat limit yang dikelola firmware/BTP dan nilainya berbeda.
+    Return (Path, nama) atau (None, alasan)."""
+    p = Path("/sys/class/powercap")
+    if not p.exists():
+        return None, "sysfs powercap tidak ada di kernel ini"
+    cands = sorted((d for d in p.iterdir() if d.is_dir()),
+                   key=lambda d: ("mmio" in d.name, str(d)))
+    for d in cands:
+        if (d / "energy_uj").exists():
+            return d, d.name
+    return None, ("tidak ada device powercap dengan energy_uj (ditemukan: "
+                  + ", ".join(d.name for d in cands[:6]) + ")")
+
 def rapl_power(dt):
-    base = Path("/sys/class/powercap/intel-rapl:0")
+    base, info = powercap_base()
+    if base is None:
+        avail("cpuW", info)
+        return None, None
     e = rd_int(base / "energy_uj")
     mx = rd_int(base / "max_energy_range_uj")
     name = rd(base / "name")
     if e is None:
-        avail("cpuW", "RAPL energy_uj tidak terbaca tanpa privileges: file mode 0400 "
-                      "(butuh root atau CAP_DAC_READ_SEARCH; jangan chmod world-readable)")
+        avail("cpuW", f"RAPL energy_uj {base.name} tidak terbaca tanpa privileges: "
+                      "file mode 0400 (butuh root atau CAP_DAC_READ_SEARCH; "
+                      "jangan chmod world-readable)")
         return None, name
     prev = _state.get("rapl:0")
     _state["rapl:0"] = e
@@ -326,7 +358,11 @@ def rapl_limits():
     Files di mesin ini mode 0444/0644 (terbaca tanpa root); server hanya
     MEMBACA — tidak pernah menulis nilai limit (itu parameter tuning).
     """
-    base = Path("/sys/class/powercap/intel-rapl:0")
+    base, info = powercap_base()
+    if base is None:
+        for key in ("pl1", "pl2", "plpeak"):
+            avail(key, info)
+        return {}
     out = {}
     for idx, key in ((0, "pl1"), (1, "pl2"), (2, "plpeak")):
         v = rd_int(base / f"constraint_{idx}_power_limit_uw")
@@ -399,17 +435,23 @@ def perf_allowed():
     return _perf_allowed
 
 def ram_bw(dt):
-    """Bandwidth RAM terukur via PMU uncore_imc_free_running_* (butuh perf diizinkan).
+    """Bandwidth RAM terukur via PMU IMC (butuh perf diizinkan).
 
-    PMU ada di kernel ini (`/sys/bus/event_source/devices/uncore_imc_free_running_0/1`
-    = dua kanal), event data_read/data_write dengan unit MiB, scale 6.1035e-5 MiB
+    Discovery generik: `uncore_imc_free_running_*`, `uncore_imc_*`, `imc_*` di
+    event_source. Di mesin ini (Intel Raptor Lake) ada dua kanal free-running
+    dengan event data_read/data_write berunit MiB, scale 6.1035e-5 MiB
     (= 64 byte per count). Sebagai user perf diblokir kernel.perf_event_paranoid=4;
     menurunkan sysctl itu mengubah parameter tuning -> butuh konfirmasi pengguna,
     tidak dilakukan. Jalur pengukuran di bawah hanya berjalan kalau perf diizinkan.
     """
-    pmus = sorted(Path("/sys/bus/event_source/devices").glob("uncore_imc_free_running_*"))
+    pmus = sorted(set(
+        list(Path("/sys/bus/event_source/devices").glob("uncore_imc_free_running_*")) +
+        list(Path("/sys/bus/event_source/devices").glob("uncore_imc_*")) +
+        list(Path("/sys/bus/event_source/devices").glob("imc_*"))))
+    pmus = [p for p in pmus if (p / "events" / "data_read").exists()]
     if not pmus:
-        avail("ramBW", "PMU uncore_imc_free_running_* tidak ada di kernel/CPU ini")
+        avail("ramBW", "PMU IMC dengan event data_read (uncore_imc_* / imc_*) "
+                       "tidak ditemukan di kernel/CPU ini")
         return None
     if not perf_allowed():
         avail("ramBW", "PMU IMC ada tapi perf diblokir kernel.perf_event_paranoid=4 "
@@ -426,11 +468,12 @@ def ram_bw(dt):
         total = 0
         parsed = False
         for ln in r.stderr.splitlines():
-            m = re.match(r"([\d,.]+)\s*(MiB)?\s+uncore_imc_free_running_\d/data_(read|write)", ln.strip())
+            m = re.match(r"([\d,.]+)\s*(MiB)?\s+\S+/data_(read|write)", ln.strip())
             if not m:
                 continue
             v = float(m.group(1).replace(",", ""))
-            total += v * (1048576 if m.group(2) else 64)   # MiB atau raw count × 64 byte
+            # MiB per output perf, atau raw count × skala PMU (di mesin ini 64 B/count)
+            total += v * (1048576 if m.group(2) else 64)
             parsed = True
         if parsed:
             avail("ramBW", "unit PMU (MiB / 64 byte per count); GB/s desimal dari (read+write)/dt")
@@ -442,8 +485,20 @@ def ram_bw(dt):
 
 # ---- storage ----------------------------------------------------------------
 
-def drive_metrics(idx, dt):
-    dev = f"nvme{idx}n1"
+def disk_devices():
+    """Discovery drive nyata dari /sys/block (disk penuh, bukan partisi/loop).
+
+    Vendor apa pun: nvme*n1, sda/sdb, mmcblk0, vda, dst. Urutan sorted supaya
+    indeks stabil antar snapshot.
+    """
+    out = []
+    for d in sorted(Path("/sys/block").iterdir()):
+        if not d.is_dir() or d.name.startswith(("loop", "ram", "zram")):
+            continue
+        out.append(d.name)
+    return out
+
+def drive_metrics(dev, idx, dt):
     keys = {
         "r": f"r{idx}", "w": f"w{idx}", "ops": f"i{idx}", "a": f"a{idx}",
         "u": f"u{idx}", "q": f"q{idx}", "temp": f"t{idx}",
@@ -482,7 +537,12 @@ def drive_metrics(idx, dt):
     out["idle"] = out["ops"] is not None and out["ops"] == 0
 
     blk = Path("/sys/block") / dev
-    out["model"] = rd(Path("/sys/class/nvme") / f"nvme{idx}" / "model")
+    out["dev"] = dev
+    # model: NVML-style sysfs generik (/sys/block/<dev>/device/model bekerja untuk
+    # SATA/USB; untuk NVMe symlink device mengarah ke controller nvmeN)
+    out["model"] = rd(blk / "device" / "model")
+    if out["model"] is None and dev.startswith("nvme"):
+        out["model"] = rd(Path("/sys/class/nvme") / dev.rsplit("n", 1)[0] / "model")
     out["sizeGB"] = (rd_int(blk / "size") or 0) * 512 / 1e9   # decimal GB (marketing units), UI label GB
     out["sched"] = rd(blk / "queue/scheduler")
     m = re.search(r"\[(\w+)\]", out["sched"] or "")
@@ -492,8 +552,9 @@ def drive_metrics(idx, dt):
     out["readahead"] = f"{ra} KB" if ra is not None else None
 
     out["temp"] = None
+    base = dev.rsplit("n", 1)[0] if dev.startswith("nvme") else dev
     for h in Path("/sys/class/hwmon").glob("hwmon*"):
-        if rd(h / "name") == "nvme" and Path(h / "device").resolve().name == f"nvme{idx}":
+        if rd(h / "name") == "nvme" and Path(h / "device").resolve().name in (dev, base):
             t = rd_int(h / "temp1_input")
             if t is not None:
                 out["temp"] = t / 1000
@@ -534,7 +595,7 @@ def drive_metrics(idx, dt):
             if name == "a" and out["idle"]:
                 avail(k, "")                 # idle: terukur, tidak ada I/O yang di-await (reason "" = state, bukan unavailable)
             elif name == "t":
-                avail(k, "hwmon nvme drive ini tidak punya sensor suhu (temp1_input)")
+                avail(k, f"hwmon tidak menyediakan sensor suhu untuk {dev}")
             elif name == "q":
                 avail(k, "queue depth tidak terbaca dari /proc/diskstats")
             else:
@@ -548,7 +609,7 @@ def drive_metrics(idx, dt):
             elif name == "readahead":
                 avail(k, "sysfs queue/read_ahead_kb tidak terbaca")
             elif name == "model":
-                avail(k, "/sys/class/nvme tidak menyediakan nama model")
+                avail(k, f"sysfs /sys/block/{dev}/device/model tidak menyediakan nama model")
             elif name == "sizeGB":
                 avail(k, "sysfs block size tidak terbaca")
             elif name == "sched":
@@ -590,6 +651,10 @@ def gpu_metrics():
     keys = list(out)
     if NVML:
         try:
+            if pynvml.nvmlDeviceGetCount() == 0:
+                for k in keys:
+                    avail(k, "NVML aktif tapi tidak ada GPU yang dilaporkan driver")
+                return out
             h = pynvml.nvmlDeviceGetHandleByIndex(0)
         except Exception as e:
             reason = f"NVML: handle GPU gagal ({e})"
@@ -694,22 +759,27 @@ def gpu_metrics():
             avail(k, "NVML init gagal (Driver Not Loaded): /dev/nvidia* tidak terlihat; "
                      "jalankan server di host atau dengan akses device node")
     if out["pcieGen"] is None:  # sysfs fallback, works without NVML device nodes
-        pci = Path("/sys/bus/pci/devices/0000:01:00.0")
-        g = gen_of(rd(pci / "current_link_speed"))
-        w = rd_int(pci / "current_link_width")
-        out["pcieGen"], out["pcieWidth"] = g, w
-        if g is None:
-            avail("pcieGen", "NVML tidak tersedia dan sysfs PCI GPU tidak terbaca")
-        if w is None:
-            avail("pcieWidth", "NVML tidak tersedia dan sysfs PCI GPU tidak terbaca")
-        mg = gen_of(rd(pci / "max_link_speed"))
-        mw = rd_int(pci / "max_link_width")
-        if mg and mw:
-            out["pcieMaxGen"], out["pcieMaxWidth"] = mg, mw
-            out["pcieMax"] = f"Gen{mg} x{mw}"
-            avail("pcieMax")
+        pci = pci_display()
+        if pci is None:
+            avail("pcieGen", "NVML tidak tersedia dan tidak ada PCI display controller di sysfs")
+            avail("pcieWidth", "NVML tidak tersedia dan tidak ada PCI display controller di sysfs")
+            avail("pcieMax", "NVML tidak tersedia dan tidak ada PCI display controller di sysfs")
         else:
-            avail("pcieMax", "NVML gagal dan sysfs PCI max_link_speed/width tidak terbaca")
+            g = gen_of(rd(pci / "current_link_speed"))
+            w = rd_int(pci / "current_link_width")
+            out["pcieGen"], out["pcieWidth"] = g, w
+            if g is None:
+                avail("pcieGen", f"sysfs PCI {pci.name}: current_link_speed tidak terbaca")
+            if w is None:
+                avail("pcieWidth", f"sysfs PCI {pci.name}: current_link_width tidak terbaca")
+            mg = gen_of(rd(pci / "max_link_speed"))
+            mw = rd_int(pci / "max_link_width")
+            if mg and mw:
+                out["pcieMaxGen"], out["pcieMaxWidth"] = mg, mw
+                out["pcieMax"] = f"Gen{mg} x{mw}"
+                avail("pcieMax")
+            else:
+                avail("pcieMax", f"sysfs PCI {pci.name}: max_link_speed/width tidak terbaca")
     # theoretical bandwidth dari LINK MAX (link sekarang bisa turun saat idle — normal)
     if out.get("pcieMaxGen") and out.get("pcieMaxWidth"):
         enc = 0.8 if out["pcieMaxGen"] <= 2 else 128 / 130
@@ -858,18 +928,19 @@ def build_snapshot():
     thr = cpu_throttle(dt)
     mem = meminfo()
     vms = vmstat_rates(dt)
-    d0 = drive_metrics(0, dt)
-    d1 = drive_metrics(1, dt)
+    drives = [drive_metrics(dev, i, dt) for i, dev in enumerate(disk_devices())]
     gpu = gpu_metrics()
 
     def drive_view(d):
-        return {"name": d.get("model"), "sizeGB": d.get("sizeGB"), "link": d.get("link"),
-                "linkMax": d.get("linkMax"), "sched": d.get("sched"),
+        return {"dev": d.get("dev"), "name": d.get("model"), "sizeGB": d.get("sizeGB"),
+                "link": d.get("link"), "linkMax": d.get("linkMax"), "sched": d.get("sched"),
                 "readahead": d.get("readahead"), "capUsed": d.get("capUsed"),
                 "mount": d.get("mount")}
 
     snap = system_snap()
     snap["gpuName"] = gpu["name"]
+    snap["gpuPresent"] = bool(NVML) or pci_display() is not None
+    snap["drivesFound"] = len(drives)
     data = {
         "cpuT": pkg,
         "cpuW": rapl_w,
@@ -895,13 +966,19 @@ def build_snapshot():
         "ramU": mem["ramU"], "cache": mem["cache"], "avail": mem["avail"],
         "memTot": mem["memTot"], "swapU": mem["swapU"], "swapTot": mem["swapTot"],
         "majF": vms["majF"], "minF": vms["minF"], "swp": vms["swp"], "ramBW": ram_bw(dt),
-        "r0": d0.get("r"), "w0": d0.get("w"), "i0": d0.get("ops"), "a0": d0.get("a"),
-        "a0Idle": d0.get("idle"), "u0": d0.get("u"), "q0": d0.get("q"), "t0": d0.get("temp"),
-        "r1": d1.get("r"), "w1": d1.get("w"), "i1": d1.get("ops"), "a1": d1.get("a"),
-        "a1Idle": d1.get("idle"), "u1": d1.get("u"), "q1": d1.get("q"), "t1": d1.get("temp"),
-        "drives": [drive_view(d0), drive_view(d1)],
+        "drives": [drive_view(d) for d in drives],
         "snap": snap,
     }
+    # kunci laju per drive dibuat dinamis (jumlah drive dari /sys/block mesin ini)
+    for i, d in enumerate(drives):
+        data[f"r{i}"] = d.get("r")
+        data[f"w{i}"] = d.get("w")
+        data[f"i{i}"] = d.get("ops")
+        data[f"a{i}"] = d.get("a")
+        data[f"a{i}Idle"] = d.get("idle")
+        data[f"u{i}"] = d.get("u")
+        data[f"q{i}"] = d.get("q")
+        data[f"t{i}"] = d.get("temp")
     sync_health(data)
     return data
 
@@ -919,7 +996,7 @@ def health():
 LOGS = BASE.parent / "logs"
 LOG_COLS = [("cpuT", "cpu_temp_c"), ("cpuW", "cpu_power_w"), ("gT", "gpu_temp_c"),
             ("gW", "gpu_power_w"), ("vbw", "vram_bw_gbs"), ("prx", "pcie_rx_gbs"),
-            ("majF", "mem_major_faults_s"), ("r0", "nvme0_read_mbps")]
+            ("majF", "mem_major_faults_s"), ("r0", "drive0_read_mbps")]
 _sessions = {}   # id -> sesi aktif
 
 def slug(s):
