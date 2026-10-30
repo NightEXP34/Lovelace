@@ -193,7 +193,7 @@ const PANELS=[
     ["Interrupts",s=>fx(s.irq)+" /s"],
     ["Idle residency",s=>s.idle==null?"unavailable":fx(s.idle)+" % ("+s.idleName+")"],
     ["Throttle",s=>s.cpuThr]]}]},
- {title:"GPU",sub:s=>s.snap.nvml?"NVIDIA GPU (NVML)":"NVIDIA GPU (NVML unavailable)",parts:[
+ {title:"GPU",sub:s=>(s.snap.gpuName||"NVIDIA GPU")+(s.snap.nvml?"":" (NVML unavailable)"),parts:[
   {t:"stats",span:2,items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GiB",2]]},
   {t:"chart",title:"Temperature and power",series:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},
   {t:"chart",title:"Utilization",min:0,series:[["gU","GPU (%)","--a"],["gMU","Memory controller (%)","--b"]]},
@@ -217,8 +217,9 @@ const PANELS=[
     ["SM clock max",s=>s.gClkMax==null?"unavailable":s.gClkMax+" MHz"],
     ["Fan",s=>s.fan==null?"unavailable":fx(s.fan)+" %"],
     ["P-state",s=>s.pstate],
+    ["NVIDIA driver",s=>s.snap.gpuDriver],
     ["Throttle reason",s=>s.thr,warnG]]}]},
- {title:"Memory",sub:s=>(s.snap.kernel?"kernel "+s.snap.kernel:"")+((s.snap.gpuDriver)?` · NVIDIA ${s.snap.gpuDriver}`:""),parts:[
+ {title:"Memory",sub:s=>s.snap.kernel?"kernel "+s.snap.kernel:"",parts:[
   {t:"stats",span:2,items:[["ramU","Used","GiB",2],["cache","Page cache","GiB",2],["avail","Available","GiB",2],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
   {t:"chart",title:"RAM",min:0,series:[["ramU","Used (GiB)","--a"],["cache","Page cache (GiB)","--b"]]},
   {t:"chart",title:"Page faults",min:0,series:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]},

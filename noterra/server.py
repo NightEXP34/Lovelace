@@ -337,12 +337,13 @@ def throttle_names(bits):
 def gpu_metrics():
     out = dict(gT=None, gW=None, gClk=None, gMemClk=None, gClkMax=None, gU=None,
                gMU=None, vram=None, vramTot=None, gLim=None, pstate=None, thr=None,
-               fan=None, pcieGen=None, pcieWidth=None)
+               fan=None, pcieGen=None, pcieWidth=None, name=None)
     if NVML:
         try:
             h = pynvml.nvmlDeviceGetHandleByIndex(0)
             safe = lambda fn, *a: fn(*a)
             try:
+                out["name"] = safe(pynvml.nvmlDeviceGetName, h)
                 out["gT"] = safe(pynvml.nvmlDeviceGetTemperature, h, pynvml.NVML_TEMPERATURE_GPU)
                 pw = safe(pynvml.nvmlDeviceGetPowerUsage, h)
                 out["gW"] = pw / 1000 if pw else None
@@ -478,6 +479,8 @@ def snapshot():
                 "linkMax": d.get("linkMax"), "sched": d.get("sched"),
                 "readahead": d.get("readahead"), "capUsed": d.get("capUsed")}
 
+    snap = system_snap()
+    snap["gpuName"] = gpu["name"]
     return JSONResponse({
         "cpuT": pkg,
         "cpuW": rapl_w,
@@ -504,7 +507,7 @@ def snapshot():
         "r1": d1.get("r"), "w1": d1.get("w"), "i1": d1.get("ops"), "a1": d1.get("a"),
         "a1Idle": d1.get("idle"), "u1": d1.get("u"), "q1": d1.get("q"), "t1": d1.get("temp"),
         "drives": [drive_view(d0), drive_view(d1)],
-        "snap": system_snap(),
+        "snap": snap,
     })
 
 @app.get("/")

@@ -31,6 +31,10 @@ ok(bigs.filter(t => t.includes("IOPS")).length >= 2, "IOPS unit label present on
 ok(d.querySelectorAll("svg.sp path").length > 0, "sparkline paths rendered from history");
 ok(dls.some(t => t.startsWith("unavailable")), "unavailable metrics rendered honestly");
 ok(d.querySelector(".p .sub").textContent.includes("i7-13620H"), "CPU subtitle from real model name");
+const subs = [...d.querySelectorAll("#g .p .sub")].map(x => x.textContent);
+ok(subs.some(t => t.includes("RTX 4060")), "GPU subtitle from nvmlDeviceGetName");
+ok(subs.some(t => t.startsWith("kernel ")), "Memory subtitle = kernel only (driver moved to GPU panel)");
+ok(dls.some(t => t === base.snap.gpuDriver), "NVIDIA driver version rendered in GPU panel");
 d.querySelectorAll("nav button")[1].click();
 ok(d.body.textContent.includes("No logs yet"), "empty log state");
 d.querySelector("#rc").click();
