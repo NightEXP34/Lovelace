@@ -6,14 +6,14 @@ Panduan 1 halaman untuk fork (mis. optimisasi game). Tidak perlu menyentuh
 ## 0. Jalankan dulu
 
 ```bash
-cd noterra
+cd server
 .venv/bin/python server.py          # http://127.0.0.1:5130
 ```
 
-Buka `http://127.0.0.1:5130/?mock=1` — data dari
-`noterra/snapshot-sample.json`, tanpa hardware. Untuk mesin nyata buka tanpa
-`?mock=1`. UI yang diserve adalah `web/index.html` (bukan
-`noterra/index.html`; file itu UI lama di `/legacy`).
+Venv dibuat di `server/.venv` (lihat `server/requirements.txt`). Buka
+`http://127.0.0.1:5130/?mock=1` — data dari
+`server/fixtures/snapshot-sample.json`, tanpa hardware. Untuk mesin nyata buka
+tanpa `?mock=1`. UI yang diserve adalah `web/index.html`.
 
 ## 1. Copy theme contoh
 
@@ -71,7 +71,7 @@ Core tidak punya daftar metrik hardware yang hardcoded. Untuk metrik baru
 
 1. Tambahkan key ke JSON snapshot backend/adapter, mis. `"fps": 144.0`
    (atau `null` kalau memang tidak ada — jangan mengarang angka).
-2. Tambahkan entri di `noterra/metrics_meta.json`:
+2. Tambahkan entri di `server/metrics_meta.json`:
 
 ```json
 "fps": {"label":"FPS","unit":"fps","digits":0,"source":"game adapter"}
@@ -110,9 +110,8 @@ N.loadSchema().then(() => N.start());
 ## 8. Tes sebelum push
 
 ```bash
-cd nttest
-node test-web.mjs     # UI web/ + theme minimal + widget/layout
-node test.mjs         # UI lama (pembanding)
+cd tests
+npm test              # UI web/ + theme minimal + widget/layout
 ```
 
 Jangan menambah dependency baru; jsdom dan `.venv` sudah tersedia.
