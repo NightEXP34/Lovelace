@@ -1,0 +1,11 @@
+{
+  "cols": 12,
+  "gap": 10,
+  "items": [
+    {"widget": "cpu-panel", "x": 0, "y": 0, "w": 6, "h": 3},
+    {"widget": "gpu-panel", "x": 6, "y": 0, "w": 6, "h": 3},
+    {"widget": "memory-panel", "x": 0, "y": 3, "w": 6, "h": 2},
+    {"widget": "storage-panel", "x": 6, "y": 3, "w": 6, "h": 2},
+    {"widget": "rail", "x": 0, "y": 5, "w": 12, "h": 3}
+  ]
+}
