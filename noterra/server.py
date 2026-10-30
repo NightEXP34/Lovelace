@@ -205,7 +205,6 @@ def migrations(dt):
     """
     if dt is None:
         avail("migr", PENDING)
-        return None
     cur = {}
     try:
         pids = os.listdir("/proc")
@@ -241,8 +240,8 @@ def migrations(dt):
             delta += v - pv
     _mig_prev.clear()
     _mig_prev.update(cur)    # thread yang exit hilang; delta positif saja yang dihitung
-    if first:                # belum ada baseline: interval pertama tidak bisa dihitung
-        avail("migr", PENDING)
+    if first or dt is None:  # belum ada baseline / interval belum terukur
+        avail("migr", PENDING if first else "interval tidak terukur (dt=None)")
         return None
     avail("migr")
     return delta / dt
@@ -533,7 +532,7 @@ def drive_metrics(idx, dt):
     for name, k in keys.items():
         if out.get(name) is None:
             if name == "a" and out["idle"]:
-                avail(k)                       # idle: terukur, tidak ada I/O yang di-await
+                avail(k, "")                 # idle: terukur, tidak ada I/O yang di-await (reason "" = state, bukan unavailable)
             elif name == "t":
                 avail(k, "hwmon nvme drive ini tidak punya sensor suhu (temp1_input)")
             elif name == "q":
@@ -1059,9 +1058,9 @@ def run_check():
     rows = sorted(_health.items())
     width = max((len(k) for k, _ in rows), default=0)
     for k, reason in rows:
-        state = "available" if reason is None else "unavailable"
+        state = "available" if reason is None else ("idle (terukur, 0 I/O)" if reason == "" else "unavailable")
         print(f"{k:<{width}}  {state}" + (f"  — {reason}" if reason else ""))
-    bad = sum(1 for _, r in rows if r is not None)
+    bad = sum(1 for _, r in rows if r is not None and r != "")
     print(f"\n{len(rows)} metric keys: {len(rows) - bad} available, {bad} unavailable")
     return 0
 
