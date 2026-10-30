@@ -154,3 +154,14 @@ disebut di target layout dan tidak boleh dihapus, jadi ikut dipindah ke
   `/api/log/sessions` **0** (sama dengan `ls logs | wc -l`).
 - `py_compile server/server.py` OK. TestClient tidak tersedia (httpx tidak
   terpasang), jadi route dipanggil langsung sebagai fungsi Python.
+
+### B3 — test pindah ke `tests/`
+
+- `git mv nttest/package.json tests/`, `package-lock.json`, `test-web.mjs`,
+  `check-layout.mjs` (file tambahan, lihat B1); `node_modules` dipindah dengan
+  satu `mv nttest/node_modules tests/node_modules` (untracked, tidak dihapus).
+- Path di test: fixture `../server/fixtures/snapshot-sample.json`, schema
+  `../server/metrics_meta.json`; `../web` tetap (kedalaman sama).
+- `tests/package.json` scripts test = `node test-web.mjs`; `npm test` ALL PASS.
+- `nttest/test.mjs` masih ada (belum dihapus; B4) tetapi `node_modules` sudah
+  pindah, jadi jalankan dari `tests/` mulai sekarang.

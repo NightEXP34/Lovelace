@@ -9,8 +9,8 @@ import path from "path";
 
 const OLD = readFileSync("../noterra/index.html", "utf8");
 const SHELL = readFileSync("../web/index.html", "utf8");
-const base = JSON.parse(readFileSync("../noterra/snapshot-sample.json", "utf8"));
-const SCHEMA = JSON.parse(readFileSync("../noterra/metrics_meta.json", "utf8"));
+const base = JSON.parse(readFileSync("../server/fixtures/snapshot-sample.json", "utf8"));
+const SCHEMA = JSON.parse(readFileSync("../server/metrics_meta.json", "utf8"));
 const WEB = path.resolve("../web");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fail = m => { console.error("FAIL:", m); process.exit(1); };

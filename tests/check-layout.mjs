@@ -7,8 +7,8 @@ import { readFileSync } from "fs";
 import path from "path";
 
 const WEB = path.resolve("../web");
-const base = JSON.parse(readFileSync("../noterra/snapshot-sample.json", "utf8"));
-const SCHEMA = JSON.parse(readFileSync("../noterra/metrics_meta.json", "utf8"));
+const base = JSON.parse(readFileSync("../server/fixtures/snapshot-sample.json", "utf8"));
+const SCHEMA = JSON.parse(readFileSync("../server/metrics_meta.json", "utf8"));
 const names = process.argv.slice(2);
 const fileInterceptor = requestInterceptor(request => {
   const p = new URL(request.url).pathname;
