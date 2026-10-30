@@ -21,3 +21,5 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — 3.2 `web/examples/headless.html` memakai hanya `client.js`, menampilkan 3 nilai live (mock/nyata).
 - 2026-10-30 — 4.1 theme `web/themes/minimal/` (theme.json + layout.json + theme.css, tanpa JS) tampil di mock mode.
 - 2026-10-30 — 4.2 test-web diperluas: widget registry, layout valid/unknown widget/unknown bind/JSON invalid, override view log, theme minimal mock.
+- 2026-10-30 — 4.3 `web/THEMES.md` ditulis ulang: L1–L4, kontrak widget, skema layout, view, id DOM, core.css, /api/schema.
+- 2026-10-30 — 4.4 `docs/FORKING.md`: panduan fork 1 halaman (copy minimal, layout.json, mock, tambah metrik).
