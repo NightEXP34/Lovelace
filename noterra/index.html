@@ -267,11 +267,10 @@ function refreshSubs(){
   });
 }
 
-/* ---- log ---- */
+/* ---- log: sesi persisten di server, folder logs/<tanggal>_<label>/ ---- */
 const METRICS=[["cpuT","CPU temp","°C","cpu_temp_c"],["cpuW","CPU power","W","cpu_power_w"],["gT","GPU temp","°C","gpu_temp_c"],["gW","GPU power","W","gpu_power_w"],["vbw","VRAM bandwidth","GB/s","vram_bw_gbs"],["prx","PCIe receive","GB/s","pcie_rx_gbs"],["majF","Major faults","/s","mem_major_faults_s"],["r0","NVMe 0 read","MB/s","nvme0_read_mbps"]];
 const COL=["--a","--b","--ok","--warn","--bad"];
-let LOG=[],sel=new Set(),rec=null,uid=0,lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:""};
-const snapNow=()=>({...S.snap});
+let SES=[],sel=new Set(),rec=null,CSV={},lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:""};
 const f2=v=>typeof v==="number"?fx(v,Math.abs(v)<10?2:1):"unavailable";
 function st(a){
   const v=a.filter(x=>typeof x==="number");
@@ -279,78 +278,105 @@ function st(a){
   const s=[...v].sort((x,y)=>x-y),m=avg(v);
   return{mean:m,med:s[s.length>>1],p95:s[Math.floor(s.length*.95)],sd:Math.sqrt(avg(v.map(x=>(x-m)**2))),min:s[0],max:s[v.length-1]};
 }
-function toggleRec(){
+async function loadSessions(){
+  const r=await fetch("/api/log/sessions",{cache:"no-store"});
+  SES=((await r.json()).sessions||[]).filter(s=>typeof s.id==="number");
+  if(rec){const s=SES.find(x=>x.id===rec.id); if(s){rec.samples=s.samples; rec.mk=(s.markers||[]).length}}
+}
+async function toggleRec(){
   if(!rec){
     const iv=+$("#iv").value;
-    rec={id:++uid,name:$("#lb").value.trim()||"session-"+uid,tag:$("#tg").value.trim(),iv,start:Date.now(),
-      data:Object.fromEntries(METRICS.map(([k])=>[k,[]])),mk:0,snap:snapNow()};
-    rec.h=setInterval(recTick,iv*1000); recTick();
+    const r=await fetch("/api/log/start",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({label:$("#lb").value.trim(),tag:$("#tg").value.trim(),interval:iv})});
+    rec=await r.json(); rec.iv=iv; rec.samples=0; rec.mk=0;
+    sel.add(rec.id);
+    await loadSessions();
+    rec.timer=setInterval(async()=>{
+      if(!rec)return;
+      await loadSessions();
+      const t=$("#tm"); if(t)t.textContent=mmss(Math.round((rec.samples||0)*rec.iv));
+    },1000);
   } else {
-    clearInterval(rec.h);
-    if(rec.data.cpuT.length>1){const{h,...s}=rec;LOG.unshift(s);sel.add(s.id)}
-    rec=null;
+    await fetch("/api/log/stop",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({id:rec.id})});
+    clearInterval(rec.timer);
+    rec=null; await loadSessions();
   }
   renderLog();
 }
-async function recTick(){
+async function addMarker(){
   if(!rec)return;
-  try{
-    const r=await fetch("/api/snapshot",{cache:"no-store"});
-    if(!r.ok)throw new Error(r.status);
-    const d=await r.json();
-    METRICS.forEach(([k])=>{rec.data[k].push(typeof d[k]==="number"?d[k]:null)});
-    const e=$("#tm");if(e)e.textContent=mmss(Math.round(rec.data.cpuT.length*rec.iv));
-  }catch(e){/* backend offline: skip this tick */}
+  await fetch("/api/log/marker",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({id:rec.id})});
+  await loadSessions();
+  const e=$("#mk"); if(e)e.textContent="Add marker ("+(rec.mk||0)+")";
 }
-function exportCsv(){
-  LOG.filter(s=>sel.has(s.id)).forEach(s=>{
-    const head="timestamp_ms,"+METRICS.map(m=>m[3]).join(",");
-    const body=s.data.cpuT.map((_,i)=>[s.start+Math.round(i*s.iv*1000),...METRICS.map(([k])=>s.data[k][i]==null?"":s.data[k][i].toFixed(3))].join(","));
-    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([head+"\n"+body.join("\n")+"\n"],{type:"text/csv"}));a.download=s.name+".csv";a.click();
+async function loadCsv(id){
+  if(CSV[id])return CSV[id];
+  const r=await fetch(`/api/log/${id}/samples.csv`);
+  if(!r.ok)return null;
+  const txt=await r.text();
+  const d={ts:[],...Object.fromEntries(METRICS.map(([k])=>[k,[]]))};
+  txt.split("\n").slice(1).forEach(ln=>{
+    if(!ln)return;
+    const p=ln.split(",");
+    d.ts.push(+p[0]);
+    METRICS.forEach(([k,,,col],i)=>{const v=p[i+1]; d[k].push(v===undefined||v===""?null:+v)});
   });
+  CSV[id]=d; return d;
 }
-function renderLog(){
-  const root=$("#root"), ss=LOG.filter(s=>sel.has(s.id)), M=METRICS.find(x=>x[0]===lo.m), r=!!rec;
-  const rows=LOG.map(s=>`<tr><td><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.name)}"></td><td>${esc(s.name)}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td>${new Date(s.start).toLocaleString()}</td><td>${mmss(Math.round(s.data.cpuT.length*s.iv))}</td><td>${s.iv} s</td><td>${s.data.cpuT.length}</td><td>${s.mk}</td><td><button class="btn" data-del="${s.id}">Delete</button></td></tr>`).join("");
-  let an=`<div class="empty">Select one or more sessions above to analyze them.</div>`, arrs=[];
-  if(ss.length){
-    arrs=ss.map(s=>s.data[lo.m].slice(Math.round(lo.trim/s.iv)).filter(v=>typeof v==="number"));
-    const S2=arrs.map(st);
-    const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${x?f2(x[k]):"unavailable"}</td>`).join("")}</tr>`;
-    let tb=ss.map((s,i)=>line(`<i style="display:inline-block;width:10px;height:3px;border-radius:2px;background:var(${COL[i%5]});margin-right:8px;vertical-align:middle"></i>${esc(s.name)}`,S2[i])).join("");
-    if(lo.grp){
-      const g={};ss.forEach((s,i)=>{if(S2[i])(g[s.tag||"none"]=g[s.tag||"none"]||[]).push(S2[i])});
-      Object.entries(g).filter(([,v])=>v.length>1).forEach(([t,v])=>{const m=k=>avg(v.map(x=>x[k]));
-        tb+=line(`Average of ${v.length} runs (${esc(t)})`,{mean:m("mean"),med:m("med"),p95:m("p95"),sd:st(v.map(x=>x.mean)).sd,min:Math.min(...v.map(x=>x.min)),max:Math.max(...v.map(x=>x.max))},1)});
-    }
-    const keys=[...new Set(ss.flatMap(s=>Object.keys(s.snap)))].filter(k=>new Set(ss.map(s=>s.snap[k])).size>1);
-    const hasData=arrs.some(a=>a.length);
-    an=`<div class="ctl"><label>Metric <select id="mt">${METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
-      <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
-      <label><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label></div>
-      ${hasData?`<svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>`:""}
-      <div class="hint">${M[1]} (${M[2]}) over time. ${hasData?"Skipped samples are excluded from the chart and the statistics.":"No samples available for this metric — it may be unavailable on this machine."}</div>
-      <h3 style="margin-top:18px">Statistics</h3><table class="n"><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr>${tb}</table>
-      ${lo.grp?`<div class="hint">For average rows, std dev is the spread between runs.</div>`:""}
-      <h3 style="margin-top:18px">Configuration differences</h3>${keys.length?`<table class="n"><tr><th>Setting</th>${ss.map(s=>`<th>${esc(s.name)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${ss.map(s=>`<td>${esc(s.snap[k])}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint">All selected sessions have the same configuration.</div>`}`;
+async function exportCsv(){
+  for(const s of SES.filter(x=>sel.has(x.id))){
+    const r=await fetch(`/api/log/${s.id}/samples.csv`);
+    const t=await r.text();
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"})); a.download=s.label+".csv"; a.click();
   }
+}
+async function renderLog(){
+  await loadSessions();
+  const root=$("#root"), r=!!rec;
+  const rows=SES.map(s=>`<tr><td><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.label)}"></td><td>${esc(s.label)}${s.status==="recording"?' <span class="tag">recording</span>':""}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td>${esc(s.started_iso||String(s.start_ms))}</td><td>${mmss(Math.round(s.samples*s.iv))}</td><td>${s.iv} s</td><td>${s.samples}</td><td>${(s.markers||[]).length}</td><td><button class="btn" data-del="${s.id}">Delete</button></td></tr>`).join("");
   root.innerHTML=`<div class="bar-top"><input id="lb" placeholder="Session label" size="22" value="${esc(lo.lb)}"><input id="tg" placeholder="Tag (groups repeated runs)" size="24" value="${esc(lo.tg)}">
-    <label>Interval <select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===lo.iv?"selected":""}>${v} s</option>`).join("")}</select></label>
-    <button class="btn ${r?"on":""}" id="rc">${r?"Stop and save":"Start recording"}</button><span class="timer" id="tm">${r?mmss(Math.round(rec.data.cpuT.length*rec.iv)):"00:00"}</span>
-    <button class="btn" id="mk" ${r?"":"disabled"}>Add marker${r?" ("+rec.mk+")":""}</button><span class="grow"></span><button class="btn" id="ex" ${sel.size?"":"disabled"}>Export CSV</button></div>
-    <div class="stack"><section class="p"><h2>Sessions</h2><div class="sub">${LOG.length} recorded. Interval is saved with each session so comparisons stay fair.</div>
-    ${LOG.length?`<table><tr><th></th><th>Name</th><th>Tag</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr>${rows}</table>`:`<div class="empty">No logs yet. Start a recording to create one.</div>`}</section>
-    <section class="p"><h2>Analysis</h2><div class="sub">${ss.length} selected</div>${an}</section></div>`;
+    <label>Interval <select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===(r?rec.iv:lo.iv)?"selected":""}>${v} s</option>`).join("")}</select></label>
+    <button class="btn ${r?"on":""}" id="rc">${r?"Stop and save":"Start recording"}</button><span class="timer" id="tm">${r?mmss(Math.round((rec.samples||0)*rec.iv)):"00:00"}</span>
+    <button class="btn" id="mk" ${r?"":"disabled"}>Add marker${r?" ("+(rec.mk||0)+")":""}</button><span class="grow"></span><button class="btn" id="ex" ${sel.size?"":"disabled"}>Export CSV</button></div>
+    <div class="stack"><section class="p"><h2>Sessions</h2><div class="sub">${SES.length} tersimpan di server (folder logs/). Interval & marker ikut tersimpan di meta.json.</div>
+    ${SES.length?`<table><tr><th></th><th>Name</th><th>Tag</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr>${rows}</table>`:`<div class="empty">No logs yet. Start a recording to create one.</div>`}</section>
+    <section class="p"><h2>Analysis</h2><div class="sub" id="asub">0 selected</div><div id="an"><div class="empty">Select one or more sessions above to analyze them.</div></div></section></div>`;
   $("#lb").oninput=e=>lo.lb=e.target.value; $("#tg").oninput=e=>lo.tg=e.target.value; $("#iv").onchange=e=>lo.iv=+e.target.value;
-  $("#rc").onclick=toggleRec; $("#ex").onclick=exportCsv;
-  $("#mk").onclick=()=>{rec.mk++;$("#mk").textContent="Add marker ("+rec.mk+")"};
+  $("#rc").onclick=toggleRec; $("#ex").onclick=exportCsv; $("#mk").onclick=addMarker;
   root.querySelectorAll("[data-id]").forEach(c=>c.onchange=()=>{const id=+c.dataset.id;sel.has(id)?sel.delete(id):sel.add(id);renderLog()});
-  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const id=+b.dataset.id;LOG=LOG.filter(s=>s.id!==id);sel.delete(id);renderLog()});
-  if(ss.length){
-    $("#mt").onchange=e=>{lo.m=e.target.value;renderLog()}; $("#tr").onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $("#gp").onchange=e=>{lo.grp=e.target.checked;renderLog()};
-    const ov=$("#ov");
-    if(ov) overlay(ov,arrs,ss.map(s=>s.iv));
+  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{const id=+b.dataset.id;
+    await fetch(`/api/log/${id}`,{method:"DELETE"}); sel.delete(id); delete CSV[id]; await loadSessions(); renderLog()});
+  const ss=SES.filter(s=>sel.has(s.id));
+  $("#asub").textContent=ss.length+" selected";
+  if(!ss.length)return;
+  const cs=await Promise.all(ss.map(s=>loadCsv(s.id)));
+  const M=METRICS.find(x=>x[0]===lo.m);
+  const arrs=cs.map(c=>c?c[lo.m].slice(Math.round(lo.trim/(ss[0].iv||1))).filter(v=>typeof v==="number"):[]);
+  const S2=arrs.map(st);
+  const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${x?f2(x[k]):"unavailable"}</td>`).join("")}</tr>`;
+  let tb=ss.map((s,i)=>line(`<i style="display:inline-block;width:10px;height:3px;border-radius:2px;background:var(${COL[i%5]});margin-right:8px;vertical-align:middle"></i>${esc(s.label)}`,S2[i])).join("");
+  if(lo.grp){
+    const g={};ss.forEach((s,i)=>{if(S2[i])(g[s.tag||"none"]=g[s.tag||"none"]||[]).push(S2[i])});
+    Object.entries(g).filter(([,v])=>v.length>1).forEach(([t,v])=>{const m=k=>avg(v.map(x=>x[k]));
+      tb+=line(`Average of ${v.length} runs (${esc(t)})`,{mean:m("mean"),med:m("med"),p95:m("p95"),sd:st(v.map(x=>x.mean)).sd,min:Math.min(...v.map(x=>x.min)),max:Math.max(...v.map(x=>x.max))},1)});
   }
+  const metaKeys=["tag","iv","status"];
+  const keys=metaKeys.filter(k=>new Set(ss.map(s=>String(s[k]))).size>1);
+  const hasData=arrs.some(a=>a.length);
+  $("#an").innerHTML=`<div class="ctl"><label>Metric <select id="mt">${METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
+    <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
+    <label><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label></div>
+    ${hasData?`<svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>`:""}
+    <div class="hint">${M[1]} (${M[2]}) dari CSV server. ${hasData?"Sample yang di-skip tidak masuk chart/statistik. Marker tersimpan di meta.json.":"Tidak ada sample untuk metrik ini — mungkin unavailable di mesin ini."}</div>
+    <h3 style="margin-top:18px">Statistics</h3><table class="n"><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr>${tb}</table>
+    ${lo.grp?`<div class="hint">Untuk baris average, std dev = spread antar run.</div>`:""}
+    <h3 style="margin-top:18px">Perbedaan konfigurasi sesi</h3>${keys.length?`<table class="n"><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${ss.map(s=>`<td>${esc(String(s[k]))}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint">Semua sesi terpilih punya tag/interval/status sama.</div>`}`;
+  $("#mt").onchange=e=>{lo.m=e.target.value;renderLog()}; $("#tr").onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $("#gp").onchange=e=>{lo.grp=e.target.checked;renderLog()};
+  const ov=$("#ov");
+  if(ov) overlay(ov,arrs,ss.map(s=>s.iv));
 }
 function overlay(svg,arrs,ivs){
   const keep=arrs.map((a,i)=>[a,ivs[i]]).filter(([a])=>a.length>1);

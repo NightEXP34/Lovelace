@@ -7,15 +7,18 @@ UI renders null as "unavailable". Nothing is guessed.
 
 Run:  .venv/bin/python server.py   (serves http://127.0.0.1:5130)
 """
+import asyncio
+import json
 import os
 import re
+import shutil
 import subprocess
 import time
 from pathlib import Path
 
 import psutil
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 try:
     import pynvml  # module name provided by the nvidia-ml-py package
@@ -875,6 +878,152 @@ def snapshot():
 def health():
     """Availability of every metric key: null reason = available, string = why unavailable."""
     return JSONResponse({"ok": True, "nvml": NVML, "items": dict(_health)})
+
+# ---- recording (persistensi log di repo) -------------------------------------
+
+LOGS = BASE.parent / "logs"
+LOG_COLS = [("cpuT", "cpu_temp_c"), ("cpuW", "cpu_power_w"), ("gT", "gpu_temp_c"),
+            ("gW", "gpu_power_w"), ("vbw", "vram_bw_gbs"), ("prx", "pcie_rx_gbs"),
+            ("majF", "mem_major_faults_s"), ("r0", "nvme0_read_mbps")]
+_sessions = {}   # id -> sesi aktif
+
+def slug(s):
+    s = re.sub(r"[^a-z0-9]+", "_", (s or "").lower()).strip("_")
+    return s or "session"
+
+def _meta(sid):
+    s = _sessions[sid]
+    return {"id": sid, "label": s["label"], "tag": s["tag"], "iv": s["iv"],
+            "start_ms": s["start"], "started_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(s["start"] / 1000)),
+            "status": s["status"], "samples": s["samples"], "markers": s["markers"]}
+
+def _write_meta(sid):
+    with open(_sessions[sid]["dir"] / "meta.json", "w") as f:
+        json.dump(_meta(sid), f, indent=1)
+
+async def _record(sid):
+    s = _sessions[sid]
+    header = ",".join(c for _, c in LOG_COLS)
+    try:
+        while s["rec"]:
+            data = build_snapshot()
+            row = ",".join("" if data.get(k) is None else f"{data[k]:.3f}" for k, _ in LOG_COLS)
+            with open(s["csv"], "a") as f:
+                f.write(f"{int(time.time() * 1000)},{row}\n")
+            s["samples"] += 1
+            _write_meta(sid)
+            await asyncio.sleep(s["iv"])
+    finally:
+        s["status"] = "saved"
+        _write_meta(sid)
+
+@app.post("/api/log/start")
+async def log_start(req: Request):
+    body = await req.json()
+    sid = int(time.time() * 1000)   # id global-ish: tidak bentrok antar restart
+    label = (body.get("label") or f"session-{sid}")[:48]
+    tag = (body.get("tag") or "")[:32]
+    iv = float(body.get("interval") or 1)
+    iv = min(max(iv, 0.5), 10)
+    start = int(time.time() * 1000)
+    name = f"{time.strftime('%Y-%m-%d_%H%M', time.localtime(start / 1000))}_{slug(label)}"
+    d = LOGS / name
+    n = 2
+    while d.exists():
+        d = LOGS / f"{name}-{n}"
+        n += 1
+    d.mkdir(parents=True)
+    csv = d / "samples.csv"
+    csv.write_text(",".join(c for _, c in LOG_COLS) + "\n")
+    _sessions[sid] = dict(id=sid, label=label, tag=tag, iv=iv, start=start,
+                          dir=d, csv=csv, markers=[], samples=0, rec=True, status="recording")
+    asyncio.create_task(_record(sid))
+    _write_meta(sid)
+    return JSONResponse({"id": sid, "dir": str(d.relative_to(BASE.parent))})
+
+@app.post("/api/log/stop")
+async def log_stop(req: Request):
+    body = await req.json()
+    sid = int(body.get("id"))
+    if sid not in _sessions:
+        return JSONResponse({"error": "session tidak ditemukan"}, status_code=404)
+    _sessions[sid]["rec"] = False
+    return JSONResponse({"id": sid, "status": _sessions[sid]["status"], "samples": _sessions[sid]["samples"]})
+
+@app.post("/api/log/marker")
+async def log_marker(req: Request):
+    body = await req.json()
+    sid = int(body.get("id"))
+    if sid not in _sessions:
+        return JSONResponse({"error": "session tidak ditemukan"}, status_code=404)
+    s = _sessions[sid]
+    s["markers"].append({"ts_ms": int(time.time() * 1000),
+                         "since_s": round(time.time() - s["start"] / 1000, 3),
+                         "note": (body.get("note") or "")[:80]})
+    _write_meta(sid)
+    return JSONResponse({"id": sid, "markers": s["markers"]})
+
+@app.get("/api/log/sessions")
+def log_sessions():
+    """Daftar semua sesi: yang aktif di memori + yang tersimpan di folder logs/."""
+    out = []
+    seen = set()
+    for sid, s in _sessions.items():
+        out.append(_meta(sid))
+        seen.add(s["dir"].name)
+    if LOGS.exists():
+        for d in sorted(LOGS.iterdir()):
+            if not d.is_dir() or d.name in seen:
+                continue
+            try:
+                m = json.loads((d / "meta.json").read_text())
+                m["dir"] = d.name
+                out.append(m)
+            except Exception:
+                continue
+    out.sort(key=lambda m: -m.get("start_ms", 0))
+    return JSONResponse({"sessions": out})
+
+@app.get("/api/log/{sid}/samples.csv")
+def log_samples(sid: str):
+    for s in _sessions.values():
+        if str(s["id"]) == sid:
+            return PlainTextResponse(s["csv"].read_text(), media_type="text/csv")
+    if LOGS.exists():
+        for d in LOGS.iterdir():
+            meta = d / "meta.json"
+            if d.is_dir() and meta.exists():
+                try:
+                    if json.loads(meta.read_text()).get("id") == int(sid):
+                        return PlainTextResponse((d / "samples.csv").read_text(), media_type="text/csv")
+                except Exception:
+                    continue
+    return PlainTextResponse("", status_code=404)
+
+@app.delete("/api/log/{sid}")
+def log_delete(sid: str):
+    target = None
+    for s in _sessions.values():
+        if str(s["id"]) == sid:
+            if s["rec"]:
+                return JSONResponse({"error": "masih recording"}, status_code=409)
+            target = s["dir"]
+            _sessions.pop(s["id"], None)
+            break
+    if target is None and LOGS.exists():
+        for d in LOGS.iterdir():
+            meta = d / "meta.json"
+            if d.is_dir() and meta.exists():
+                try:
+                    if json.loads(meta.read_text()).get("id") == int(sid):
+                        target = d
+                        break
+                except Exception:
+                    continue
+    if target is None:
+        return JSONResponse({"error": "session tidak ditemukan"}, status_code=404)
+    shutil.rmtree(target)
+    return JSONResponse({"deleted": str(target.relative_to(BASE.parent))})
 
 @app.get("/")
 def index():

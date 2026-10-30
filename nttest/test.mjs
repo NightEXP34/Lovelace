@@ -12,8 +12,23 @@ const dom = new JSDOM(html, { url: "http://localhost/", runScripts: "dangerously
       cpuW: "RAPL energy_uj tidak terbaca tanpa privileges: file mode 0400",
       fan: "NVML NotSupported: kipas laptop diatur EC",
       pl1: "constraint RAPL belum dibaca" } };
-    window.fetch = async (u) => {
-      if (String(u).includes("/api/health")) return { ok: true, json: async () => HEALTH };
+    const CSV_TEXT = "timestamp_ms,cpu_temp_c,cpu_power_w,gpu_temp_c,gpu_power_w,vram_bw_gbs,pcie_rx_gbs,mem_major_faults_s,nvme0_read_mbps\n" +
+      Array.from({ length: 12 }, (_, i) => `1793000000000,${60 + i}.000,,61.000,15.000,0.000,0.164,10.000,0.000`).join("\n") + "\n";
+    let recStarted = false, recStopped = false;
+    const SESSION = { id: 1793000000000, label: "rec-test", tag: "none", iv: 1,
+      start_ms: Date.now(), started_iso: "2026-10-30T10:26:56+0700" };
+    window.fetch = async (u, opts) => {
+      const url = String(u), method = (opts && opts.method) || "GET";
+      if (url.includes("/api/health")) return { ok: true, json: async () => HEALTH };
+      if (url.includes("/api/log/start")) { recStarted = true; return { ok: true, json: async () => ({ id: SESSION.id, dir: "logs/test" }) }; }
+      if (url.includes("/api/log/stop")) { recStopped = true; return { ok: true, json: async () => ({ id: SESSION.id, status: "saved", samples: 12 }) }; }
+      if (url.includes("/api/log/marker")) return { ok: true, json: async () => ({ id: SESSION.id, markers: [{ ts_ms: 1, since_s: 1.5, note: "" }] }) };
+      if (url.includes("/api/log/sessions")) {
+        const s = { ...SESSION, status: recStopped ? "saved" : "recording",
+          samples: recStopped ? 12 : 3, markers: [] };
+        return { ok: true, json: async () => ({ sessions: recStarted ? [s] : [] }) };
+      }
+      if (url.includes("samples.csv")) return { ok: true, text: async () => CSV_TEXT };
       i++;
       return { ok: true, json: async () => ({ ...base, majF: (base.majF ?? 20) + i * 7, cpuU: (base.cpuU ?? 10) + i, r0: (base.r0 ?? 0) + i, gT: 60 + i, gW: 50 + i }) };
     };
@@ -65,16 +80,22 @@ if (base.pl1 != null) ok(plRow[1].textContent.includes("PL1") && plRow[1].textCo
   `PL1/PL2 row shows real constraint watts (${plRow[1].textContent})`);
 else ok(plRow[1].getAttribute("title").includes("constraint"), "PL1/PL2 row tooltip explains why unavailable");
 d.querySelectorAll("nav button")[1].click();
+await sleep(400);   // renderLog async: menunggu fetch sessions dulu
+ok(d.querySelector("#rc"), "log controls rendered");
 ok(d.body.textContent.includes("No logs yet"), "empty log state");
 d.querySelector("#rc").click();
 await sleep(2400);
+ok(d.body.textContent.includes("recording"), "recording session listed from server");
 d.querySelector("#rc").click();
-ok(d.body.textContent.includes("1 recorded"), "session saved with samples");
+await sleep(600);
+ok(d.body.textContent.includes("1 tersimpan di server"), "session persisted on server with samples");
 ok(d.body.textContent.includes("Mean"), "statistics table shown");
+ok(d.body.textContent.includes("65.5"), "mean CPU temp computed from server CSV (60..71 → mean 65.5)");
 w.URL.createObjectURL = () => "blob:fake";
 let clicked = false;
 w.HTMLAnchorElement.prototype.click = function () { clicked = true; };
 d.querySelector("#ex").click();
+await sleep(400);   // exportCsv async: fetch CSV dari server dulu
 ok(clicked, "CSV export triggered");
 console.log("ALL PASS");
 process.exit(0);

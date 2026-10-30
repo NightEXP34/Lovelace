@@ -22,8 +22,13 @@ systemctl --user enable --now noterra          # unit noterra/noterra.service:
                                                # tanpa root penuh, server tetap bind 127.0.0.1
 ```
 
-Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
-(JSON, satu snapshot penuh; laju counter dihitung dari delta antar panggilan).
+Server melayani frontend di `/`, polled endpoint `GET /api/snapshot`
+(JSON, satu snapshot penuh; laju counter dihitung dari delta antar panggilan),
+`GET /api/health` (alasan tiap metrik yang unavailable), dan endpoint recording
+`POST /api/log/start|stop|marker`, `GET /api/log/sessions`,
+`GET /api/log/<id>/samples.csv`, `DELETE /api/log/<id>`. Recording persisten di
+repo: `logs/<tanggal>_<label>/samples.csv` + `meta.json` (label, tag, interval,
+marker, status).
 
 ## Sumber metrik
 
