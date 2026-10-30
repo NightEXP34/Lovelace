@@ -18,6 +18,11 @@ ok(d.querySelectorAll(".pc .cr").length === base.pu.length, `P-core rows dynamic
 ok(d.querySelectorAll(".ec .cr").length === base.eu.length, `E-core rows dynamic (${base.eu.length})`);
 const dls = [...d.querySelectorAll(".p dd")].map(x => x.textContent);
 ok(dls.some(t => t === "powersave"), "governor row shows real snap value");
+const clocks = [...base.pf, ...base.ef, base.pfa].filter(v => typeof v === "number");
+ok(clocks.length > 0, `clock values present (${clocks.length})`);
+ok(clocks.every(v => v >= 0.4 && v <= 5.5), `all clocks in plausible GHz range 0.4..5.5 (max ${Math.max(...clocks).toFixed(2)})`);
+const rowGHz = [...d.querySelectorAll(".pc .cr")].map(r => r.children[1].textContent);
+ok(rowGHz.every(t => /\d+\.\d{2} GHz$/.test(t)), "core rows render GHz from kHz source (no MHz-as-GHz bug)");
 ok(d.querySelectorAll("svg.sp path").length > 0, "sparkline paths rendered from history");
 ok(dls.some(t => t.startsWith("unavailable")), "unavailable metrics rendered honestly");
 ok(d.querySelector(".p .sub").textContent.includes("i7-13620H"), "CPU subtitle from real model name");

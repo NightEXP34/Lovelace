@@ -454,7 +454,7 @@ def snapshot():
             vals = [util.get(c) for c in threads]
             u.append(sum(v for v in vals if v is not None) / len(threads) if vals and any(v is not None for v in vals) else None)
             cf = cur_f.get(threads[0])
-            f.append(cf / 1000 if cf else None)
+            f.append(cf / 1e6 if cf else None)   # kHz -> GHz
             temps = [cpu_temp.get(c) for c in threads]
             t.append(max(x for x in temps if x is not None) if temps and any(temps) else pkg)
         return u, f, t
