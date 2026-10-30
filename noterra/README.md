@@ -34,6 +34,7 @@ Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
 | PL1 / PL2 / peak power | `constraint_*_power_limit_uw` di powercap intel-rapl (terbaca tanpa root di kernel ini; server hanya membaca, tidak menulis) |
 | Utilisasi per core, clock | `/proc/stat` (delta), `/sys/.../cpufreq/scaling_cur_freq`; P vs E dari `scaling_max_freq` (≥4 GHz = P) |
 | Governor, EPP, turbo, driver | sysfs `cpufreq` + `intel_pstate` |
+| Throttle CPU | sysfs `thermal_throttle/{core,package}_throttle_count` (delta antar snapshot; pembanding: `turbostat --no-msr --no-perf`) |
 | Context switch, IRQ | `/proc/stat` ctxt, `/proc/interrupts` (delta) |
 | Thread migration | `/proc/schedstat` nb_push+nb_pull (delta; format diverifikasi, kalau tidak dikenali → unavailable) |
 | Idle residency | cpuidle sysfs state terdalam (mesin ini: **C3_ACPI**, bukan C6) |
@@ -49,7 +50,6 @@ Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
 ## Yang jujur unavailable (tidak ada sumber nyata di mesin ini)
 
 - PCIe rx/tx GPU dan VRAM bandwidth — belum punya sumber yang dibaca (NVML throughput dicoba di langkah B).
-- CPU throttle reason — belum dibaca; sumber kandidat: sysfs `thermal_throttle/*_throttle_count` (delta).
 - NVMe readahead — path sysfs salah: seharusnya `queue/read_ahead_kb` (diganti di langkah B).
 - Daya CPU tanpa root (RAPL `energy_uj` mode 0400).
 

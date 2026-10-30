@@ -217,6 +217,41 @@ def irq_rate(dt):
         avail("irq", "/proc/interrupts tidak terbaca atau tidak ada counter")
     return rate("irq", total, dt)
 
+def cpu_throttle(dt):
+    """Throttle CPU per detik dari sysfs thermal_throttle (counter kumulatif sejak boot).
+
+    package_throttle_count sama di semua thread satu package -> diambil max;
+    core_throttle_count sama di sibling (hyperthread) -> max per core id lalu dijumlah.
+    Pembanding bila tersedia: turbostat (butuh root/CAP_PERFMON).
+    """
+    core = cpu_topology()
+    per_core, pkg = {}, 0
+    seen = 0
+    for d in Path("/sys/devices/system/cpu").glob("cpu[0-9]*"):
+        i = int(d.name[3:])
+        p = rd_int(d / "thermal_throttle/package_throttle_count")
+        c = rd_int(d / "thermal_throttle/core_throttle_count")
+        if p is None and c is None:
+            continue
+        seen += 1
+        if p is not None:
+            pkg = max(pkg, p)
+        if c is not None:
+            cid = core.get(i, i)
+            per_core[cid] = max(per_core.get(cid, 0), c)
+    if seen == 0:
+        avail("cpuThr", "sysfs thermal_throttle/*_throttle_count tidak tersedia di kernel ini")
+        return None
+    dp = rate("thr:pkg", pkg, dt)
+    dc = rate("thr:core", sum(per_core.values()), dt)
+    if dp is None or dc is None:
+        avail("cpuThr", PENDING)
+        return None
+    avail("cpuThr")
+    if dp == 0 and dc == 0:
+        return "none"
+    return f"core {dc:.0f}/s, package {dp:.0f}/s"
+
 # ---- RAPL package power -----------------------------------------------------
 
 def rapl_power(dt):
@@ -622,6 +657,7 @@ def build_snapshot():
     idle_name, idle_pct = idle_residency(dt)
     rapl_w, rapl_name = rapl_power(dt)
     lims = rapl_limits()
+    thr = cpu_throttle(dt)
     mem = meminfo()
     vms = vmstat_rates(dt)
     d0 = drive_metrics(0, dt)
@@ -646,7 +682,7 @@ def build_snapshot():
         "irq": irq_rate(dt),
         "idle": idle_pct,
         "idleName": idle_name,
-        "cpuThr": None,
+        "cpuThr": thr,
         "pl1": lims.get("pl1"), "pl2": lims.get("pl2"), "plPeak": lims.get("plpeak"),
         "gT": gpu["gT"], "gW": gpu["gW"], "gClk": gpu["gClk"], "gMemClk": gpu["gMemClk"],
         "gClkMax": gpu["gClkMax"], "gU": gpu["gU"], "gMU": gpu["gMU"],
@@ -664,9 +700,6 @@ def build_snapshot():
         "drives": [drive_view(d0), drive_view(d1)],
         "snap": snap,
     }
-    if data["cpuThr"] is None:
-        avail("cpuThr", "belum ada sumber throttle CPU yang dibaca "
-                        "(sysfs thermal_throttle/*_throttle_count belum diaktifkan)")
     sync_health(data)
     return data
 

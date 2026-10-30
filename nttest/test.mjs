@@ -29,7 +29,7 @@ const dls = [...d.querySelectorAll(".p dd")].map(x => x.textContent);
 ok(dls.some(t => t === "powersave"), "governor row shows real snap value");
 const clocks = [...base.pf, ...base.ef, base.pfa].filter(v => typeof v === "number");
 ok(clocks.length > 0, `clock values present (${clocks.length})`);
-ok(clocks.every(v => v >= 0.4 && v <= 5.5), `all clocks in plausible GHz range 0.4..5.5 (max ${Math.max(...clocks).toFixed(2)})`);
+ok(clocks.every(v => v >= 0.39 && v <= 5.5), `all clocks in plausible GHz range 0.39..5.5 (scaling_min=0.4 GHz, kHz rounding; max ${Math.max(...clocks).toFixed(2)})`);
 const rowGHz = [...d.querySelectorAll(".pc .cr")].map(r => r.children[1].textContent);
 ok(rowGHz.every(t => /\d+\.\d{2} GHz$/.test(t)), "core rows render GHz from kHz source (no MHz-as-GHz bug)");
 const bigs = [...d.querySelectorAll(".big div b")].map(x => x.textContent);
@@ -51,7 +51,8 @@ ok(card.querySelector("b").getAttribute("title").includes("RAPL"), "stat card to
 const dlRows = [...d.querySelectorAll(".p dl")].flatMap(dl =>
   [...dl.children].reduce((acc, el, i) => (i % 2 === 0 ? acc.push([el.textContent, dl.children[i + 1]]) : acc, acc), []));
 const thRow = dlRows.find(([t]) => t === "Throttle");
-ok(thRow && thRow[1].classList.contains("dd-na") && thRow[1].getAttribute("title").includes("throttle"),
+if (base.cpuThr != null) ok(thRow[1].textContent === base.cpuThr, `Throttle row shows real sysfs value (${base.cpuThr})`);
+else ok(thRow[1].classList.contains("dd-na") && thRow[1].getAttribute("title").includes("throttle"),
    "unavailable dl row rendered dim + tooltip reason from /api/health");
 const plRow = dlRows.find(([t]) => t === "PL1 / PL2");
 if (base.pl1 != null) ok(plRow[1].textContent.includes("PL1") && plRow[1].textContent.includes("PL2"),
