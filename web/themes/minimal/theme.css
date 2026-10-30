@@ -11,3 +11,8 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 system-ui,sans-serif}
 main{padding:14px}
 .w-value,.w-bar,.w-gauge,.w-spark{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-panel);padding:12px}
+nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line)}
+nav h1{font-size:15px;margin:0 10px 0 0}
+nav button{border:0;background:transparent;color:var(--mute);padding:6px 9px;border-radius:var(--r-ctl);cursor:pointer}
+nav button[aria-current=true]{background:var(--surface);color:var(--ink)}
+nav .foot{margin-left:auto;display:flex;gap:10px;align-items:center;color:var(--mute);font-size:12px}

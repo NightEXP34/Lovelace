@@ -30,3 +30,4 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — test: `?layout=layout.json` mengalahkan mount default, 5 item + 4 panel + rail.
 - 2026-10-30 — schema di-merge di atas default kosong (`{...META,...schema}`).
 - 2026-10-30 — semua widget primitif menampilkan `unavailable` + tooltip (sparkline & gauge diperbaiki).
+- 2026-10-30 — minimal theme: gaya nav ringkas supaya shell core.css tetap terbaca.
