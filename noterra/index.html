@@ -197,7 +197,7 @@ const PANELS=[
   {t:"cores",title:"Efficiency cores",cls:"ec",pre:"E",u:"eu",f:"ef",T:"et"},
   {t:"dl",title:"Scheduler and power",rows:[
     ["Governor",s=>s.snap.governor],["EPP",s=>s.snap.epp],["Turbo",s=>s.snap.turbo],
-    ["PL1 / PL2",()=>null,null,"pl1"],["Core pinning",s=>s.snap.pinning],["Driver",s=>s.snap.driver]]},
+    ["PL1 / PL2",s=>{const a=s.pl1==null?null:fx(s.pl1,1)+" W (PL1)";const b=s.pl2==null?null:fx(s.pl2,1)+" W (PL2)";const x=[a,b].filter(Boolean);return x.length?x.join(" / "):null},null,"pl1"],["Core pinning",s=>s.snap.pinning],["Driver",s=>s.snap.driver]]},
   {t:"dl",title:"Kernel activity",rows:[
     ["Context switches",s=>s.ctx==null?null:fx(s.ctx)+" /s",null,"ctx"],
     ["Thread migrations",s=>s.migr==null?null:fx(s.migr)+" /s",null,"migr"],

@@ -9,7 +9,17 @@ sumber data dikembalikan `null` dan UI menampilkan **unavailable**.
 ```bash
 cd noterra
 .venv/bin/python server.py        # http://127.0.0.1:5130
-sudo .venv/bin/python server.py   # hanya untuk daya CPU via RAPL (energy_uj mode 0400)
+.venv/bin/python server.py --check  # diagnosis sumber per metrik (available/unavailable + alasan)
+```
+
+Daya CPU via RAPL butuh akses baca `energy_uj` (mode 0400 — kernel membatasinya
+sejak PLATYPUS; **jangan** chmod world-readable). Dua cara yang dipakai:
+
+```bash
+sudo .venv/bin/python server.py                # root penuh (paling sederhana)
+systemctl --user enable --now noterra          # unit noterra/noterra.service:
+                                               # AmbientCapabilities=CAP_DAC_READ_SEARCH,
+                                               # tanpa root penuh, server tetap bind 127.0.0.1
 ```
 
 Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
@@ -20,7 +30,8 @@ Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
 | Metrik | Sumber |
 |---|---|
 | CPU temp (package & per core) | hwmon `coretemp` |
-| CPU power (package) | RAPL `/sys/class/powercap/intel-rapl:0` (butuh root) |
+| CPU power (package) | RAPL `/sys/class/powercap/intel-rapl:0/energy_uj` (delta µJ/s; butuh root/CAP_DAC_READ_SEARCH) |
+| PL1 / PL2 / peak power | `constraint_*_power_limit_uw` di powercap intel-rapl (terbaca tanpa root di kernel ini; server hanya membaca, tidak menulis) |
 | Utilisasi per core, clock | `/proc/stat` (delta), `/sys/.../cpufreq/scaling_cur_freq`; P vs E dari `scaling_max_freq` (≥4 GHz = P) |
 | Governor, EPP, turbo, driver | sysfs `cpufreq` + `intel_pstate` |
 | Context switch, IRQ | `/proc/stat` ctxt, `/proc/interrupts` (delta) |
@@ -37,11 +48,10 @@ Server melayani frontend di `/` dan polled endpoint `GET /api/snapshot`
 
 ## Yang jujur unavailable (tidak ada sumber nyata di mesin ini)
 
-- PCIe rx/tx GPU dan VRAM bandwidth — tidak diekspos NVML/sysfs.
-- PL1/PL2 — tidak diekspos sysfs powercap (constraint RAPL tidak terbaca tanpa root).
-- CPU throttle reason — tidak ada sumber tanpa turbostat/perf.
-- NVMe readahead — path sysfs tidak ada di kernel ini.
-- Daya CPU tanpa root (RAPL).
+- PCIe rx/tx GPU dan VRAM bandwidth — belum punya sumber yang dibaca (NVML throughput dicoba di langkah B).
+- CPU throttle reason — belum dibaca; sumber kandidat: sysfs `thermal_throttle/*_throttle_count` (delta).
+- NVMe readahead — path sysfs salah: seharusnya `queue/read_ahead_kb` (diganti di langkah B).
+- Daya CPU tanpa root (RAPL `energy_uj` mode 0400).
 
 ## Catatan mesin ini (hasil pembacaan nyata, bukan asumsi)
 

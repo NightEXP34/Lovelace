@@ -54,7 +54,9 @@ const thRow = dlRows.find(([t]) => t === "Throttle");
 ok(thRow && thRow[1].classList.contains("dd-na") && thRow[1].getAttribute("title").includes("throttle"),
    "unavailable dl row rendered dim + tooltip reason from /api/health");
 const plRow = dlRows.find(([t]) => t === "PL1 / PL2");
-ok(plRow && plRow[1].getAttribute("title").includes("constraint"), "PL1/PL2 row tooltip explains why unavailable");
+if (base.pl1 != null) ok(plRow[1].textContent.includes("PL1") && plRow[1].textContent.includes("PL2"),
+  `PL1/PL2 row shows real constraint watts (${plRow[1].textContent})`);
+else ok(plRow[1].getAttribute("title").includes("constraint"), "PL1/PL2 row tooltip explains why unavailable");
 d.querySelectorAll("nav button")[1].click();
 ok(d.body.textContent.includes("No logs yet"), "empty log state");
 d.querySelector("#rc").click();

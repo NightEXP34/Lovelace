@@ -242,6 +242,25 @@ def rapl_power(dt):
     avail("cpuW")
     return d / dt / 1e6, name   # microjoules / s -> watts
 
+def rapl_limits():
+    """PL1/PL2/peak dari powercap constraint_*_power_limit_uw (µW -> W).
+
+    Files di mesin ini mode 0444/0644 (terbaca tanpa root); server hanya
+    MEMBACA — tidak pernah menulis nilai limit (itu parameter tuning).
+    """
+    base = Path("/sys/class/powercap/intel-rapl:0")
+    out = {}
+    for idx, key in ((0, "pl1"), (1, "pl2"), (2, "plpeak")):
+        v = rd_int(base / f"constraint_{idx}_power_limit_uw")
+        nm = rd(base / f"constraint_{idx}_name")
+        if v is None or v <= 0:
+            avail(key, f"constraint_{idx}_power_limit_uw tidak terbaca/0 "
+                       f"(name={nm or 'n/a'})")
+            continue
+        out[key] = v / 1e6
+        avail(key)
+    return out
+
 # ---- memory -----------------------------------------------------------------
 
 def meminfo():
@@ -602,6 +621,7 @@ def build_snapshot():
 
     idle_name, idle_pct = idle_residency(dt)
     rapl_w, rapl_name = rapl_power(dt)
+    lims = rapl_limits()
     mem = meminfo()
     vms = vmstat_rates(dt)
     d0 = drive_metrics(0, dt)
@@ -627,6 +647,7 @@ def build_snapshot():
         "idle": idle_pct,
         "idleName": idle_name,
         "cpuThr": None,
+        "pl1": lims.get("pl1"), "pl2": lims.get("pl2"), "plPeak": lims.get("plpeak"),
         "gT": gpu["gT"], "gW": gpu["gW"], "gClk": gpu["gClk"], "gMemClk": gpu["gMemClk"],
         "gClkMax": gpu["gClkMax"], "gU": gpu["gU"], "gMU": gpu["gMU"],
         "vram": gpu["vram"], "vramTot": gpu["vramTot"], "gLim": gpu["gLim"],
