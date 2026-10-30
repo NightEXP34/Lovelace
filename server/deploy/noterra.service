@@ -1,6 +1,6 @@
 # Lovelace — unit monitor backend tanpa root penuh.
 #
-# Keputusan OS (lihat docs/blackbox.md): /sys/class/powercap/intel-rapl:0/energy_uj
+# Keputusan OS (lihat docs/history/blackbox.md): /sys/class/powercap/intel-rapl:0/energy_uj
 # mode 0400 (root-only) — kernel sengaja membatasinya sejak serangan PLATYPUS, jadi
 # energy_uj TIDAK di-chmod world-readable. Sebagai gantinya unit ini memberi
 # capability CAP_DAC_READ_SEARCH (bypass pemeriksaan DAC read) hanya untuk proses
@@ -16,8 +16,8 @@ Description=Lovelace noterra monitor backend (127.0.0.1:5130)
 
 [Service]
 Type=simple
-WorkingDirectory=/home/nightera/Documents/Workplace/University/perSOna/server
-ExecStart=/home/nightera/Documents/Workplace/University/perSOna/server/.venv/bin/python /home/nightera/Documents/Workplace/University/perSOna/server/server.py
+WorkingDirectory=/home/nightera/Documents/Workplace/University/perSOna
+ExecStart=/home/nightera/Documents/Workplace/University/perSOna/server/.venv/bin/python -m server.main
 AmbientCapabilities=CAP_DAC_READ_SEARCH
 CapabilityBoundingSet=CAP_DAC_READ_SEARCH
 NoNewPrivileges=true
