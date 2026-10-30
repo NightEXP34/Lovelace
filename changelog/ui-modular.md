@@ -13,3 +13,4 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — 2.1–2.4 registry widget `addWidget`, 4 widget primitif (value/bar/sparkline/gauge), `renderLayout` grid + placeholder/error, pemilihan `?layout` > theme.json.layout (tanpa mount) > mount; theme tanpa script memakai layout.json.
 - 2026-10-30 — 2.5a `cpu-panel` jadi widget komposit; cek layout lolos, test default tetap identik.
 - 2026-10-30 — 2.5b `memory-panel` jadi widget komposit; cek layout + test hijau.
+- 2026-10-30 — 2.5c `storage-panel` jadi widget komposit; cek layout + test hijau.

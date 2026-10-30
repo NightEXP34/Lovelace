@@ -415,6 +415,7 @@ function compositePanel(name,spec){
 }
 compositePanel("cpu-panel",PANELS[0]);
 compositePanel("memory-panel",PANELS[2]);
+compositePanel("storage-panel",PANELS[3]);
 
 window.Noterra.addTheme("default",{mount,update,chips});
 })();
