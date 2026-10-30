@@ -18,3 +18,4 @@ Satu baris per langkah. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — B8c `docs/FORKING.md`: run dari `server/`, fixture/schema baru, tes `cd tests && npm test`.
 - 2026-10-30 — B8d `web/THEMES.md`: schema `server/metrics_meta.json`, fixture server, test `tests/`.
 - 2026-10-30 — B8e `docs/agents.md` §8 (bukan §2): struktur perSOna/server/web/tests + catatan deviasi dari monitor/core.
+- 2026-10-30 — B9a package test dinamai `tests` (package.json + lock) agar tidak ada referensi `nttest`.
