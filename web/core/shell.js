@@ -77,7 +77,7 @@ function renderNav(){
   const vs=[...VIEWS.values()].sort((a,b)=>(a.order??100)-(b.order??100));
   nav.innerHTML=`<h1>Monitor</h1>
 ${vs.map(v=>`  <button data-p="${esc(v.id)}">${esc(v.label)}</button>`).join("\n")}
-  <div class="foot"><label>Theme <select id="theme"></select></label><span id="status">Backend: offline</span></div>
+  <div class="foot"><label>Palette <select id="theme"></select></label><span id="status">Backend: offline</span></div>
 `;
   nav.querySelectorAll("button").forEach(b=>b.onclick=()=>show(b.dataset.p));
 }
