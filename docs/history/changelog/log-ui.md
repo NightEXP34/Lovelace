@@ -18,3 +18,7 @@
   sekarang eksplisit `timestamp_ms`.
 - Parser Log memetakan kolom skalar, per-core, dan per-drive ke label/satuan;
   dropdown metrik ikut memuat metrik core/drive.
+
+- Dua mode recording: `detailed` (default; skalar + per-core + per-drive) dan
+  `minimal` (8 kolom lama). Pilihan ada di toolbar Log dan tersimpan di
+  `meta.json` (`mode`); sesi lama tanpa mode dideteksi dari jumlah kolom.

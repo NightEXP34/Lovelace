@@ -3,7 +3,8 @@
 Monitor hardware lokal (localhost): backend FastAPI membaca `/proc`, `/sys`,
 dan NVML; frontend vanilla-JS menampilkan Overview + tab Log. Data yang tidak
 tersedia tetap `null` dan ditampilkan `unavailable` dengan alasan — tidak ada
-angka karangan.
+angka karangan. Tab Log punya dua mode recording:
+**Detailed** (skalar + per-core P/E + per-drive) dan **Minimal** (8 kolom).
 
 ## Peta folder
 

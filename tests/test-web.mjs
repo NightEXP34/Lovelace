@@ -46,7 +46,7 @@ const SESSION = { id: 1793000000000, label: "rec-test", tag: "none", interval_s:
 
 /* stub fetch identik per harness: hanya /api/snapshot yang menaikkan counter i */
 function installFetch(w, snapshotFn) {
-  let i = 0, recStarted = false, recStopped = false;
+  let i = 0, recStarted = false, recStopped = false, startMode = "detailed";
   w.matchMedia = () => ({ matches: false });
   w.fetch = async (u, opts) => {
     const url = String(u), method = (opts && opts.method) || "GET";
@@ -60,11 +60,15 @@ function installFetch(w, snapshotFn) {
       catch { return { ok: false }; }
     }
     if (url.includes("/api/mock/snapshot")) return { ok: true, json: async () => base };
-    if (url.includes("/api/log/start")) { recStarted = true; return { ok: true, json: async () => ({ id: SESSION.id, dir: "logs/test" }) }; }
+    if (url.includes("/api/log/start")) {
+      recStarted = true;
+      try { startMode = JSON.parse(opts.body || "{}").mode || "detailed"; } catch { startMode = "detailed"; }
+      return { ok: true, json: async () => ({ id: SESSION.id, dir: "logs/test", mode: startMode }) };
+    }
     if (url.includes("/api/log/stop")) { recStopped = true; return { ok: true, json: async () => ({ id: SESSION.id, status: "saved", samples: 12 }) }; }
     if (url.includes("/api/log/marker")) return { ok: true, json: async () => ({ id: SESSION.id, markers: [{ ts_ms: 1, since_s: 1.5, note: "" }] }) };
     if (url.includes("/api/log/sessions")) {
-      const s = { ...SESSION, status: recStopped ? "saved" : "recording",
+      const s = { ...SESSION, mode: startMode, status: recStopped ? "saved" : "recording",
         samples: recStopped ? 12 : 3, markers: [] };
       return { ok: true, json: async () => ({ sessions: recStarted ? [s] : [] }) };
     }
@@ -222,11 +226,15 @@ ok(gaugeText().includes("drive 0"), "storage: gauge kembali ke drive 0");
 [...d.querySelectorAll("nav button")].find(b => b.dataset.p === "log").click();
 await sleep(400);
 ok(d.querySelector("#rc"), "log controls rendered");
+ok([...d.querySelectorAll("#mode option")].map(o => o.value).join(",") === "detailed,minimal",
+  "mode recording detailed/minimal tersedia");
+ok(d.querySelector("#mode").value === "detailed", "mode default detailed");
 ok(d.querySelector("#status").textContent.includes("live"), "status tetap live di tab Log");
 ok(d.body.textContent.includes("No logs yet"), "empty log state");
 d.querySelector("#rc").click();
 await sleep(2400);
 ok(d.body.textContent.includes("recording"), "recording session listed from server");
+ok(d.body.textContent.includes("Detailed"), "tipe recording tampil di tabel");
 d.querySelector("#rc").click();
 await sleep(600);
 ok(d.body.textContent.includes("1 tersimpan di server"), "session persisted on server with samples");

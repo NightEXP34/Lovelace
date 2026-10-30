@@ -36,6 +36,7 @@ def health():
 
 LOGS = BASE.parent / "logs"
 # Kolom skalar yang direkam; kolom per-core/drive ditambahkan dinamis saat start.
+MINIMAL_COLS = ["cpuT", "cpuW", "gT", "gW", "vbw", "prx", "majF", "r0"]
 LOG_SCALARS = [
     "cpuT", "cpuU", "cpuW", "pfa", "pl1", "pl2", "plPeak", "cpuThr", "idle", "idleName",
     "ctx", "migr", "irq",
@@ -49,8 +50,15 @@ CORE_ARRAYS = ("pu", "pf", "pt", "eu", "ef", "et")
 DRIVE_COLS = ("r", "w", "i", "a", "u", "q", "t")
 _sessions = {}   # id -> sesi aktif
 
-def build_log_columns(snapshot):
-    """Kolom CSV stabil untuk satu sesi: skalar + tiap core + tiap drive."""
+def build_log_columns(snapshot=None, mode="detailed"):
+    """Kolom CSV untuk satu sesi.
+
+    minimal  = 8 kolom lama (cpuT/cpuW/gT/gW/vbw/prx/majF/r0)
+    detailed = skalar penting + tiap core (P/E) + tiap drive
+    """
+    if mode == "minimal":
+        return list(MINIMAL_COLS)
+    snapshot = snapshot or {}
     cols = [k for k in LOG_SCALARS if k in snapshot]
     for arr in CORE_ARRAYS:
         for i in range(len(snapshot.get(arr) or [])):
@@ -94,6 +102,7 @@ def _meta(sid):
             "start_ms": s["start"],
             "started_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(s["start"] / 1000)),
             "status": s["status"], "samples": s["samples"], "markers": s["markers"],
+            "mode": s.get("mode", "detailed"),
             "csv": "samples.csv", "columns": ["timestamp_ms"] + s["columns"],
             "config": s["config"]}
 
@@ -125,6 +134,9 @@ async def log_start(req: Request):
     tag = (body.get("tag") or "")[:32]
     iv = float(body.get("interval") or 1)
     iv = min(max(iv, 0.5), 10)
+    mode = (body.get("mode") or "detailed").strip().lower()
+    if mode not in ("detailed", "minimal"):
+        mode = "detailed"
     start = int(time.time() * 1000)
     name = f"{time.strftime('%Y-%m-%d_%H%M', time.localtime(start / 1000))}_{slug(label)}"
     d = LOGS / name
@@ -134,14 +146,15 @@ async def log_start(req: Request):
         n += 1
     d.mkdir(parents=True)
     csv = d / "samples.csv"
-    columns = build_log_columns(build_snapshot())
+    columns = build_log_columns(build_snapshot() if mode == "detailed" else None, mode)
     csv.write_text(",".join(["timestamp_ms"] + columns) + "\n")
     _sessions[sid] = dict(id=sid, label=label, tag=tag, iv=iv, start=start,
-                          dir=d, csv=csv, markers=[], samples=0, rec=True,
+                          dir=d, csv=csv, markers=[], samples=0, rec=True, mode=mode,
                           status="recording", columns=columns, config=config_snapshot())
     _sessions[sid]["task"] = asyncio.create_task(_record(sid))
     _write_meta(sid)
-    return JSONResponse({"id": sid, "dir": str(d.relative_to(BASE.parent))})
+    return JSONResponse({"id": sid, "dir": str(d.relative_to(BASE.parent)),
+                         "mode": mode, "columns": columns})
 
 @app.post("/api/log/stop")
 async def log_stop(req: Request):

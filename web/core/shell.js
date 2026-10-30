@@ -18,7 +18,7 @@ Object.defineProperty(ctx,"recording",{get:()=>rec,configurable:true});
 /* ---- id DOM yang dipakai core; index.html wajib menyediakan empat pertama ---- */
 const DOM={
   nav:"#nav", status:"#status", theme:"#theme", root:"#root",
-  iv:"#iv", lb:"#lb", tg:"#tg", tm:"#tm", mk:"#mk", rc:"#rc", ex:"#ex",
+  iv:"#iv", lb:"#lb", tg:"#tg", tm:"#tm", mk:"#mk", rc:"#rc", ex:"#ex", mode:"#mode",
   asub:"#asub", an:"#an", mt:"#mt", tr:"#tr", gp:"#gp", ov:"#ov",
 };
 
@@ -129,7 +129,7 @@ const HEADER_TO_KEY={"cpu_temp_c":"cpuT","cpu_power_w":"cpuW","gpu_temp_c":"gT",
   "vram_bw_gbs":"vbw","pcie_rx_gbs":"prx","mem_major_faults_s":"majF","nvme0_read_mbps":"r0"};
 let LOG_METRICS=METRICS;          // [key,label,unit]; diperbarui dari header CSV
 const COL=["--a","--b","--ok","--warn","--bad"];
-let SES=[],sel=new Set(),CSV={},lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:""};
+let SES=[],sel=new Set(),CSV={},lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:"",mode:"detailed"};
 const f2=v=>typeof v==="number"?fx(v,Math.abs(v)<10?2:1):"unavailable";
 function st(a){
   const v=a.filter(x=>typeof x==="number");
@@ -145,9 +145,10 @@ async function loadSessions(){
 async function toggleRec(){
   if(!rec){
     const iv=+$(DOM.iv).value;
+    const mode=$(DOM.mode)?$(DOM.mode).value:"detailed";
     const r=await fetch("/api/log/start",{method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({label:$(DOM.lb).value.trim(),tag:$(DOM.tg).value.trim(),interval:iv})});
-    rec=await r.json(); rec.iv=iv; rec.samples=0; rec.mk=0;
+      body:JSON.stringify({label:$(DOM.lb).value.trim(),tag:$(DOM.tg).value.trim(),interval:iv,mode})});
+    rec=await r.json(); rec.iv=iv; rec.mode=mode; rec.samples=0; rec.mk=0;
     sel.add(rec.id);
     await loadSessions();
     rec.timer=setInterval(async()=>{
@@ -240,11 +241,16 @@ async function exportCsv(){
     a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"})); a.download=s.label+".csv"; a.click();
   }
 }
+function modeOf(s){
+  if(s.mode==="minimal"||s.mode==="detailed")return s.mode;
+  const n=(s.columns||[]).length;
+  return n&&n<=10?"minimal":"detailed";
+}
 async function renderLog(){
   await loadSessions();
   const root=$(DOM.root), r=!!rec;
-  const rows=SES.map(s=>`<tr class="${sel.has(s.id)?"is-sel":""}"><td class="check"><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.label)}"></td><td><b>${esc(s.label)}</b>${s.status==="recording"?' <span class="tag">recording</span>':""}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td class="mono">${esc(s.started_iso||String(s.start_ms))}</td><td class="mono">${mmss(Math.round(s.samples*(s.interval_s||1)))}</td><td>${s.interval_s} s</td><td class="mono">${s.samples}</td><td class="mono">${(s.markers||[]).length}</td><td><button class="btn ghost" data-del="${s.id}">Delete</button></td></tr>`).join("");
-  const sessions=SES.length?`<div class="log-table-wrap"><table class="log-table"><thead><tr><th class="check"></th><th>Name</th><th>Tag</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="log-empty">No logs yet. Mulai rekaman untuk membuat sesi pertama.</div>`;
+  const rows=SES.map(s=>`<tr class="${sel.has(s.id)?"is-sel":""}"><td class="check"><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.label)}"></td><td><b>${esc(s.label)}</b>${s.status==="recording"?' <span class="tag">recording</span>':""}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td><span class="tag">${modeOf(s)==="minimal"?"Minimal":"Detailed"}</span></td><td class="mono">${esc(s.started_iso||String(s.start_ms))}</td><td class="mono">${mmss(Math.round(s.samples*(s.interval_s||1)))}</td><td>${s.interval_s} s</td><td class="mono">${s.samples}</td><td class="mono">${(s.markers||[]).length}</td><td><button class="btn ghost" data-del="${s.id}">Delete</button></td></tr>`).join("");
+  const sessions=SES.length?`<div class="log-table-wrap"><table class="log-table"><thead><tr><th class="check"></th><th>Name</th><th>Tag</th><th>Mode</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="log-empty">No logs yet. Mulai rekaman untuk membuat sesi pertama.</div>`;
   root.innerHTML=`<div class="log">
     <header class="log-head">
       <div>
@@ -262,6 +268,7 @@ async function renderLog(){
       <label class="log-field"><span>Session label</span><input id="lb" placeholder="mis. cold-run" value="${esc(lo.lb)}"></label>
       <label class="log-field"><span>Tag</span><input id="tg" placeholder="grup run berulang" value="${esc(lo.tg)}"></label>
       <label class="log-field narrow"><span>Interval</span><select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===(r?rec.iv:lo.iv)?"selected":""}>${v} s</option>`).join("")}</select></label>
+      <label class="log-field narrow"><span>Mode</span><select id="mode" ${r?"disabled":""}><option value="detailed" ${((r?rec.mode:lo.mode)==="detailed")?"selected":""}>Detailed</option><option value="minimal" ${((r?rec.mode:lo.mode)==="minimal")?"selected":""}>Minimal</option></select></label>
       <button class="btn ${r?"on":""}" id="rc">${r?"Stop and save":"Start recording"}</button>
       <span class="timer" id="tm">${r?mmss(Math.round((rec.samples||0)*rec.iv)):"00:00"}</span>
       <button class="btn" id="mk" ${r?"":"disabled"}>Add marker${r?" ("+(rec.mk||0)+")":""}</button>

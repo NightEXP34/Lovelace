@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from server import main  # noqa: E402
+from server.main import build_log_columns  # noqa: E402
 
 
 class ApiSmokeTest(unittest.TestCase):
@@ -38,6 +39,16 @@ class ApiSmokeTest(unittest.TestCase):
     def test_log_sessions_is_a_list(self):
         data = json.loads(main.log_sessions().body)
         self.assertIsInstance(data["sessions"], list)
+
+    def test_recording_modes_have_expected_columns(self):
+        minimal = build_log_columns(None, "minimal")
+        self.assertEqual(minimal, ["cpuT", "cpuW", "gT", "gW", "vbw", "prx", "majF", "r0"])
+        snap = {"cpuT": 50.0, "cpuU": 10.0, "pu": [1.0, 2.0], "pf": [3.0, 4.0],
+                "eu": [5.0], "drives": [{"dev": "sda"}], "r0": 1.0, "w0": 2.0}
+        detailed = build_log_columns(snap, "detailed")
+        for col in ("pu0", "pu1", "eu0", "r0", "w0"):
+            self.assertIn(col, detailed)
+        self.assertNotIn("pu0", minimal)
 
     def test_snapshot_contract(self):
         snap = json.loads(main.snapshot().body)
