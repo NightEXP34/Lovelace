@@ -26,3 +26,4 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — 4.5 path basi di `docs/noterra-architecture.md` diperbaiki (UI di `web/`), todo refactor ditandai sebagian selesai + sisa backend adapter.
 - 2026-10-30 — precedence layout disamakan dengan brief: `?layout` > `theme.json.layout` > `mount`; docs/notes diperbarui.
 - 2026-10-30 — catatan status akhir, test vs baseline, dan open items di `docs/refactor-notes.md`.
+- 2026-10-30 — guard tab Log: kalau header CSV tidak memuat metrik terpilih, fallback ke kolom pertama (hindari crash).

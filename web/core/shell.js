@@ -228,6 +228,7 @@ async function renderLog(){
   $(DOM.asub).textContent=ss.length+" selected";
   if(!ss.length)return;
   const cs=await Promise.all(ss.map(s=>loadCsv(s.id)));
+  if(!LOG_METRICS.some(x=>x[0]===lo.m)&&LOG_METRICS.length)lo.m=LOG_METRICS[0][0];
   const M=LOG_METRICS.find(x=>x[0]===lo.m)||LOG_METRICS[0]||METRICS[0];
   const arrs=cs.map(c=>c?c[lo.m].slice(Math.round(lo.trim/(ss[0].interval_s||1))).filter(v=>typeof v==="number"):[]);
   const S2=arrs.map(st);
