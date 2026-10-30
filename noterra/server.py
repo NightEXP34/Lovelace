@@ -223,7 +223,7 @@ def meminfo():
             m[k] = int(v)
         except ValueError:
             pass
-    gb = lambda k: m.get(k, 0) / 1048576
+    gb = lambda k: m.get(k, 0) / 1048576   # meminfo is in kB; 1048576 kB = 1 GiB
     return {
         "memTot": gb("MemTotal"),
         "ramU": gb("MemTotal") - gb("MemAvailable"),
@@ -278,7 +278,7 @@ def drive_metrics(idx, dt):
 
     blk = Path("/sys/block") / dev
     out["model"] = rd(Path("/sys/class/nvme") / f"nvme{idx}" / "model")
-    out["sizeGB"] = (rd_int(blk / "size") or 0) * 512 / 1e9
+    out["sizeGB"] = (rd_int(blk / "size") or 0) * 512 / 1e9   # decimal GB (marketing units), UI label GB
     out["sched"] = rd(blk / "queue/scheduler")
     m = re.search(r"\[(\w+)\]", out["sched"] or "")
     if m:
@@ -349,7 +349,7 @@ def gpu_metrics():
                 u = safe(pynvml.nvmlDeviceGetUtilizationRates, h)
                 out["gU"], out["gMU"] = u.gpu, u.memory
                 mi = safe(pynvml.nvmlDeviceGetMemoryInfo, h)
-                out["vram"], out["vramTot"] = mi.used / 1e6, mi.total / 1e6
+                out["vram"], out["vramTot"] = mi.used / 1024**3, mi.total / 1024**3   # bytes -> GiB
                 lim = safe(pynvml.nvmlDeviceGetPowerManagementLimit, h)
                 out["gLim"] = lim / 1000 if lim else None
                 out["pstate"] = str(safe(pynvml.nvmlDeviceGetPerformanceState, h))

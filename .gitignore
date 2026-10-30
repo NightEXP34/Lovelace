@@ -9,3 +9,4 @@ node_modules/
 # editor/OS clutter
 *.swp
 .DS_Store
+.pid

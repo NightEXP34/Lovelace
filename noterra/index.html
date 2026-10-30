@@ -191,13 +191,13 @@ const PANELS=[
     ["Idle residency",s=>s.idle==null?"unavailable":fx(s.idle)+" % ("+s.idleName+")"],
     ["Throttle",s=>s.cpuThr]]}]},
  {title:"GPU",sub:s=>s.snap.nvml?"NVIDIA GPU (NVML)":"NVIDIA GPU (NVML unavailable)",parts:[
-  {t:"stats",span:2,items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GB",1]]},
+  {t:"stats",span:2,items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GiB",2]]},
   {t:"chart",title:"Temperature and power",series:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},
   {t:"chart",title:"Utilization",min:0,series:[["gU","GPU (%)","--a"],["gMU","Memory controller (%)","--b"]]},
   {t:"chart",title:"VRAM bandwidth in use",min:0,series:[["vbw","GB/s","--a"]]},
   {t:"chart",title:"PCIe traffic",min:0,series:[["prx","Receive (GB/s)","--a"],["ptx","Transmit (GB/s)","--b"]]},
   {t:"dl",title:"VRAM",rows:[
-    ["Used / total",s=>s.vram==null?"unavailable":fx(s.vram,1)+" / "+fx(s.vramTot,1)+" GB"],
+    ["Used / total",s=>s.vram==null?"unavailable":fx(s.vram,2)+" / "+fx(s.vramTot,2)+" GiB"],
     ["Memory clock",s=>s.gMemClk==null?"unavailable":s.gMemClk+" MHz"],
     ["Bus width","128-bit (spec)"],["Peak bandwidth","256 GB/s (spec)"],
     ["Bandwidth in use",s=>s.vbw==null?"unavailable":fx(s.vbw)+" GB/s"],
@@ -216,12 +216,12 @@ const PANELS=[
     ["P-state",s=>s.pstate],
     ["Throttle reason",s=>s.thr,warnG]]}]},
  {title:"Memory",sub:s=>(s.snap.kernel?"kernel "+s.snap.kernel:"")+((s.snap.gpuDriver)?` · NVIDIA ${s.snap.gpuDriver}`:""),parts:[
-  {t:"stats",span:2,items:[["ramU","Used","GB",1],["cache","Page cache","GB",1],["avail","Available","GB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
-  {t:"chart",title:"RAM",min:0,series:[["ramU","Used (GB)","--a"],["cache","Page cache (GB)","--b"]]},
+  {t:"stats",span:2,items:[["ramU","Used","GiB",2],["cache","Page cache","GiB",2],["avail","Available","GiB",2],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
+  {t:"chart",title:"RAM",min:0,series:[["ramU","Used (GiB)","--a"],["cache","Page cache (GiB)","--b"]]},
   {t:"chart",title:"Page faults",min:0,series:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]},
   {t:"dl",title:"Capacity",rows:[
-    ["Total",s=>fx(s.memTot,1)+" GB"],["Used",s=>fx(s.ramU,1)+" GB"],
-    ["Page cache",s=>fx(s.cache,1)+" GB"],["Swap",s=>fx(s.swapU,1)+" / "+fx(s.swapTot)+" GB"],
+    ["Total",s=>fx(s.memTot,2)+" GiB"],["Used",s=>fx(s.ramU,2)+" GiB"],
+    ["Page cache",s=>fx(s.cache,2)+" GiB"],["Swap",s=>fx(s.swapU,2)+" / "+fx(s.swapTot,2)+" GiB"],
     ["Transparent hugepages",s=>s.snap.thp],["Swappiness",s=>s.snap.swappiness]]},
   {t:"dl",title:"Bandwidth",rows:[
     ["Type","DDR5-5200 (spec)"],["Channels","2 (spec)"],["Theoretical peak","83.2 GB/s (spec)"],
