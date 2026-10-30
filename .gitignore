@@ -10,3 +10,6 @@ node_modules/
 *.swp
 .DS_Store
 .pid
+.venv/
+**/.venv/
+**/node_modules/
