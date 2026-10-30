@@ -1161,7 +1161,10 @@ def api_themes():
             out.append({"name": m.get("name") or f.parent.name, "author": m.get("author"),
                         "version": m.get("version"),
                         "palettes": m.get("palettes") or ["light", "dark"],
-                        "description": m.get("description")})
+                        "description": m.get("description"),
+                        "entry": m.get("entry") or "overview.js",
+                        "css": m.get("css") or "theme.css",
+                        "layout": m.get("layout")})
     return JSONResponse({"themes": out})
 
 @app.get("/api/mock/snapshot")

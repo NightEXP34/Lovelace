@@ -185,13 +185,15 @@ async function loadTheme(){
   try{const r=await fetch("/api/themes",{cache:"no-store"}); if(r.ok)themes=(await r.json()).themes||[];}catch(e){}
   const name=themeName();
   themeMeta=themes.find(t=>t.name===name)||{name:name,palettes:["light","dark"]};
+  const entry=(themeMeta&&themeMeta.entry)||"overview.js";
+  const css=(themeMeta&&themeMeta.css)||"theme.css";
   const link=document.createElement("link");
-  link.rel="stylesheet"; link.href="themes/"+encodeURIComponent(name)+"/theme.css";
+  link.rel="stylesheet"; link.href="themes/"+encodeURIComponent(name)+"/"+css;
   document.head.append(link);
   const sc=document.createElement("script");
-  sc.src="themes/"+encodeURIComponent(name)+"/overview.js";
+  sc.src="themes/"+encodeURIComponent(name)+"/"+entry;
   sc.onerror=()=>{$("#status").textContent="Theme gagal dimuat";
-    $("#root").innerHTML=`<div class="empty">Theme "${esc(name)}" tidak ditemukan di themes/${esc(name)}/overview.js. Pasang theme hanya dari sumber yang dipercaya.</div>`;};
+    $("#root").innerHTML=`<div class="empty">Theme "${esc(name)}" tidak ditemukan di themes/${esc(name)}/${esc(entry)}. Pasang theme hanya dari sumber yang dipercaya.</div>`;};
   sc.onload=()=>{if(!theme)$("#status").textContent=`Theme "${name}" tidak mendaftar lewat Noterra.addTheme`;};
   document.body.append(sc);
 }
