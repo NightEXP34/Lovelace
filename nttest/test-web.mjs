@@ -224,6 +224,17 @@ N.addView("log", { label: "Log", order: 10, mount(root) {
 await sleep(80);
 ok(customLog && d.querySelector("#custom-log")?.textContent.includes("versi theme"), "theme bisa override view log");
 
+/* ---- layout URL mengalahkan mount theme default ---- */
+const lay = domFor(SHELL, { url: "http://localhost/?layout=layout.json",
+  resources: { interceptors: [fileInterceptor] } });
+const dl = lay.window.document;
+await sleep(2200);
+ok(dl.querySelectorAll("#root .layout > .w").length === 5, "?layout=layout.json: 5 item komposit");
+ok([...dl.querySelectorAll(".p h2")].map(h => h.textContent).join(",") === "CPU,GPU,Memory,Storage",
+  "?layout=layout.json: 4 panel dari widget komposit");
+ok(dl.querySelectorAll("#tl .tr").length === tlExpect, "?layout=layout.json: rail timeline");
+lay.window.close();
+
 /* ---- theme minimal L2 (tanpa JavaScript) di mode mock ---- */
 const mini = domFor(SHELL, { url: "http://localhost/?theme=minimal&mock=1",
   resources: { interceptors: [fileInterceptor] } });
