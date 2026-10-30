@@ -336,7 +336,7 @@ async function exportCsv(){
 async function renderLog(){
   await loadSessions();
   const root=$("#root"), r=!!rec;
-  const rows=SES.map(s=>`<tr><td><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.label)}"></td><td>${esc(s.label)}${s.status==="recording"?' <span class="tag">recording</span>':""}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td>${esc(s.started_iso||String(s.start_ms))}</td><td>${mmss(Math.round(s.samples*s.iv))}</td><td>${s.iv} s</td><td>${s.samples}</td><td>${(s.markers||[]).length}</td><td><button class="btn" data-del="${s.id}">Delete</button></td></tr>`).join("");
+  const rows=SES.map(s=>`<tr><td><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.label)}"></td><td>${esc(s.label)}${s.status==="recording"?' <span class="tag">recording</span>':""}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td>${esc(s.started_iso||String(s.start_ms))}</td><td>${mmss(Math.round(s.samples*(s.interval_s||1)))}</td><td>${s.interval_s} s</td><td>${s.samples}</td><td>${(s.markers||[]).length}</td><td><button class="btn" data-del="${s.id}">Delete</button></td></tr>`).join("");
   root.innerHTML=`<div class="bar-top"><input id="lb" placeholder="Session label" size="22" value="${esc(lo.lb)}"><input id="tg" placeholder="Tag (groups repeated runs)" size="24" value="${esc(lo.tg)}">
     <label>Interval <select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===(r?rec.iv:lo.iv)?"selected":""}>${v} s</option>`).join("")}</select></label>
     <button class="btn ${r?"on":""}" id="rc">${r?"Stop and save":"Start recording"}</button><span class="timer" id="tm">${r?mmss(Math.round((rec.samples||0)*rec.iv)):"00:00"}</span>
@@ -354,7 +354,7 @@ async function renderLog(){
   if(!ss.length)return;
   const cs=await Promise.all(ss.map(s=>loadCsv(s.id)));
   const M=METRICS.find(x=>x[0]===lo.m);
-  const arrs=cs.map(c=>c?c[lo.m].slice(Math.round(lo.trim/(ss[0].iv||1))).filter(v=>typeof v==="number"):[]);
+  const arrs=cs.map(c=>c?c[lo.m].slice(Math.round(lo.trim/(ss[0].interval_s||1))).filter(v=>typeof v==="number"):[]);
   const S2=arrs.map(st);
   const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${x?f2(x[k]):"unavailable"}</td>`).join("")}</tr>`;
   let tb=ss.map((s,i)=>line(`<i style="display:inline-block;width:10px;height:3px;border-radius:2px;background:var(${COL[i%5]});margin-right:8px;vertical-align:middle"></i>${esc(s.label)}`,S2[i])).join("");
@@ -363,8 +363,9 @@ async function renderLog(){
     Object.entries(g).filter(([,v])=>v.length>1).forEach(([t,v])=>{const m=k=>avg(v.map(x=>x[k]));
       tb+=line(`Average of ${v.length} runs (${esc(t)})`,{mean:m("mean"),med:m("med"),p95:m("p95"),sd:st(v.map(x=>x.mean)).sd,min:Math.min(...v.map(x=>x.min)),max:Math.max(...v.map(x=>x.max))},1)});
   }
-  const metaKeys=["tag","iv","status"];
-  const keys=metaKeys.filter(k=>new Set(ss.map(s=>String(s[k]))).size>1);
+  const flat=o=>{const r={};const walk=(v,p)=>{if(v&&typeof v==="object"){for(const k in v)walk(v[k],p?p+"."+k:k)}else r[p]=v};walk(o,"");return r};
+  const cfgs=ss.map(s=>({...flat(s.config||{}),tag:s.tag||"none",interval_s:s.interval_s}));
+  const keys=[...new Set(cfgs.flatMap(c=>Object.keys(c)))].filter(k=>new Set(cfgs.map(c=>JSON.stringify(c[k]))).size>1);
   const hasData=arrs.some(a=>a.length);
   $("#an").innerHTML=`<div class="ctl"><label>Metric <select id="mt">${METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
     <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
@@ -373,10 +374,10 @@ async function renderLog(){
     <div class="hint">${M[1]} (${M[2]}) dari CSV server. ${hasData?"Sample yang di-skip tidak masuk chart/statistik. Marker tersimpan di meta.json.":"Tidak ada sample untuk metrik ini — mungkin unavailable di mesin ini."}</div>
     <h3 style="margin-top:18px">Statistics</h3><table class="n"><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr>${tb}</table>
     ${lo.grp?`<div class="hint">Untuk baris average, std dev = spread antar run.</div>`:""}
-    <h3 style="margin-top:18px">Perbedaan konfigurasi sesi</h3>${keys.length?`<table class="n"><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${ss.map(s=>`<td>${esc(String(s[k]))}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint">Semua sesi terpilih punya tag/interval/status sama.</div>`}`;
+    <h3 style="margin-top:18px">Perbedaan konfigurasi sesi</h3>${keys.length?`<table class="n"><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${cfgs.map(c=>`<td>${esc(String(c[k]))}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint">Semua sesi terpilih punya konfigurasi (governor/EPP/turbo/sysctl/power limit) yang sama.</div>`}`;
   $("#mt").onchange=e=>{lo.m=e.target.value;renderLog()}; $("#tr").onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $("#gp").onchange=e=>{lo.grp=e.target.checked;renderLog()};
   const ov=$("#ov");
-  if(ov) overlay(ov,arrs,ss.map(s=>s.iv));
+  if(ov) overlay(ov,arrs,ss.map(s=>s.interval_s||1));
 }
 function overlay(svg,arrs,ivs){
   const keep=arrs.map((a,i)=>[a,ivs[i]]).filter(([a])=>a.length>1);

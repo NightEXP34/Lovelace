@@ -746,6 +746,23 @@ def system_snap():
         "nvml": NVML,
     }
 
+def config_snapshot():
+    """Snapshot konfigurasi saat sesi mulai (spec 6.3): governor/EPP/turbo/power
+    limit/sysctl terkait/kernel param/versi driver. Nilai tanpa sumber = null."""
+    cfg = system_snap()
+    sysctl = {}
+    for p in ("kernel/perf_event_paranoid", "vm/swappiness", "vm/dirty_ratio",
+              "vm/dirty_background_ratio"):
+        sysctl[p.replace("/", ".")] = rd(Path("/proc/sys") / p)
+    cfg["sysctl"] = sysctl
+    cfg["kernelCmdline"] = (rd("/proc/cmdline") or "")[:200] or None
+    lim = rapl_limits()
+    cfg["powerLimits"] = {"pl1W": lim.get("pl1"), "pl2W": lim.get("pl2"), "peakW": lim.get("plpeak")}
+    cfg["gpuPowerLimitW"] = gpu_metrics()["gLim"]
+    cfg["gpuClockLock"] = None      # NVML tidak menyediakan status clock lock di mesin ini
+    cfg["strata"] = None            # adapter Strata belum ada → null (bukan angka karangan)
+    return cfg
+
 # ---- snapshot ---------------------------------------------------------------
 
 PENDING = "butuh dua snapshot (laju dihitung dari delta antar snapshot)"
@@ -893,9 +910,13 @@ def slug(s):
 
 def _meta(sid):
     s = _sessions[sid]
-    return {"id": sid, "label": s["label"], "tag": s["tag"], "iv": s["iv"],
-            "start_ms": s["start"], "started_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(s["start"] / 1000)),
-            "status": s["status"], "samples": s["samples"], "markers": s["markers"]}
+    return {"schema_version": 1, "id": sid, "label": s["label"], "tag": s["tag"],
+            "interval_s": s["iv"],
+            "start_ms": s["start"],
+            "started_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(s["start"] / 1000)),
+            "status": s["status"], "samples": s["samples"], "markers": s["markers"],
+            "csv": "samples.csv", "columns": ["timestamp_ms"] + [c for _, c in LOG_COLS],
+            "config": s["config"]}
 
 def _write_meta(sid):
     with open(_sessions[sid]["dir"] / "meta.json", "w") as f:
@@ -936,7 +957,8 @@ async def log_start(req: Request):
     csv = d / "samples.csv"
     csv.write_text(",".join(c for _, c in LOG_COLS) + "\n")
     _sessions[sid] = dict(id=sid, label=label, tag=tag, iv=iv, start=start,
-                          dir=d, csv=csv, markers=[], samples=0, rec=True, status="recording")
+                          dir=d, csv=csv, markers=[], samples=0, rec=True,
+                          status="recording", config=config_snapshot())
     asyncio.create_task(_record(sid))
     _write_meta(sid)
     return JSONResponse({"id": sid, "dir": str(d.relative_to(BASE.parent))})

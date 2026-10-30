@@ -15,8 +15,10 @@ const dom = new JSDOM(html, { url: "http://localhost/", runScripts: "dangerously
     const CSV_TEXT = "timestamp_ms,cpu_temp_c,cpu_power_w,gpu_temp_c,gpu_power_w,vram_bw_gbs,pcie_rx_gbs,mem_major_faults_s,nvme0_read_mbps\n" +
       Array.from({ length: 12 }, (_, i) => `1793000000000,${60 + i}.000,,61.000,15.000,0.000,0.164,10.000,0.000`).join("\n") + "\n";
     let recStarted = false, recStopped = false;
-    const SESSION = { id: 1793000000000, label: "rec-test", tag: "none", iv: 1,
-      start_ms: Date.now(), started_iso: "2026-10-30T10:26:56+0700" };
+    const SESSION = { id: 1793000000000, label: "rec-test", tag: "none", interval_s: 1,
+      start_ms: Date.now(), started_iso: "2026-10-30T10:26:56+0700",
+      config: { governor: "powersave", epp: "balance_performance", turbo: "on",
+        swappiness: "60", kernel: "7.0.0-38-generic", sysctl: { "vm.swappiness": "60" } } };
     window.fetch = async (u, opts) => {
       const url = String(u), method = (opts && opts.method) || "GET";
       if (url.includes("/api/health")) return { ok: true, json: async () => HEALTH };

@@ -30,14 +30,17 @@ nttest/
 NVML (nvidia-ml-py)                                  /
         ↓
 snapshot() — satu JSON utuh per panggilan; laju = delta counter antar
-panggilan (state counter di server, waktu monotonic)
+panggilan (state counter di server, waktu monotonic); collector mencatat
+alasan unavailable ke _health → exposed via /api/health dan --check
         ↓
-UI: fetch /api/snapshot tiap 1s → S (snapshot terkini) + H (ring buffer
-60 sampel untuk sparkline) → part.up() merender panel
+UI: fetch /api/snapshot tiap 1s + /api/health tiap 5s → S (snapshot terkini)
++ H (ring buffer 60 sampel untuk sparkline) + R (alasan untuk tooltip)
+→ part.up() merender panel
         ↓
-Tab Log: recording menarik snapshot tiap interval → session
-{name, tag, iv, start, data[], markers, snap} → analisis (mean/median/
-p95/sd/min/max, overlay A/B, diff konfigurasi) → export CSV
+Tab Log (server-side): POST /api/log/start → loop server nulis
+logs/<tanggal>_<label>/samples.csv tiap interval + meta.json (label, tag,
+iv, marker, status); analisis UI fetch CSV dari server (mean/median/p95/sd/
+min/max, overlay A/B); export CSV = file server
 ```
 
 ## Desain kunci
@@ -51,12 +54,18 @@ p95/sd/min/max, overlay A/B, diff konfigurasi) → export CSV
   (≥ 4 GHz = P); core fisik dikelompokkan dari `core id` di `/proc/cpuinfo`.
   UI merender bar sejumlah core yang dilaporkan kernel — tidak hardcode.
 - **Fallback bertingkat**: link GPU via NVML → jika NVML gagal, sysfs PCI
-  (`current_link_speed/width`); scheduler NVMe parsing nilai aktif `[x]`.
-- **Sanitasi format kernel**: format `/proc/schedstat` bisa berubah antar
-  kernel; counter hanya dipercaya bila nilainya seperti count (<1e9), kalau
-  tidak metrik tetap `unavailable` alih-alih nonsense.
-- **Overhead rendah**: hanya baca file kecil per snapshot, tanpa subprocess
-  di hot path (NVML in-process), tanpa framework UI.
+  (`current_link_speed/width`); scheduler NVMe parsing nilai aktif `[x]`;
+  power limit GPU: limit aktif → default limit NVML (ditandai di UI).
+- **Sumber yang mati ditolak, bukan dipakai**: `/proc/schedstat` nb_push+nb_pull
+  terbaca tapi selalu 0 di kernel 7.0 ini → sumber migration diganti ke
+  `se.nr_migrations` per thread (`/proc/<pid>/task/<tid>/sched`, ~15 ms/snapshot,
+  terbukti merespons beban); perf system-wide diblokir `perf_event_paranoid=4`.
+- **Health = alasan eksplisit**: tiap collector mencatat `avail(key, alasan)`;
+  `/api/health` + `--check` exposes itu; UI menampilkan unavailable kecil/redup
+  tanpa satuan + tooltip alasan. "idle" (nol I/O) bukan unavailable.
+- **Overhead terukur**: snapshot penuh ~45 ms (dominus scan migration ~15 ms);
+  NVML in-process; tidak ada subprocess di hot path untuk user biasa (jalur
+  perf IMC hanya aktif kalau perf diizinkan).
 - **Core netral**: snapshot tidak menyebut Strata; adapter engine direncanakan
   sebagai plugin yang menambah key metrik sendiri.
 
@@ -65,43 +74,66 @@ p95/sd/min/max, overlay A/B, diff konfigurasi) → export CSV
 | Endpoint | Isi |
 |---|---|
 | `GET /` | index.html |
-| `GET /api/snapshot` | JSON: metrik scalar (cpuT, cpuW, cpuU, pfa, ctx, migr, irq, idle, gT, gW, gClk, gU, gMU, vram, majF, minF, swp, r0..t1), array per-core (pu, pf, pt, eu, ef, et), `drives[]` (model, sizeGB, link, sched, capUsed), `snap` konfigurasi sistem (kernel, driver, governor, epp, turbo, pinning, thp, swappiness, gpuDriver, nvml flag). |
+| `GET /api/snapshot` | JSON: metrik scalar (cpuT, cpuW, cpuU, pfa, pl1, pl2, plPeak, cpuThr, ctx, migr, irq, idle, gT..pcu, gbw, gpeak, pctheory, vbw, majF, minF, swp, ramBW, r0..t1, a0Idle/a1Idle), array per-core (pu, pf, pt, eu, ef, et), `drives[]` (model, sizeGB, link, linkMax, sched, readahead, capUsed, mount), `snap` konfigurasi sistem (kernel, cpuModel, driver, gpuDriver, gpuName, governor, epp, turbo, pinning, thp, swappiness, nvml). |
+| `GET /api/health` | `{ok, nvml, items:{key→alasan|null}}` — alasan tiap metrik yang unavailable; dipakai tooltip UI dan `server.py --check`. |
+| `POST /api/log/start` `{label,tag,interval}` | buat sesi recording; folder `logs/<tanggal>_<label>/` (samples.csv + meta.json); loop server nulis CSV tiap interval |
+| `POST /api/log/stop` `{id}` | hentikan loop, meta status→"saved" |
+| `POST /api/log/marker` `{id,note?}` | marker `{ts_ms, since_s, note}` masuk `meta.markers` |
+| `GET /api/log/sessions` | daftar semua sesi (aktif + yang tersimpan di disk) dari meta.json |
+| `GET /api/log/<id>/samples.csv` | CSV mentah untuk analisis UI |
+| `DELETE /api/log/<id>` | hapus folder sesi (409 kalau masih recording) |
 
-## Status saat ini
+CLI: `server.py --check` = probe dua snapshot lalu cetak tabel available/unavailable + alasan.
 
-Backend + UI sudah terhubung penuh dan teruji headless (jsdom, ALL PASS).
-Yang jujur unavailable: PCIe rx/tx, VRAM bandwidth, PL1/PL2 (tanpa root),
-throttle CPU, readahead NVMe. Catatan: NVML butuh `/dev/nvidia*` (host),
-RAPL butuh root, dan kernel saat ini melaporkan hanya 4 E-core online.
+## Status saat ini (hasil nyata, bukan klaim)
+
+Terisi di mesin ini: suhu/power GPU, clock SM+mem, util, VRAM GiB, throttle reason,
+P-state, PCIe link now/max, rx/tx NVML, bus width 128-bit, peak VRAM (estimasi DDR),
+pctheory dari link max, PL1/PL2/peak power (constraint, terbaca tanpa root),
+throttle CPU sysfs (delta), migration thread, ctx/IRQ/idle residency (C3_ACPI),
+readahead 128 KB, kapasitas drive (nvme0: "not mounted"; nvme1: 91%), clock GHz
+(kHz/1e6), IOPS/await ("idle" saat nol I/O), recording persisten logs/.
+
+Unavailable dengan alasan (via /api/health):
+- daya package CPU: `energy_uj` mode 0400 — butuh root/CAP_DAC_READ_SEARCH
+  (unit `noterra/noterra.service` disiapkan; energy_uj TIDAK di-chmod);
+- fan GPU: NVML NotSupported (EC-controlled);
+- bandwidth RAM terukur: PMU `uncore_imc_free_running_{0,1}` ada tapi perf
+  diblokir `kernel.perf_event_paranoid=4` tanpa root (ubah sysctl = tuning →
+  butuh konfirmasi pengguna, tidak dilakukan);
+- NVML power limit aktif: NotSupported → dipakai default limit NVML.
 
 ## Todolist
 
-- [ ] **Penyimpanan sesi ke SQLite** di server — sesi saat ini hidup di
-      memori browser dan hilang saat reload; log harus persisten di repo log.
+- [x] **Persistensi sesi** di server — folder `logs/<tanggal>_<label>/` dengan
+      samples.csv + meta.json (marker, interval, status); UI Log tab baca dari API.
 - [ ] **Adapter Strata** (`adapters/strata/`): baca HTTP API Strata untuk
       tok/s prefill/decode, slot, model termuat; metrik tak tersedia →
       unavailable; jangan hardcode di core.
-- [ ] **Verifikasi NVML di host** — jalankan server di terminal sendiri dan
-      pastikan seluruh metrik GPU terisi; dokumentasikan hasil.
-- [ ] **RAPL sebagai root**: daya package + sub-device (core vs die) dan
-      baca constraint PL1/PL2 bila tersedia.
-- [ ] **Throttle reason CPU** via `turbostat`/`perf` bila tersedia —
-      sekarang unavailable permanen.
-- [ ] **Thread migration**: verifikasi format schedstat di kernel 7.0 dengan
-      beban nyata, atau ganti sumber (`perf sched`).
-- [ ] **PCIe rx/tx GPU**: cari sumber nyata (mis. counter trace) atau tulis
-      resmi sebagai tidak tersedia.
+- [x] **Verifikasi NVML** — NVML bekerja saat device node terlihat (sesi
+      harness full-access): seluruh metrik GPU terisi; di sandbox tanpa
+      `/dev/nvidia*` tetap unavailable dengan alasan.
+- [~] **RAPL**: PL1/PL2/peak constraint terisi tanpa root; daya package
+      (`energy_uj`) masih butuh root/CAP_DAC_READ_SEARCH — unit systemd
+      disiapkan, belum dijalankan (sudo diblokir di sesi harness).
+- [x] **Throttle reason CPU** — sysfs thermal_throttle (delta), pembanding
+      `turbostat --no-msr --no-perf` bekerja tanpa root.
+- [x] **Thread migration** — sumber `/proc/*/task/*/sched` nr_migrations
+      (schedstat mati di kernel ini); overhead diukur ~15 ms/snapshot.
+- [x] **PCIe rx/tx GPU** — NVML `GetPcieThroughput` terisi; persen link dari
+      throughput ÷ theoretical(link max).
 - [ ] **Deteksi bottleneck rule-based** di UI (page-bound: PCIe/NVMe jenuh +
       GPU idle; thermal-bound: suhu dekat batas + clock turun) — tampilkan
       aturan yang picu, bukan hanya kesimpulan.
 - [ ] **Tab hipotesis** (hipotesis → tweak → A/B → hasil) sesuai spec 6.3.
-- [ ] **Ekspor CSV/JSON ke folder log repo** (`os-tuning-docs/baseline/`,
-      `results/`) untuk bahan laporan UAS.
+- [~] **Ekspor CSV ke folder log repo** — recording server-side sudah menulis
+      CSV di `logs/`; masih perlu format baseline resmi (`baseline/`, `results/`).
 - [ ] **Interval sampling configurable** untuk polling live (recording sudah
       bisa 0.5/1/5 s).
-- [ ] **Marker sesi ikut di CSV export** (kolom timestamp marker).
-- [ ] **Uji overhead** collector sambil inference berjalan (target: tidak
-      mengganggu pengukuran).
+- [~] **Marker sesi ikut di CSV export** — marker tersimpan di meta.json;
+      kolom timestamp marker di CSV belum.
+- [~] **Uji overhead** collector — 45 ms/snapshot saat idle; masih perlu uji
+      sambil inference berjalan.
 - [ ] **Baseline resmi**: ≥3 run cold + warm saat Strata jalan, snapshot
       konfigurasi otomatis tersimpan.
 - [ ] **Refactor core/adapter** sesuai struktur Repo A (`core/`,
