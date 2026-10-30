@@ -972,4 +972,3 @@ def build_snapshot():
         data[f"t{i}"] = d.get("temp")
     sync_health(data)
     return data
-
