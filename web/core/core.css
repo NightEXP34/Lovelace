@@ -68,3 +68,8 @@ svg path.l{fill:none;stroke-width:1.5;vector-effect:non-scaling-stroke}
   border:1px solid var(--bad,#d6336c);border-radius:8px;padding:12px;
   color:var(--bad,#d6336c);font-size:13px;
 }
+
+/* host layout.json: lepas grid shell supaya grid layout yang mengatur */
+.layout-host{display:block;padding:12px 14px;min-width:0}
+.layout{min-width:0}
+

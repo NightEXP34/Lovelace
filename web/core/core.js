@@ -31,6 +31,7 @@ const SCHEMA_URL=MOCK?"/api/mock/schema":"/api/schema";
 
 let S={snap:{},drives:[]}, H={}, R={}, online=false, rec=null;
 const REG=new Map();               // registry metrik, rebuild tiap snapshot
+const WIDGETS=new Map();           // widget registry: nama -> {mount,update}
 let theme=null, themeMeta=null;
 
 /* ---- metadata metrik: di-fetch dari /api/schema (noterra/metrics_meta.json) ---- */
@@ -98,7 +99,9 @@ async function sample(){
       if(typeof v==="number"){(H[k]=H[k]||[]).push(v); if(H[k].length>60)H[k].shift()}
     }
     buildRegistry();
-    if(theme)theme.update(ctx);
+    if(theme&&theme.update)theme.update(ctx);
+    const v=VIEWS.get(activeView);
+    if(v&&v.update)v.update(ctx);
   }catch(e){
     online=false; $(DOM.status).textContent=MOCK?"Backend: mock data gagal dimuat":"Backend: offline — run server.py";
     refreshTheme(); /* padanan chipsTop() lama — tidak menyentuh rail */
@@ -143,11 +146,17 @@ async function loadTheme(){
   try{const r=await fetch("/api/themes",{cache:"no-store"}); if(r.ok)themes=(await r.json()).themes||[];}catch(e){}
   const name=themeName();
   themeMeta=themes.find(t=>t.name===name)||{name:name,palettes:["light","dark"]};
+  const lp=params.get("layout");
   const entry=(themeMeta&&themeMeta.entry)||"overview.js";
   const css=(themeMeta&&themeMeta.css)||"theme.css";
   const link=document.createElement("link");
   link.rel="stylesheet"; link.href="themes/"+encodeURIComponent(name)+"/"+css;
   document.head.append(link);
+  // theme tanpa script: overview langsung dari layout.json (L2)
+  if(!themeMeta.entry&&(lp||themeMeta.layout)){
+    registerLayoutTheme(name,lp||themeMeta.layout);
+    return;
+  }
   const sc=document.createElement("script");
   sc.src="themes/"+encodeURIComponent(name)+"/"+entry;
   sc.onerror=()=>{$(DOM.status).textContent="Theme gagal dimuat";
@@ -172,12 +181,42 @@ function addView(id,v){
   VIEWS.set(id,{id,label:v.label||id,order:v.order??100,mount:v.mount,update:v.update});
   renderNav();
 }
+/* widget registry: theme/widgets.js yang mendaftarkan implementasinya */
+function addWidget(name,w){WIDGETS.set(name,w);}
+
+/* view overview dari file layout (tanpa JavaScript milik theme) */
+function layoutView(name,file){
+  let inst=null, seq=0;
+  return{
+    mount(root,c){
+      const my=++seq;
+      root.innerHTML=`<div class="empty">Memuat layout ${esc(file)}…</div>`;
+      fetch("themes/"+encodeURIComponent(name)+"/"+file,{cache:"no-store"})
+        .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.text()})
+        .then(txt=>{
+          if(my!==seq)return;
+          inst=window.Noterra.renderLayout?window.Noterra.renderLayout(root,txt,c):null;
+          if(!inst)root.innerHTML=`<div class="layout-error">Renderer layout tidak tersedia (widgets.js belum dimuat).</div>`;
+        })
+        .catch(e=>{if(my!==seq)return;
+          root.innerHTML=`<div class="layout-error">Layout "${esc(file)}" gagal dimuat: ${esc(e.message||e)}</div>`;});
+    },
+    update(c){if(inst&&inst.update)inst.update(c);}
+  };
+}
+/* theme L2 murni: tidak ada script, overview = layout.json */
+function registerLayoutTheme(name,file){
+  theme=null;
+  addView("overview",{label:"Overview",order:0,...layoutView(name,file)});
+  initPalette(); show(location.hash.slice(1)); start();
+}
 function show(id){
   if(!VIEWS.has(id))id="overview";
   activeView=id;
   if(id!=="log")location.hash=id;
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
   const root=$(DOM.root), v=VIEWS.get(id);
+  root.classList.remove("layout-host");
   if(v&&v.mount)v.mount(root,ctx); else root.innerHTML="";
 }
 
@@ -333,10 +372,21 @@ function start(){
 /* ---- titik masuk: daftar theme dari server, muat theme terpilih ---- */
 addView("log",{label:"Log",order:10,mount(){renderLog();}});
 window.Noterra={
-  addTheme(name,th){theme=th;
-    addView("overview",{label:"Overview",order:0,mount(root,ctx){if(theme)theme.mount(root,ctx);}});
-    initPalette(); show(location.hash.slice(1)); start();},
-  start, addView,
+  addTheme(name,th){
+    const file=params.get("layout")||((!th.mount&&themeMeta&&themeMeta.layout)?themeMeta.layout:null);
+    if(file){
+      theme=null;
+      addView("overview",{label:"Overview",order:0,...layoutView(name,file)});
+    }else{
+      theme=th;
+      addView("overview",{label:"Overview",order:0,mount(root,ctx){
+        if(th.mount)th.mount(root,ctx);
+        else root.innerHTML=`<div class="empty">Theme "${esc(name)}" tidak punya mount dan tidak punya layout.json.</div>`;
+      }});
+    }
+    initPalette(); show(location.hash.slice(1)); start();
+  },
+  start, addView, addWidget, widgets:WIDGETS,
   ctx, registry:REG, fmt:{fx,val,esc,mmss,clamp,avg}, mk, themeName, mock:MOCK,
 };
 loadTheme();

@@ -1164,11 +1164,14 @@ def api_themes():
                 m = json.loads(f.read_text())
             except Exception:
                 continue
+            entry = m.get("entry")
+            if entry is None and (f.parent / "overview.js").exists():
+                entry = "overview.js"
             out.append({"name": m.get("name") or f.parent.name, "author": m.get("author"),
                         "version": m.get("version"),
                         "palettes": m.get("palettes") or ["light", "dark"],
                         "description": m.get("description"),
-                        "entry": m.get("entry") or "overview.js",
+                        "entry": entry,
                         "css": m.get("css") or "theme.css",
                         "layout": m.get("layout")})
     return JSONResponse({"themes": out})

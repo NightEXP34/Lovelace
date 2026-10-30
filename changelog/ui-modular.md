@@ -10,3 +10,4 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — 1.5 `web/core/core.css` fallback netral (kelas Log + token warna) dimuat sebelum theme.css; daftar kelas didokumentasikan.
 - 2026-10-30 — 1.6 `META` pindah ke `noterra/metrics_meta.json`; route `/api/schema` + `/api/mock/schema`; core fetch schema sebelum theme; stub test diperbarui.
 - 2026-10-30 — 1.7 parser CSV tab Log memakai nama header (`HEADER_TO_KEY`/key registry, offset timestamp), daftar metrik fallback lama dipertahankan.
+- 2026-10-30 — 2.1–2.4 registry widget `addWidget`, 4 widget primitif (value/bar/sparkline/gauge), `renderLayout` grid + placeholder/error, pemilihan `?layout` > theme.json.layout (tanpa mount) > mount; theme tanpa script memakai layout.json.
