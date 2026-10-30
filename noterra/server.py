@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Lovelace — noterra monitoring backend.
 
-Serves index.html and /api/snapshot. Every metric is read from real sources
-(/proc, /sys, NVML). Anything that cannot be read is returned as null; the
-UI renders null as "unavailable". Nothing is guessed.
+Serves the web/ shell (GET /), core+theme static files (mount), /api/themes,
+/api/snapshot, and mock routes (?mock=1 di UI). Every metric is read from real
+sources (/proc, /sys, NVML). Anything that cannot be read is returned as null;
+the UI renders null as "unavailable". Nothing is guessed. Mock routes hanya
+membaca noterra/snapshot-sample.json — tidak menyentuh hardware.
 
 Run:  .venv/bin/python server.py   (serves http://127.0.0.1:5130)
 """
@@ -19,6 +21,7 @@ from pathlib import Path
 import psutil
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 try:
     import pynvml  # module name provided by the nvidia-ml-py package
@@ -1142,9 +1145,53 @@ def log_delete(sid: str):
     shutil.rmtree(target)
     return JSONResponse({"deleted": str(target.relative_to(BASE.parent))})
 
+WEB = BASE.parent / "web"
+SAMPLE = BASE / "snapshot-sample.json"
+
+@app.get("/api/themes")
+def api_themes():
+    """Daftar theme dari web/themes/*/theme.json — tanpa menjalankan script theme."""
+    out = []
+    if WEB.exists():
+        for f in sorted(WEB.glob("themes/*/theme.json")):
+            try:
+                m = json.loads(f.read_text())
+            except Exception:
+                continue
+            out.append({"name": m.get("name") or f.parent.name, "author": m.get("author"),
+                        "version": m.get("version"),
+                        "palettes": m.get("palettes") or ["light", "dark"],
+                        "description": m.get("description")})
+    return JSONResponse({"themes": out})
+
+@app.get("/api/mock/snapshot")
+def mock_snapshot():
+    """Mode mock (?mock=1): snapshot-sample.json apa adanya — tidak menyentuh hardware."""
+    return JSONResponse(json.loads(SAMPLE.read_text()))
+
+@app.get("/api/mock/health")
+def mock_health():
+    """Alasan unavailable versi mock: dari null di sample, bukan probe hardware."""
+    data = json.loads(SAMPLE.read_text())
+    items = {}
+    for k, v in data.items():
+        if k in ("snap", "drives") or isinstance(v, (list, bool)):
+            continue
+        if v is None:
+            items[k] = "unavailable on the sample machine — no source recorded in snapshot-sample.json"
+    return JSONResponse({"ok": True, "nvml": bool(data["snap"].get("nvml")), "items": items})
+
 @app.get("/")
 def index():
+    return HTMLResponse((WEB / "index.html").read_text())
+
+@app.get("/legacy")
+def legacy():
+    """UI lama satu-file — pembanding visual saat refactor core/theme."""
     return HTMLResponse((BASE / "index.html").read_text())
+
+# aset static web/ (core + themes); semua rute /api dan / sudah terdaftar sebelum mount
+app.mount("/", StaticFiles(directory=str(WEB)), name="web")
 
 def run_check():
     """Self-diagnostic: probe every source twice (rates need a delta) and print results."""
