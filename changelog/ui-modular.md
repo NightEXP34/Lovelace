@@ -15,3 +15,4 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — 2.5b `memory-panel` jadi widget komposit; cek layout + test hijau.
 - 2026-10-30 — 2.5c `storage-panel` jadi widget komposit; cek layout + test hijau.
 - 2026-10-30 — 2.5d `gpu-panel` jadi widget komposit (auto-hide tanpa GPU); cek layout + test hijau.
+- 2026-10-30 — 2.5e `rail` jadi widget komposit (timeline/events/system); cek layout 5 komposit + test hijau.

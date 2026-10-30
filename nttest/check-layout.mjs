@@ -43,8 +43,9 @@ if (names.includes("bar")) items.push({ widget: "bar", bind: "vram", x: 2, y: 9,
 if (names.includes("sparkline")) items.push({ widget: "sparkline", bind: "cpuT", x: 4, y: 9, w: 2, h: 1 });
 if (names.includes("gauge")) items.push({ widget: "gauge", bind: "cpuT", x: 6, y: 9, w: 2, h: 1 });
 const root = d.createElement("div");
-N.renderLayout(root, { cols: 12, gap: 8, items }, N.ctx);
+d.querySelector("#root").innerHTML="";
 d.body.append(root);
+N.renderLayout(root, { cols: 12, gap: 8, items }, N.ctx);
 const errs = [...root.querySelectorAll(".layout-error")].map(x => x.textContent);
 if (errs.length) { console.error("FAIL layout-error:", errs.join(" | ")); process.exit(1); }
 const missing = [...root.querySelectorAll(".w-missing")].map(x => x.textContent);

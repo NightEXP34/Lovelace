@@ -433,5 +433,20 @@ N.addWidget("gpu-panel",{
   }
 });
 
+N.addWidget("rail",{
+  mount(el,props,ctx){
+    C=ctx; S=ctx.data; R=ctx.reasons;
+    el.innerHTML=`<aside><div class="rc tl"><h2>Timeline (last 60 s)</h2><div id="tl" style="display:flex;flex-direction:column;flex:1"></div></div>
+    <div class="rc"><h2>Events</h2><div id="ev" style="display:flex;flex-direction:column;gap:5px;height:133px;flex:none"></div></div>
+    <div class="rc"><h2>System</h2><dl class="pr" id="sys"></dl></div></aside>`;
+    buildRail(); rail();
+  },
+  update(el,props,ctx){
+    C=ctx; S=ctx.data; R=ctx.reasons;
+    if(!el.querySelector("#tl"))return;
+    buildRail(); rail();
+  }
+});
+
 window.Noterra.addTheme("default",{mount,update,chips});
 })();
