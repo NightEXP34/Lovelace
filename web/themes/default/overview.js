@@ -20,12 +20,12 @@ function spark(svg,keys,cols,min){
   svg.innerHTML=pairs.map(([d,c])=>`<path class="l" style="stroke:var(${c})" d="${d.map((v,j)=>`${j?"L":"M"}${(j/Math.max(d.length-1,1)*200).toFixed(1)},${(h-2-(v-mn)/span*(h-4)).toFixed(1)}`).join("")}"/>`).join("");
 }
 
-/* ---- rpm-style gauge: 270° sweep; skala + ambang dari registry/sumber nyata ---- */
+/* ---- rpm-style gauge: 270° sweep; skala + ambang of registry/sumber nyata ---- */
 const pt=(a,r)=>[75+r*Math.cos(a*Math.PI/180),66+r*Math.sin(a*Math.PI/180)];
 const arc=(a0,a1,r)=>{const p=pt(a0,r),q=pt(a1,r);return`M${p[0].toFixed(1)},${p[1].toFixed(1)}A${r},${r} 0 ${a1-a0>180?1:0} 1 ${q[0].toFixed(1)},${q[1].toFixed(1)}`};
 function gauge(g){
   const ring=(r,w,c)=>`<path d="${arc(135,405,r)}" fill="none" style="stroke:var(--line)" stroke-width="${w}" stroke-linecap="round"/><path class="${c}" fill="none" stroke-width="${w}" stroke-linecap="round"/>`;
-  const el=mk(`<svg viewBox="0 0 150 124">${ring(54,9,"v")}${g.in?ring(41,5,"w"):""}<text x="75" y="72" text-anchor="middle" style="fill:var(--ink);font:600 24px var(--mono)"></text><text x="75" y="88" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text><text x="75" y="118" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text></svg>`);
+  const el=mk(`<svg viewBox="0 0 150 124">${ring(54,9,"v")}${g.in?ring(41,5,"w"):""}<text x="75" y="77" text-anchor="middle" style="fill:var(--ink);font:600 24px var(--mono)"></text><text x="75" y="92" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text><text x="75" y="119" text-anchor="middle" style="fill:var(--mute);font:11px var(--sans)"></text></svg>`);
   const v=el.querySelector(".v"), w=el.querySelector(".w"), tx=el.querySelector("text");
   const un=el.querySelectorAll("text")[1], lb=el.querySelectorAll("text")[2];
   const key=()=>typeof g.key==="function"?g.key():g.key;
@@ -39,7 +39,7 @@ function gauge(g){
     un.textContent=typeof g.unit==="function"?g.unit():(g.unit||"");
     lb.textContent=typeof g.label==="function"?g.label():(g.label||"");
     draw(v,x,m,g.warn(s),g.bad(s),54);
-    tx.textContent=val(x,g.d||0); tx.setAttribute("title",x==null?(R[k]||"tidak ada sumber data"):"");
+    tx.textContent=val(x,g.d||0); tx.setAttribute("title",x==null?(R[k]||"no data source"):"");
     if(g.in){const ik=typeof g.in.key==="function"?g.in.key():g.in.key, ix=s[ik], im=g.in.max?g.in.max():dynMax(ik);
       draw(w,ix,im,g.in.warn(s),g.in.bad(s),41);
       el.querySelector("svg").setAttribute("title",ix==null?(R[ik]||""):"")}
@@ -55,14 +55,14 @@ const B={
     const v=s[4]?s[4](C.data):C.data[sk];
     if(typeof v==="number"){bs[i].innerHTML=fx(v,s[3]||0)+`<small>${s[2]||""}</small>`;bs[i].removeAttribute("title")}
     else{bs[i].innerHTML=`<span class="na">${v==null?"unavailable":v}</span>`;
-      bs[i].title=v==null?(R[sk]||"tidak ada sumber data"):"tidak ada I/O di interval ini"}
+      bs[i].title=v==null?(R[sk]||"no data source"):"no I/O in this interval"}
   })}}},
  cores:()=>{const el=mk(`<div></div>`);el.className="cores";
   return{el,up:()=>{
     const P=C.data.pu||[],E=C.data.eu||[];
     if(el.dataset.n!==String(P.length+E.length)){
       const cell=(p,k)=>`<div>${[...Array(k)].map((_,i)=>`<div class="cc"><i></i><b>${p}${i}</b><u></u><s></s></div>`).join("")}</div>`;
-      el.innerHTML=cell("P",P.length)+cell("E",E.length)+`<div class="hint2">GHz dan °C per core dari snapshot. Fill = utilisasi. "—" = tidak ada sumber.</div>`;
+      el.innerHTML=cell("P",P.length)+cell("E",E.length)+`<div class="hint2">GHz and °C per core from snapshot. Fill = utilization. "—" = no source.</div>`;
       el.dataset.n=String(P.length+E.length);
     }
     const cc=[...el.querySelectorAll(".cc")];
@@ -71,14 +71,14 @@ const B={
       const src=i<P.length?[s.pf[i],s.pt[i],s.pu[i]]:[s.ef[i-P.length],s.et[i-P.length],s.eu[i-P.length]];
       const u=x.querySelector("i"),f=x.querySelector("u"),t=x.querySelector("s");
       u.style.height=(typeof src[2]==="number"?src[2]:0)+"%";
-      f.textContent=val(src[0],2); f.title=src[0]==null?(R["pfa"]||R["ef"]||"tidak ada sumber clock"):"";
-      t.textContent=val(src[1])+"°"; t.title=src[1]==null?(R["pt"]||"tidak ada sensor suhu core ini"):"";
+      f.textContent=val(src[0],2); f.title=src[0]==null?(R["pfa"]||R["ef"]||"no clock source"):"";
+      t.textContent=val(src[1])+"°"; t.title=src[1]==null?(R["pt"]||"no temperature sensor for this core"):"";
     });
   }}},
  bars:b=>{const el=mk(`<div class="bars">${b.items.map(it=>`<div class="br"><span>${it.l}</span><div class="bar">${it.c.map(c=>`<i style="background:var(${c})"></i>`).join("")}</div><em></em></div>`).join("")}</div>`);
   const rows=[...el.querySelectorAll(".br")];
   return{el,up:()=>b.items.forEach((it,i)=>{
-    // f() mengembalikan [v0, v1, ..., den] dengan den = penyebut nyata (limit dari snapshot / peak terukur)
+    // f() mengembalikan [v0, v1, ..., den] dengan den = penyebut nyata (limit of snapshot / measured peak)
     const f=it.f(C.data), den=f[f.length-1];
     rows[i].querySelectorAll(".bar i").forEach((x,j)=>{
       const ok=typeof f[j]==="number"&&typeof den==="number"&&den>0;
@@ -94,7 +94,7 @@ const B={
       const v=raw===true||raw===false?raw:null;
       c[i].className="cp"+(v===true?" on":"");
       c[i].textContent=b.items[i]+(v===null?" —":"");
-      c[i].setAttribute("title",v===null?(b.tip?b.tip(C.data,i):"tidak ada sumber (NVML)"):"NVML throttle reasons")});
+      c[i].setAttribute("title",v===null?(b.tip?b.tip(C.data,i):"no source (NVML)"):"NVML throttle reasons")});
   }}},
  chart:b=>{let ti=0;const el=mk(`<div class="ch"><div class="tabs">${b.tabs.map(x=>`<button>${x.n}</button>`).join("")}<em class="lg"></em></div><svg class="sp" viewBox="0 0 200 50" preserveAspectRatio="none"></svg></div>`);
   const sv=el.querySelector("svg"),btn=[...el.querySelectorAll("button")],lg=el.querySelector(".lg");
@@ -114,12 +114,12 @@ const B={
         const na=v==null||v==="unavailable";
         dd[j].textContent=na?"unavailable":v;
         dd[j].className=(warn?"warn ":"")+(na?"dd-na":"");
-        dd[j].title=na?(R[r[n+2+c]]||"tidak ada sumber data"):"";
+        dd[j].title=na?(R[r[n+2+c]]||"no data source"):"";
         j++;
       }
     })}};
   },
- /* block dinamis: jumlah item/kolom mengikuti registry core (mis. jumlah drive dari /sys/block) */
+ /* block dinamis: jumlah item/kolom mengikuti registry core (mis. jumlah drive of /sys/block) */
  dynBars:b=>{const el=mk(`<div class="bars"></div>`), box=el.firstElementChild;let n=-1,rows=[];
   return{el,up:()=>{
     const items=b.items(C.data);
@@ -155,7 +155,7 @@ const B={
         const v=r[1](C.data,c), na=v==null||v==="unavailable";
         dd[j].textContent=na?"unavailable":v;
         dd[j].className=(r[3]?r[3](C.data,c)?"warn ":"":"")+(na?"dd-na":"");
-        dd[j].setAttribute("title",na?(R[r[2](C.data,c)]||"tidak ada sumber data"):"");
+        dd[j].setAttribute("title",na?(R[r[2](C.data,c)]||"no data source"):"");
         j++;
       }
     });
@@ -210,8 +210,8 @@ const gLim=s=>typeof s.gLim==="number"?s.gLim:null;
 const near=(v,m,f)=>typeof v==="number"&&typeof m==="number"&&m>0&&v>=m*f;
 
 const PANELS=[
- {title:"CPU",sub:s=>(s.snap.cpuModel||"CPU")+", "+((S.pu||[]).length)+" P + "+((S.eu||[]).length)+" E cores (dinamis dari kernel)",
-  l:[{t:"hd",g:{key:"cpuT",max:()=>Math.max(dynMax("cpuT")||0,70),warn:()=>cpuThrottling(C.data),bad:()=>cpuThrottling(C.data),unit:"°C",label:"temp · ring = daya vs PL1",
+ {title:"CPU",sub:s=>(s.snap.cpuModel||"CPU")+", "+((S.pu||[]).length)+" P + "+((S.eu||[]).length)+" E cores (dynamic from kernel)",
+  l:[{t:"hd",g:{key:"cpuT",max:()=>Math.max(dynMax("cpuT")||0,70),warn:()=>cpuThrottling(C.data),bad:()=>cpuThrottling(C.data),unit:"°C",label:"temp · ring = power vs PL1",
        in:{key:"cpuW",max:()=>pl1(C.data)||dynMax("cpuW"),warn:s=>near(s.cpuW,pl1(s),.9),bad:s=>near(s.cpuW,pl1(s),1)}},
      stats:[["cpuU","Util","%"],["migr","Migrations","/s"],["pfa","P clock","GHz",2],["efa","E clock","GHz",2,s=>{const a=(S.ef||[]).filter(x=>typeof x==="number");return a.length?avg(a):null}]]},
    {t:"cores"},
@@ -229,14 +229,14 @@ const PANELS=[
   ]},
 
  {title:"GPU",sub:s=>(s.snap.gpuName||"NVIDIA GPU")+(s.snap.nvml?"":" (NVML unavailable)"),
-  l:[{t:"hd",g:{key:"gT",max:()=>Math.max(dynMax("gT")||0,60),warn:()=>gpuThermal(C.data),bad:()=>gpuThermal(C.data),unit:"°C",label:"temp · ring = daya vs limit",
+  l:[{t:"hd",g:{key:"gT",max:()=>Math.max(dynMax("gT")||0,60),warn:()=>gpuThermal(C.data),bad:()=>gpuThermal(C.data),unit:"°C",label:"temp · ring = power vs limit",
        in:{key:"gW",max:()=>gLim(C.data)||dynMax("gW"),warn:s=>near(s.gW,gLim(s),.9),bad:s=>near(s.gW,gLim(s),1)}},
      stats:[["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","Util","%"],["vram","VRAM","GiB",1]]},
    {t:"chips",items:["Idle","Power cap","Thermal","HW slowdown"],
      on:s=>[s.thrIdle,s.thrPower,s.thrThermal,s.thrHw],tip:(s,i)=>R["thr"]||""},
    {t:"bars",items:[
      {l:"VRAM",c:["--a"],f:s=>[s.vram,s.vramTot],t:s=>fx(s.vram,2)+" / "+fx(s.vramTot,2)+" GiB",tip:s=>R["vram"]||""},
-     {l:"VRAM bw (est.)",c:["--b"],f:s=>[s.vbw,s.gpeak],t:s=>fx(s.vbw)+" / "+fx(s.gpeak)+" GB/s (estimasi)",tip:s=>R["vbw"]||""},
+     {l:"VRAM bw (est.)",c:["--b"],f:s=>[s.vbw,s.gpeak],t:s=>fx(s.vbw)+" / "+fx(s.gpeak)+" GB/s (est.)",tip:s=>R["vbw"]||""},
      {l:"PCIe receive",c:["--a"],f:s=>[s.prx,s.pctheory],t:s=>fx(s.prx,2)+" / "+fx(s.pctheory,2)+" GB/s",tip:s=>R["prx"]||""},
      {l:"PCIe transmit",c:["--b"],f:s=>[s.ptx,s.pctheory],t:s=>fx(s.ptx,2)+" / "+fx(s.pctheory,2)+" GB/s",tip:s=>R["ptx"]||""}]},
   ],
@@ -253,13 +253,13 @@ const PANELS=[
   ]},
 
  {title:"Memory",sub:s=>s.snap.kernel?"kernel "+s.snap.kernel:"",
-  l:[{t:"hd",g:{key:"ramU",max:()=>typeof S.memTot==="number"?S.memTot:dynMax("ramU"),warn:()=>near(S.ramU,S.memTot,.8),bad:()=>near(S.ramU,S.memTot,.93),unit:"GiB used",label:"RAM (total dari meminfo)",d:1},
+  l:[{t:"hd",g:{key:"ramU",max:()=>typeof S.memTot==="number"?S.memTot:dynMax("ramU"),warn:()=>near(S.ramU,S.memTot,.8),bad:()=>near(S.ramU,S.memTot,.93),unit:"GiB used",label:"RAM (total from meminfo)",d:1},
      stats:[["cache","Page cache","GiB",1],["avail","Available","GiB",1],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
    {t:"bars",items:[
-     {l:"RAM",c:["--a","--b"],f:s=>[s.ramU,s.cache,S.memTot],t:s=>`${fx(s.ramU,1)} used, ${fx(s.cache,1)} cache, dari ${fx(S.memTot,1)} GiB`,tip:s=>R["ramU"]||""},
+     {l:"RAM",c:["--a","--b"],f:s=>[s.ramU,s.cache,S.memTot],t:s=>`${fx(s.ramU,1)} used, ${fx(s.cache,1)} cache, out of ${fx(S.memTot,1)} GiB`,tip:s=>R["ramU"]||""},
      {l:"Swap",c:["--warn"],f:s=>[s.swapU,S.swapTot],t:s=>fx(s.swapU,1)+" / "+fx(S.swapTot,1)+" GiB",tip:s=>R["swapU"]||""},
-     {l:"Major faults",c:["--b"],f:s=>[s.majF,dynMax("majF")],t:s=>fx(s.majF)+" /s (peak terukur "+fx(dynMax("majF"))+")",tip:s=>R["majF"]||""},
-     {l:"Minor faults",c:["--a"],f:s=>[s.minF,dynMax("minF")],t:s=>fx(s.minF)+" /s (peak terukur "+fx(dynMax("minF"))+")",tip:s=>R["minF"]||""}]},
+     {l:"Major faults",c:["--b"],f:s=>[s.majF,dynMax("majF")],t:s=>fx(s.majF)+" /s (measured peak "+fx(dynMax("majF"))+")",tip:s=>R["majF"]||""},
+     {l:"Minor faults",c:["--a"],f:s=>[s.minF,dynMax("minF")],t:s=>fx(s.minF)+" /s (measured peak "+fx(dynMax("minF"))+")",tip:s=>R["minF"]||""}]},
   ],
   r:[{t:"chart",tabs:[{n:"RAM",min:0,s:[["ramU","Used (GiB)","--a"],["cache","Cache (GiB)","--b"]]},{n:"Page faults",min:0,s:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]}]},
    {t:"dl",rows:[
@@ -269,15 +269,15 @@ const PANELS=[
      ["Hugepages",s=>s.snap.thp],["Swappiness",s=>s.snap.swappiness]]},
   ]},
 
- {title:"Storage",sub:s=>C.drives.length?C.drives.map(d=>`${d.dev||"drive"}: ${d.name||"unavailable"}`).join(" · "):"tidak ada drive di /sys/block",
+ {title:"Storage",sub:s=>C.drives.length?C.drives.map(d=>`${d.dev||"drive"}: ${d.name||"unavailable"}`).join(" · "):"no drives in /sys/block",
   l:[{t:"hd",g:{key:()=>"r"+storageIndex(),max:()=>dynMax("r"+storageIndex()),warn:()=>false,bad:()=>false,unit:"MB/s read",
-       label:()=>{const i=storageIndex(),d=C.drives[i]||{};return i===0?"drive 0 (skala = peak terukur)":`drive ${i} · ${d.dev||("drive"+i)} (skala = peak terukur)`}},
+       label:()=>{const i=storageIndex(),d=C.drives[i]||{};return i===0?"drive 0 (scale = measured peak)":`drive ${i} · ${d.dev||("drive"+i)} (scale = measured peak)`}},
      stats:[[()=>"w"+storageIndex(),"Write","MB/s",1],[()=>"i"+storageIndex(),"IOPS","IOPS"],
        [()=>"a"+storageIndex(),"Await","ms",1,s=>s["a"+storageIndex()+"Idle"]?"idle":null],[()=>"u"+storageIndex(),"Util","%"]]},
    {t:"dynBars",items:s=>{const out=[];
      C.drives.forEach((d,i)=>{
        out.push({l:`${d.dev||("drive"+i)} read`,c:["--a"],f:x=>[x["r"+i],dynMax("r"+i)],
-         t:x=>fx(x["r"+i])+" / "+fx(dynMax("r"+i))+" MB/s (peak terukur)",tip:x=>R["r"+i]||""});
+         t:x=>fx(x["r"+i])+" / "+fx(dynMax("r"+i))+" MB/s (measured peak)",tip:x=>R["r"+i]||""});
        out.push({l:`${d.dev||("drive"+i)} capacity`,c:["--warn"],f:x=>[d.capUsed,100],
          t:x=>d.capUsed==null?(d.mount==null?"not mounted":"unavailable"):fx(d.capUsed)+" % of "+fx(d.sizeGB,1)+" GB",
          tip:x=>R["d"+i+"capUsed"]||""})});
@@ -297,7 +297,7 @@ const PANELS=[
 ];
 
 /* ---- panel & rail mengikuti registry core: GPU hanya kalau terdeteksi,
-   drive dinamis dari entri drive registry ---- */
+   drive dinamis of entri drive registry ---- */
 let PSIG=""; let cur=[];
 function driveCount(){let n=0;for(const e of C.registry.values())if(e.kind==="drive")n++;return n}
 function buildPanels(){
@@ -319,7 +319,7 @@ function buildPanels(){
 }
 function refreshSubs(){cur.forEach(x=>x.up())}
 
-/* ---- rail kanan: timeline, events dari transisi nyata, system dari snap ---- */
+/* ---- rail kanan: timeline, events of transisi nyata, system of snap ---- */
 function tlRows(){
   const gpuOK=!!(C.registry.get("gpuPresent")&&C.registry.get("gpuPresent").available), rows=[];
   rows.push(["cpuT","CPU temp","°C",0]);
@@ -341,19 +341,19 @@ function rail(){
     spark(r.querySelector("svg"),[TL[i][0]],["--a"]);
     const v=S[TL[i][0]];
     r.querySelector("b").textContent=val(v,TL[i][3]);
-    r.querySelector("b").title=v==null?(R[TL[i][0]]||"tidak ada sumber data"):"";
+    r.querySelector("b").title=v==null?(R[TL[i][0]]||"no data source"):"";
   });
   const s=C.data;
   if(C.online){
-    push("thr",s.thr!=null&&s.thr!=="none",`GPU throttle aktif: ${s.thr}`,"GPU throttle lepas");
-    push("burst",typeof s.r0==="number"&&s.r0>600,`NVMe read burst ${fx(s.r0)} MB/s (> 600 MB/s)`,"NVMe burst selesai");
-    push("cpuThr",cpuThrottling(s),`CPU thermal throttle: ${s.cpuThr}`,"CPU throttle lepas");
-    push("power",near(s.gW,gLim(s),.95),`GPU draw ${fx(s.gW,1)} W mendekati limit NVML`,"GPU draw turun di bawah limit");
+    push("thr",s.thr!=null&&s.thr!=="none",`GPU throttle active: ${s.thr}`,"GPU throttle cleared");
+    push("burst",typeof s.r0==="number"&&s.r0>600,`NVMe read burst ${fx(s.r0)} MB/s (> 600 MB/s)`,"NVMe burst cleared");
+    push("cpuThr",cpuThrottling(s),`CPU thermal throttle: ${s.cpuThr}`,"CPU throttle cleared");
+    push("power",near(s.gW,gLim(s),.95),`GPU draw ${fx(s.gW,1)} W approaching NVML limit`,"GPU draw below limit");
   }
   document.querySelector("#ev").innerHTML=Array.from({length:6},(_,i)=>EV[i]).map(e=>e?`<div class="ev"><i class="${e.warn?"w":""}"></i><time>${e.t}</time><span title="${esc(e.x)}">${esc(e.x)}</span></div>`:`<div class="ev"></div>`).join("");
   document.querySelector("#sys").innerHTML=[["Kernel",s.snap.kernel],["NVIDIA driver",s.snap.gpuDriver],["Governor",s.snap.governor],
     ["Turbo",s.snap.turbo],["I/O scheduler",C.drives.map(d=>d.sched).filter(Boolean).join(" / ")||null],
-    ["Swappiness",s.snap.swappiness],["Pinning",s.snap.pinning],["NVML",s.snap.nvml?"aktif":"tidak aktif"]]
+    ["Swappiness",s.snap.swappiness],["Pinning",s.snap.pinning],["NVML",s.snap.nvml?"active":"inactive"]]
     .map(r=>`<dt>${r[0]}</dt><dd>${r[1]==null?"unavailable":esc(String(r[1]))}</dd>`).join("");
 }
 function push(k,on,onMsg,offMsg){
@@ -369,11 +369,11 @@ function chipsTop(){
   const tc=document.querySelector("#c-thr");
   if(tc){const thr=S.thr==null?"unavailable":S.thr;
     tc.innerHTML=`Throttle <b>${thr}</b>`;tc.className="chip"+(S.thr!=null&&S.thr!=="none"?" warn":"");
-    tc.title=S.thr==null?(R["thr"]||"tidak ada sumber data"):""}
+    tc.title=S.thr==null?(R["thr"]||"no data source"):""}
   const lc=document.querySelector("#c-link");
   if(lc){const now=S.pcieGen==null?"—":"Gen"+S.pcieGen+" x"+S.pcieWidth;
     lc.innerHTML=`GPU link <b>${now}${S.pcieMax?" → "+S.pcieMax:""}</b>`;
-    lc.title=S.pcieGen==null?(R["pcieGen"]||"tidak ada sumber data"):"link sekarang bisa turun saat idle (normal)"}
+    lc.title=S.pcieGen==null?(R["pcieGen"]||"no data source"):"link may drop when idle (normal)"}
   const rc2=document.querySelector("#c-rec");
   if(rc2){const rec=C.recording;
     rc2.innerHTML=`Recording <b>${rec?("on "+(rec.samples||0)+" samples"):"off"}</b>`;
@@ -381,12 +381,12 @@ function chipsTop(){
   const h=document.querySelector("#hint"); if(!h)return;
   const rules=[];
   const rd=Math.max(-1,...C.drives.map((d,i)=>typeof S["r"+i]==="number"?S["r"+i]:-1));
-  if(rd>600&&typeof S.gU==="number"&&S.gU<50){rules.push(`page-bound: NVMe read ${fx(Math.max(rd,0))} MB/s (> 600) dan GPU util ${fx(S.gU)} % (< 50)`)}
+  if(rd>600&&typeof S.gU==="number"&&S.gU<50){rules.push(`page-bound: NVMe read ${fx(Math.max(rd,0))} MB/s (> 600) and GPU util ${fx(S.gU)} % (< 50)`)}
   if(S.thrThermal===true||cpuThrottling(S)){rules.push(`thermal-bound: throttle NVML=${S.thr}, CPU sysfs=${S.cpuThr?? "unavailable"}`)}
   if(near(S.gW,gLim(C.data),.95)){rules.push(`power-bound: GPU draw ${fx(S.gW,1)} W ≥ 95% limit NVML ${fx(gLim(C.data),0)} W`)}
   const w=rules.length>0;
   h.className="hint"+(w?" warn":"");
-  h.querySelector("span").textContent=(w?rules.join(" · ")+" (aturan di atas dievaluasi dari data snapshot)":"Tidak ada aturan bottleneck yang picu (page-bound >600 MB/s + GPU <50%; thermal-bound dari throttle NVML/sysfs; power-bound ≥95% limit).");
+  h.querySelector("span").textContent=(w?rules.join(" · ")+" (rules evaluated from snapshot data)":"No bottleneck rules triggered (page-bound >600 MB/s + GPU <50%; thermal-bound from NVML/sysfs throttle; power-bound ≥95% limit).");
 }
 
 /* ---- titik masuk theme ---- */

@@ -131,7 +131,7 @@ ok(d.querySelectorAll("#tl .tr").length === tlExpect, `timeline rail dinamis (${
 ok([...d.querySelectorAll("#tl .tr b")].map(x => x.textContent).every(t => !t.includes("undefined")), "timeline tanpa 'undefined'");
 ok(d.querySelectorAll("#ev .ev").length === 6, "events rail 6 slot");
 ok([...d.querySelectorAll("#sys dd")].map(x => x.textContent).includes(base.snap.kernel), "System rail dari nilai snapshot nyata");
-ok(d.querySelector("#hint span").textContent.includes("aturan"), "hint bottleneck menyebut aturan");
+ok(d.querySelector("#hint span").textContent.includes("rules"), "hint bottleneck menyebut rules");
 const subs = [...d.querySelectorAll(".p header span")].map(x => x.textContent);
 ok(subs.some(t => t.includes("RTX 4060")), "subtitle GPU dari nvmlDeviceGetName");
 ok(subs.some(t => t.startsWith("kernel ")), "subtitle Memory = kernel saja");

@@ -3,5 +3,5 @@
   "author": "Candra (UAS Sistem Operasi — Lovelace)",
   "version": "1.0",
   "palettes": ["light", "dark"],
-  "description": "Theme bawaan noterra: panel CPU/GPU/Memory/Storage, rail timeline, events, hint bottleneck."
+  "description": "Default noterra theme: CPU/GPU/Memory/Storage panels, timeline rail, events, bottleneck hint."
 }
