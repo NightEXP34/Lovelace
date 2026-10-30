@@ -81,3 +81,13 @@ unavailable handling, sesi recording, statistik, CSV export.
 ```bash
 cd nttest && npm install jsdom && node test.mjs
 ```
+
+## Layout
+
+Tab Overview memakai layout prototype `noterra/prototype/overview_v6.html`
+(gauge 270°, cell core P/E, bar, chip throttle NVML, rail Timeline/Events/System,
+hint aturan bottleneck) tetapi semua angka dari snapshot nyata: skala gauge dari
+ring buffer 60 sampel, penyebut bar dari PL1/limit NVML/theoretical link max/
+peak terukur, chip dari bit throttle NVML, events dari transisi status nyata.
+Nilai tanpa sumber tetap "unavailable"/"—" dengan tooltip alasan dari
+`/api/health`; tidak ada konstanta mock yang diizinkan bertahan.

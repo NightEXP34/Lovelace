@@ -196,3 +196,56 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
 
 - `noterra/prototype/overview_v6.html` belum ada di repo → sesuai aturan,
   berhenti dan minta pengguna menaruh file prototype sebelum porting layout.
+
+## 2026-10-30 — Pemulihan sesi + langkah 1–2 (setelah harness mati lagi)
+
+- Verifikasi kondisi nyata sebelum lanjut: `git status` hanya
+  `docs/noterra-architecture.md` belum di-commit (edit sebelum putus); server
+  mati (listener 5130 kosong, PID lama 26313 sudah tidak ada — tidak di-kill,
+  hanya .pid diganti saat start baru).
+- `py_compile` OK, `node --check` script index.html OK, jsdom ALL PASS.
+- `meta.json` diperbaiki ke schema v1 sesuai permintaan: `schema_version`,
+  `interval_s`, snapshot konfigurasi saat sesi mulai (governor/EPP/turbo/
+  power limits PL1-PL2-peak/sysctl perf_event_paranoid+swappiness+dirty/
+  kernel cmdline/versi driver/`gpuClockLock:null`/`strata:null`), markers
+  ber-note, daftar kolom CSV → commit `d1e8f2c`.
+- Endpoint log diuji ulang: start→19 samples→marker→stop; restart server →
+  sesi tetap muncul dari disk; CSV terbaca; DELETE menghapus folder.
+- Bug ditemukan saat `--check`: migration hanya punya baseline kalau dt ada
+  (snapshot pertama tidak menyimpan prev) → migr stuck "butuh dua snapshot";
+  await nol I/O ditandai pending. Fix `5615b0d`: baseline disimpan selalu;
+  idle = state (reason kosong), `--check` cetak `idle (terukur, 0 I/O)`.
+- docs `17e925b`: blackbox mencatat insiden kill + aturan PID + hasil A/B/C.
+
+## 2026-10-30 — Langkah 3: port layout overview_v6 (pengguna menaruh file)
+
+- `noterra/prototype/overview_v6.html` (20 KB) dibaca penuh; port ke
+  `index.html` (commit `9be0d71`) dengan aturan tanpa-sumber=null:
+  - skala gauge dinamis dari ring buffer 60 sampel (`dynMax`), bukan
+    konstanta 100/45/70/256/15.75; ring dalam CPU vs PL1 nyata (200 W),
+    GPU vs limit NVML nyata (70 W default); warna warn/bad dari sinyal
+    throttle nyata, bukan ambang suhu karangan;
+  - cell core P/E dibangun dari panjang array pu/eu (10 = 6 P + 4 E nyata);
+  - penyebut bar: PL1, gLim, pctheory link max, gpeak estimasi, vramTot,
+    memTot/swapTot, kapasitas via mount; fault/read pakai peak terukur
+    (berlabel "peak terukur");
+  - chip throttle GPU dari bit NVML: server decode
+    `nvmlDeviceGetCurrentClocksThrottleReasons` (nama konstanta pynvml yang
+    benar `nvmlClocksThrottleReason*`; kode lama mencari
+    `NVML_CLOCK_THROTTLE_REASON_*` yang tidak ada di paket ini → selalu
+    "none" walau throttle aktif — bug nyata diperbaiki) + boolean
+    thrIdle/thrPower/thrThermal/thrHw di snapshot; nilai nyata saat idle:
+    thr="gpu idle", idle=True, power/thermal/hw=False;
+  - rail kanan nyata: Timeline 7 sparkline ring buffer, Events dari
+    transisi (throttle NVML, burst NVMe >600 MB/s, throttle CPU sysfs,
+    draw ≥95% limit), System dari snap; hint bottleneck tampilkan aturan
+    eksplisit (page-bound/thermal-bound/power-bound), input null → tidak
+    di evaluasi;
+  - Tab Log tidak diubah (tetap server-side).
+- Bug saat port (diperbaiki sebelum hijau): `esc` kurang satu kurung tutup;
+  blok bars/chips/dl kurang kurung; indeks warn/key baris dl salah (pr
+  [label,fn,warn,key]; tb [label,f0,f1,warn,k0,k1]); tooltip SVG perlu
+  `setAttribute("title")` bukan properti; chip treat undefined=null; `.cores`
+  wrapper hilang class.
+- jsdom suite diperbarui untuk layout baru (16 assertion nyata dari fixture):
+  ALL PASS. `--check` final: 76 key → 72 available, 4 unavailable, 1 idle.

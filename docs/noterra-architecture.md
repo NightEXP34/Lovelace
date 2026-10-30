@@ -10,7 +10,8 @@ nyata. Diatur sesuai rencana Repo A di `docs/agents.md`: **core generik**
 ```
 noterra/
   server.py            # FastAPI: collector /proc, /sys, NVML + endpoint
-  index.html           # UI vanilla JS (part-based), polling /api/snapshot
+  index.html           # UI vanilla JS: layout Overview port dari prototype v6 + tab Log
+  prototype/           # prototype UI dari Claude (overview_v6.html, data mock)
   snapshot-sample.json # fixture snapshot nyata untuk test
   README.md            # cara menjalankan + tabel sumber metrik
   .venv/               # deps: fastapi, uvicorn, psutil, nvidia-ml-py
@@ -42,6 +43,32 @@ logs/<tanggal>_<label>/samples.csv tiap interval + meta.json (label, tag,
 iv, marker, status); analisis UI fetch CSV dari server (mean/median/p95/sd/
 min/max, overlay A/B); export CSV = file server
 ```
+
+## Layout Overview (port dari prototype overview_v6.html)
+
+Prototype punya data mock; porting ke `index.html` memakai snapshot nyata:
+
+- **Gauge**: skala penuh diambil dari ring buffer 60 sampel + nilai terkini
+  (`dynMax`), bukan konstanta prototype; ring dalam CPU = daya vs PL1 nyata
+  (warn 90% PL1, bad ≥ PL1); ring dalam GPU = draw vs limit NVML nyata
+  (70 W default di mesin ini); ambang warna dari sinyal throttle nyata
+  (bit NVML GPU / delta sysfs CPU), bukan ambang suhu karangan.
+- **Chip throttle GPU**: 4 slot (Idle/Power cap/Thermal/HW slowdown) dari bit
+  `nvmlDeviceGetCurrentClocksThrottleReasons` (di-decode di server), bukan
+  dari perbandingan suhu; NVML gagal → chip "—" dengan tooltip alasan.
+- **Cell core P/E**: jumlah dari array snapshot (dinamis; mesin ini 6 P + 4 E),
+  GHz dari kHz/1e6, °C dari hwmon; tanpa sumber → "—" + tooltip.
+- **Bar**: penyebut dari sumber nyata — PL1, limit NVML, theoretical PCIe dari
+  link max, peak VRAM estimasi, vramTot/memTot/swapTot, kapasitas via mount;
+  untuk laju fault/read tanpa spesifikasi hardware, penyebut = peak terukur di
+  ring buffer (berlabel "peak terukur"). Tidak ada konstanta mock yang dibiarkan.
+- **Rail kanan**: Timeline = sparkline 60 sampel ring buffer + nilai terkini;
+  Events = transisi status nyata (throttle NVML lepas/aktif, burst NVMe > 600
+  MB/s, throttle CPU sysfs, draw ≥ 95% limit NVML) — 6 slot; System = field
+  konfigurasi dari snapshot.
+- **Hint bottleneck**: aturan eksplisit ditampilkan — page-bound (NVMe read
+  > 600 MB/s dan GPU util < 50%), thermal-bound (throttle NVML/sysfs aktif),
+  power-bound (draw ≥ 95% limit NVML); input null → aturan tidak dievaluasi.
 
 ## Desain kunci
 
@@ -92,7 +119,9 @@ P-state, PCIe link now/max, rx/tx NVML, bus width 128-bit, peak VRAM (estimasi D
 pctheory dari link max, PL1/PL2/peak power (constraint, terbaca tanpa root),
 throttle CPU sysfs (delta), migration thread, ctx/IRQ/idle residency (C3_ACPI),
 readahead 128 KB, kapasitas drive (nvme0: "not mounted"; nvme1: 91%), clock GHz
-(kHz/1e6), IOPS/await ("idle" saat nol I/O), recording persisten logs/.
+(kHz/1e6), IOPS/await ("idle" saat nol I/O), recording persisten logs/,
+throttle bits NVML (chip UI), layout Overview v6. `--check` terakhir: 76 key,
+72 available, 4 unavailable, 1 state "idle".
 
 Unavailable dengan alasan (via /api/health):
 - daya package CPU: `energy_uj` mode 0400 — butuh root/CAP_DAC_READ_SEARCH
