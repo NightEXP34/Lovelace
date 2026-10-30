@@ -1,0 +1,56 @@
+# THEMES — kontrak
+
+Core (`web/core/core.js`) yang punya data: fetch `/api/snapshot` tiap detik,
+ring buffer 60 sampel, format angka, **registry metrik** yang dibangun dari
+snapshot nyata (key, label, satuan, skala asli `scaleKey`, sumber,
+`available`/`reason`), status backend, pemilihan theme, dan **tab Log**.
+
+Theme hanya membaca registry dan data lewat `ctx` — **tidak boleh fetch atau
+parse sendiri**. Theme mengekspor `mount(root, ctx)` dan `update(ctx)`:
+
+```js
+window.Noterra.addTheme("mytheme", {
+  mount(root, ctx){ /* bangun DOM sekali: panel, rail, chip */ },
+  update(ctx){ /* refresh DOM dari ctx.data / ctx.registry / ctx.hist */ },
+  chips(ctx){ /* opsional: core memanggil saat status recording berubah */ },
+});
+```
+
+Isi `ctx`:
+- `ctx.data` — nilai terkini semua kunci snapshot (scalar, array `pu/pf/pt/eu/ef/et`, per-drive `r0/w0/...`)
+- `ctx.registry` — `Map` key → `{key, label, unit, digits, source, scaleKey, available, reason}`;
+  entri `kind:"drive"` (`dev`, `name`, `link`, `mount`, …) — jumlah NVMe/GPU/core
+  mengikuti registry; `gpuPresent` menandai GPU terdeteksi atau tidak.
+- `ctx.hist(key)` — ring buffer metrik; `ctx.max(key)` — peak nyata dari buffer
+- `ctx.reasons` — peta alasan unavailable mentah dari `/api/health`
+- `ctx.fmt` — `fx/val/esc/mmss/clamp/avg`; `ctx.mk(html)`
+- `ctx.online`, `ctx.recording`, `ctx.mock`, `ctx.snap`, `ctx.drives`
+
+## theme.json (di `web/themes/<nama>/theme.json`)
+
+```json
+{"name":"mytheme","author":"...","version":"1.0","palettes":["light","dark"]}
+```
+
+Server `GET /api/themes` memindai `web/themes/*/theme.json`. `theme.css`
+menyuntik stylesheet; block `[data-theme="light|dark"]` memilih palette
+(core men-set `document.documentElement.dataset.theme`).
+
+## pilihan theme
+
+`?theme=<nama>` (URL) > `localStorage["nt.theme"]` > `default`.
+Palette: `localStorage["nt.palette"]`, fallback `prefers-color-scheme`.
+
+## test tanpa hardware
+
+Buka `/index.html?mock=1` — core memakai `/api/mock/snapshot`
+(`noterra/snapshot-sample.json`) dan `/api/mock/health`, tanpa menyentuh
+hardware. Smoke test jsdom: `cd nttest && node test-web.mjs` (memuat
+`web/index.html` lewat ResourceLoader, fetch di-stub).
+
+## peringatan
+
+**Pasang theme hanya dari sumber yang dipercaya.** Script theme dieksekusi
+sepenuhnya di browser dan mendapat akses penuh ke DOM, localStorage, dan
+seluruh data yang dikirim core. `/api/themes` hanya daftar — isi script tidak
+diverifikasi oleh core.
