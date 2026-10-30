@@ -198,15 +198,30 @@ async function loadTheme(){
   document.body.append(sc);
 }
 
-/* ---- navigasi: Overview = theme, Log = milik core ---- */
-function show(id){
-  if(id!=="log")id="overview"; location.hash=id;
-  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
-  const root=$("#root");
-  if(id==="log"){renderLog();return}
-  if(theme)theme.mount(root,ctx); else root.innerHTML="";
+/* ---- navigasi: view registry (Log milik core, Overview dari addTheme) ---- */
+const VIEWS=new Map();            // id -> {id,label,order,mount,update}
+let activeView="overview";
+function renderNav(){
+  const nav=$("#nav"); if(!nav)return;
+  const vs=[...VIEWS.values()].sort((a,b)=>(a.order??100)-(b.order??100));
+  nav.innerHTML=`<h1>Monitor</h1>
+${vs.map(v=>`  <button data-p="${esc(v.id)}">${esc(v.label)}</button>`).join("\n")}
+  <div class="foot"><label>Theme <select id="theme"></select></label><span id="status">Backend: offline</span></div>
+`;
+  nav.querySelectorAll("button").forEach(b=>b.onclick=()=>show(b.dataset.p));
 }
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>show(b.dataset.p));
+function addView(id,v){
+  VIEWS.set(id,{id,label:v.label||id,order:v.order??100,mount:v.mount,update:v.update});
+  renderNav();
+}
+function show(id){
+  if(!VIEWS.has(id))id="overview";
+  activeView=id;
+  if(id!=="log")location.hash=id;
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
+  const root=$("#root"), v=VIEWS.get(id);
+  if(v&&v.mount)v.mount(root,ctx); else root.innerHTML="";
+}
 
 /* ---- tab Log: sesi persisten di server, folder logs/<tanggal>_<label>/ ---- */
 const METRICS=[["cpuT","CPU temp","°C","cpu_temp_c"],["cpuW","CPU power","W","cpu_power_w"],["gT","GPU temp","°C","gpu_temp_c"],["gW","GPU power","W","gpu_power_w"],["vbw","VRAM bandwidth","GB/s","vram_bw_gbs"],["prx","PCIe receive","GB/s","pcie_rx_gbs"],["majF","Major faults","/s","mem_major_faults_s"],["r0","NVMe 0 read","MB/s","nvme0_read_mbps"]];
@@ -338,9 +353,12 @@ function start(){
 }
 
 /* ---- titik masuk: daftar theme dari server, muat theme terpilih ---- */
+addView("log",{label:"Log",order:10,mount(){renderLog();}});
 window.Noterra={
-  addTheme(name,th){theme=th; initPalette(); show(location.hash.slice(1)); start();},
-  start,
+  addTheme(name,th){theme=th;
+    addView("overview",{label:"Overview",order:0,mount(root,ctx){if(theme)theme.mount(root,ctx);}});
+    initPalette(); show(location.hash.slice(1)); start();},
+  start, addView,
   ctx, registry:REG, fmt:{fx,val,esc,mmss,clamp,avg}, mk, themeName, mock:MOCK,
 };
 loadTheme();
