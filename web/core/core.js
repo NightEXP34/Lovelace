@@ -15,6 +15,13 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const mmss=t=>String(t/60|0).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
 const mk=h=>{const d=document.createElement("div");d.innerHTML=h;return d};
 
+/* ---- id DOM yang dipakai core; index.html wajib menyediakan empat pertama ---- */
+const DOM={
+  nav:"#nav", status:"#status", theme:"#theme", root:"#root",
+  iv:"#iv", lb:"#lb", tg:"#tg", tm:"#tm", mk:"#mk", rc:"#rc", ex:"#ex",
+  asub:"#asub", an:"#an", mt:"#mt", tr:"#tr", gp:"#gp", ov:"#ov",
+};
+
 /* ---- mode: ?mock=1 memakai snapshot-sample.json, tanpa hardware ---- */
 const params=new URLSearchParams(location.search);
 const MOCK=params.get("mock")==="1";
@@ -143,14 +150,14 @@ async function sample(){
     if(!r.ok) throw new Error(r.status);
     const d=await r.json();
     S={drives:[],snap:{},...d};
-    online=true; $("#status").textContent=MOCK?"Backend: mock":"Backend: live";
+    online=true; $(DOM.status).textContent=MOCK?"Backend: mock":"Backend: live";
     for(const k in d){const v=d[k];
       if(typeof v==="number"){(H[k]=H[k]||[]).push(v); if(H[k].length>60)H[k].shift()}
     }
     buildRegistry();
     if(theme)theme.update(ctx);
   }catch(e){
-    online=false; $("#status").textContent=MOCK?"Backend: mock data gagal dimuat":"Backend: offline — run server.py";
+    online=false; $(DOM.status).textContent=MOCK?"Backend: mock data gagal dimuat":"Backend: offline — run server.py";
     refreshTheme(); /* padanan chipsTop() lama — tidak menyentuh rail */
   }
 }
@@ -174,7 +181,7 @@ function initPalette(){
     p=(window.matchMedia?window.matchMedia("(prefers-color-scheme:dark)").matches:false)?"dark":"light";
     if(pals.indexOf(p)<0)p=pals[0];
   }
-  const th=$("#theme");
+  const th=$(DOM.theme);
   th.innerHTML=pals.map(x=>`<option value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join("");
   th.value=p; document.documentElement.dataset.theme=p;
   th.onchange=()=>{try{localStorage.setItem("nt.palette",th.value);}catch(e){}
@@ -192,9 +199,9 @@ async function loadTheme(){
   document.head.append(link);
   const sc=document.createElement("script");
   sc.src="themes/"+encodeURIComponent(name)+"/"+entry;
-  sc.onerror=()=>{$("#status").textContent="Theme gagal dimuat";
-    $("#root").innerHTML=`<div class="empty">Theme "${esc(name)}" tidak ditemukan di themes/${esc(name)}/${esc(entry)}. Pasang theme hanya dari sumber yang dipercaya.</div>`;};
-  sc.onload=()=>{if(!theme)$("#status").textContent=`Theme "${name}" tidak mendaftar lewat Noterra.addTheme`;};
+  sc.onerror=()=>{$(DOM.status).textContent="Theme gagal dimuat";
+    $(DOM.root).innerHTML=`<div class="empty">Theme "${esc(name)}" tidak ditemukan di themes/${esc(name)}/${esc(entry)}. Pasang theme hanya dari sumber yang dipercaya.</div>`;};
+  sc.onload=()=>{if(!theme)$(DOM.status).textContent=`Theme "${name}" tidak mendaftar lewat Noterra.addTheme`;};
   document.body.append(sc);
 }
 
@@ -202,7 +209,7 @@ async function loadTheme(){
 const VIEWS=new Map();            // id -> {id,label,order,mount,update}
 let activeView="overview";
 function renderNav(){
-  const nav=$("#nav"); if(!nav)return;
+  const nav=$(DOM.nav); if(!nav)return;
   const vs=[...VIEWS.values()].sort((a,b)=>(a.order??100)-(b.order??100));
   nav.innerHTML=`<h1>Monitor</h1>
 ${vs.map(v=>`  <button data-p="${esc(v.id)}">${esc(v.label)}</button>`).join("\n")}
@@ -219,7 +226,7 @@ function show(id){
   activeView=id;
   if(id!=="log")location.hash=id;
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
-  const root=$("#root"), v=VIEWS.get(id);
+  const root=$(DOM.root), v=VIEWS.get(id);
   if(v&&v.mount)v.mount(root,ctx); else root.innerHTML="";
 }
 
@@ -241,16 +248,16 @@ async function loadSessions(){
 }
 async function toggleRec(){
   if(!rec){
-    const iv=+$("#iv").value;
+    const iv=+$(DOM.iv).value;
     const r=await fetch("/api/log/start",{method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({label:$("#lb").value.trim(),tag:$("#tg").value.trim(),interval:iv})});
+      body:JSON.stringify({label:$(DOM.lb).value.trim(),tag:$(DOM.tg).value.trim(),interval:iv})});
     rec=await r.json(); rec.iv=iv; rec.samples=0; rec.mk=0;
     sel.add(rec.id);
     await loadSessions();
     rec.timer=setInterval(async()=>{
       if(!rec)return;
       await loadSessions();
-      const t=$("#tm"); if(t)t.textContent=mmss(Math.round((rec.samples||0)*rec.iv));
+      const t=$(DOM.tm); if(t)t.textContent=mmss(Math.round((rec.samples||0)*rec.iv));
       refreshTheme();
     },1000);
   } else {
@@ -266,7 +273,7 @@ async function addMarker(){
   await fetch("/api/log/marker",{method:"POST",headers:{"content-type":"application/json"},
     body:JSON.stringify({id:rec.id})});
   await loadSessions();
-  const e=$("#mk"); if(e)e.textContent="Add marker ("+(rec.mk||0)+")";
+  const e=$(DOM.mk); if(e)e.textContent="Add marker ("+(rec.mk||0)+")";
 }
 async function loadCsv(id){
   if(CSV[id])return CSV[id];
@@ -292,7 +299,7 @@ async function exportCsv(){
 }
 async function renderLog(){
   await loadSessions();
-  const root=$("#root"), r=!!rec;
+  const root=$(DOM.root), r=!!rec;
   const rows=SES.map(s=>`<tr><td><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.label)}"></td><td>${esc(s.label)}${s.status==="recording"?' <span class="tag">recording</span>':""}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td>${esc(s.started_iso||String(s.start_ms))}</td><td>${mmss(Math.round(s.samples*(s.interval_s||1)))}</td><td>${s.interval_s} s</td><td>${s.samples}</td><td>${(s.markers||[]).length}</td><td><button class="btn" data-del="${s.id}">Delete</button></td></tr>`).join("");
   root.innerHTML=`<div class="bar-top"><input id="lb" placeholder="Session label" size="22" value="${esc(lo.lb)}"><input id="tg" placeholder="Tag (groups repeated runs)" size="24" value="${esc(lo.tg)}">
     <label>Interval <select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===(r?rec.iv:lo.iv)?"selected":""}>${v} s</option>`).join("")}</select></label>
@@ -301,13 +308,13 @@ async function renderLog(){
     <div class="stack"><section class="p" style="display:block"><h2>Sessions</h2><div class="sub" style="margin:2px 0 16px">${SES.length} tersimpan di server (folder logs/). Interval & marker ikut tersimpan di meta.json.</div>
     ${SES.length?`<table><tr><th></th><th>Name</th><th>Tag</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr>${rows}</table>`:`<div class="empty">No logs yet. Start a recording to create one.</div>`}</section>
     <section class="p" style="display:block"><h2>Analysis</h2><div class="sub" id="asub" style="margin:2px 0 16px">0 selected</div><div id="an"><div class="empty">Select one or more sessions above to analyze them.</div></div></section></div>`;
-  $("#lb").oninput=e=>lo.lb=e.target.value; $("#tg").oninput=e=>lo.tg=e.target.value; $("#iv").onchange=e=>lo.iv=+e.target.value;
-  $("#rc").onclick=toggleRec; $("#ex").onclick=exportCsv; $("#mk").onclick=addMarker;
+  $(DOM.lb).oninput=e=>lo.lb=e.target.value; $(DOM.tg).oninput=e=>lo.tg=e.target.value; $(DOM.iv).onchange=e=>lo.iv=+e.target.value;
+  $(DOM.rc).onclick=toggleRec; $(DOM.ex).onclick=exportCsv; $(DOM.mk).onclick=addMarker;
   root.querySelectorAll("[data-id]").forEach(c=>c.onchange=()=>{const id=+c.dataset.id;sel.has(id)?sel.delete(id):sel.add(id);renderLog()});
   root.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{const id=+b.dataset.id;
     await fetch(`/api/log/${id}`,{method:"DELETE"}); sel.delete(id); delete CSV[id]; await loadSessions(); renderLog()});
   const ss=SES.filter(s=>sel.has(s.id));
-  $("#asub").textContent=ss.length+" selected";
+  $(DOM.asub).textContent=ss.length+" selected";
   if(!ss.length)return;
   const cs=await Promise.all(ss.map(s=>loadCsv(s.id)));
   const M=METRICS.find(x=>x[0]===lo.m);
@@ -324,7 +331,7 @@ async function renderLog(){
   const cfgs=ss.map(s=>({...flat(s.config||{}),tag:s.tag||"none",interval_s:s.interval_s}));
   const keys=[...new Set(cfgs.flatMap(c=>Object.keys(c)))].filter(k=>new Set(cfgs.map(c=>JSON.stringify(c[k]))).size>1);
   const hasData=arrs.some(a=>a.length);
-  $("#an").innerHTML=`<div class="ctl"><label>Metric <select id="mt">${METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
+  $(DOM.an).innerHTML=`<div class="ctl"><label>Metric <select id="mt">${METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
     <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
     <label><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label></div>
     ${hasData?`<svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>`:""}
@@ -332,8 +339,8 @@ async function renderLog(){
     <h3 style="margin-top:18px">Statistics</h3><table class="n"><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr>${tb}</table>
     ${lo.grp?`<div class="hint lg">Untuk baris average, std dev = spread antar run.</div>`:""}
     <h3 style="margin-top:18px">Perbedaan konfigurasi sesi</h3>${keys.length?`<table class="n"><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${cfgs.map(c=>`<td>${esc(String(c[k]))}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint lg">Semua sesi terpilih punya konfigurasi (governor/EPP/turbo/sysctl/power limit) yang sama.</div>`}`;
-  $("#mt").onchange=e=>{lo.m=e.target.value;renderLog()}; $("#tr").onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $("#gp").onchange=e=>{lo.grp=e.target.checked;renderLog()};
-  const ov=$("#ov");
+  $(DOM.mt).onchange=e=>{lo.m=e.target.value;renderLog()}; $(DOM.tr).onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $(DOM.gp).onchange=e=>{lo.grp=e.target.checked;renderLog()};
+  const ov=$(DOM.ov);
   if(ov) overlay(ov,arrs,ss.map(s=>s.interval_s||1));
 }
 function overlay(svg,arrs,ivs){

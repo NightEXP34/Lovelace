@@ -26,6 +26,13 @@ Isi `ctx`:
 - `ctx.fmt` — `fx/val/esc/mmss/clamp/avg`; `ctx.mk(html)`
 - `ctx.online`, `ctx.recording`, `ctx.mock`, `ctx.snap`, `ctx.drives`
 
+## id DOM wajib dari `index.html`
+
+`web/index.html` harus menyediakan: `#nav` (nav + tombol view + select `#theme`
++ `#status`), `#root` (tempat view di-mount), `#theme` (select palette), dan
+`#status` (teks status backend). Id tab Log (`#iv`, `#lb`, `#tg`, …) dibuat
+oleh core saat tab Log dirender, bukan oleh `index.html`.
+
 ## theme.json (di `web/themes/<nama>/theme.json`)
 
 ```json
