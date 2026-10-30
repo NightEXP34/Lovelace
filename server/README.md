@@ -7,7 +7,8 @@ sumber data dikembalikan `null` dan UI menampilkan **unavailable**.
 ## Jalankan
 
 ```bash
-cd noterra
+cd server
+# venv ada di server/.venv (dibuat ulang sesuai requirements.txt)
 .venv/bin/python server.py        # http://127.0.0.1:5130
 .venv/bin/python server.py --check  # diagnosis sumber per metrik (available/unavailable + alasan)
 ```

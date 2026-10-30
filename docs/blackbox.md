@@ -3,9 +3,12 @@
 Rekam jejak kerja agent di repo Lovelace (folder lokal `perSOna`).
 Format: kronologis, apa yang dikerjakan + hasil nyata.
 
+Catatan: nama path di entri historis di bawah sudah disesuaikan ke layout
+sekarang (`server/`, `tests/`, `web/`); keputusan dan hasil tidak diubah.
+
 ## 2026-10-29 — Pemahaman repository (sesi awal)
 
-- Inspeksi penuh: `agents.md` (162 baris spesifikasi UAS), `noterra/index.html`
+- Inspeksi penuh: `agents.md` (162 baris spesifikasi UAS), `index.html` lama (dihapus di brief #2)
   (prototype UI "Monitor" dengan mock data), `changelog/` (kosong, tidak
   di-track), riwayat git (4 commit, semua hari itu), remote
   `NightEXP34/Lovelace`.
@@ -17,7 +20,7 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
 
 - Nama repo resmi **Lovelace** (beda dari nama folder = sengaja, keputusan
   pengguna).
-- Tugas: fokus di `noterra/`, tambahkan backend ke resource asli, install
+- Tugas: fokus di backend/frontend (`server/` + `web/`), tambahkan backend ke resource asli, install
   dependencies, sambungkan semua placeholder ke status hardware nyata.
 
 ## 2026-10-29 — Survei sumber data di mesin (sebelum ngoding)
@@ -39,11 +42,11 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
 
 ## 2026-10-29 — Dependencies
 
-- `noterra/.venv` dibuat (Python 3.14.4): fastapi 0.162, uvicorn, psutil 7.2.2,
+- venv lama dibuat (sekarang `server/.venv`) (Python 3.14.4): fastapi 0.162, uvicorn, psutil 7.2.2,
   `pynvml` → diganti ke paket resmi `nvidia-ml-py` (pynvml deprecated).
-- `nttest/`: jsdom untuk smoke test headless (di-gitignore untuk node_modules).
+- `tests/`: jsdom untuk smoke test headless (di-gitignore untuk node_modules).
 
-## 2026-10-29 — Backend `noterra/server.py`
+## 2026-10-29 — Backend `server/server.py`
 
 - Ditulis: FastAPI, endpoint `GET /` (UI) + `GET /api/snapshot`.
 - Collector: /proc/stat per-core busy, /proc/interrupts, /proc/schedstat
@@ -69,7 +72,7 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
   major fault naik ~326/s, NVMe0 read ~22.4 MB/s, util 19%, ctx naik —
   respons metrik benar terhadap beban.
 
-## 2026-10-29 — Frontend `noterra/index.html` disambungkan ke API
+## 2026-10-29 — Frontend lama (dihapus) disambungkan ke API
 
 - Sampler mock dihapus; fetch `/api/snapshot` tiap 1s; status backend
   live/offline di footer; ring buffer 60 sampel untuk sparkline.
@@ -93,7 +96,7 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
 
 - `.gitignore` (.venv, node_modules, server.log, __pycache__), README noterra
   (tabel sumber metrik + daftar unavailable + catatan mesin), fixture
-  `noterra/snapshot-sample.json` dari snapshot nyata.
+  `server/fixtures/snapshot-sample.json` dari snapshot nyata.
 - Commit `691b106` "noterra: wire monitor UI to real hardware backend"
   (7 file, +782/−77) → **push ke origin/main berhasil**.
 
@@ -124,11 +127,11 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
 
 - Insiden: perintah `pgrep -f "[s]erver\.py" | while read p; do kill $p; done`
   ikut membunuh proses Strata (pattern cocok ke command line-nya). Strata
-  kemudian dijalankan ulang oleh pengguna. `pkill -f "noterra/server.py"` juga
+  kemudian dijalankan ulang oleh pengguna. `pkill -f "<path>/server.py"` juga
   pernah mematikan shell harness (SIGTERM).
 - Aturan proses yang berlaku sekarang (disepakati pengguna):
   DILARANG `pkill -f`, `pgrep -f | kill`, `killall`, kill berbasis pola nama.
-  Server noterra dijalankan dengan PID file `noterra/.pid`; berhenti hanya via
+  Server noterra dijalankan dengan PID file `server/.pid`; berhenti hanya via
   `kill "$(cat .pid)"` setelah `ps -o pid,args -p <pid>` membuktikan itu proses
   yang saya start. Proses strata/llama/nvidia tidak pernah disentuh.
   Kalau koneksi model/harness putus: berhenti dan tunggu, tidak menebak.
@@ -142,7 +145,7 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
   unavailable; keputusan OS: **tidak chmod world-readable** (kernel menolak
   sejak PLATYPUS; expose energy_uj ke user = bocor informasi power telemetry);
   jalur yang diusulkan = systemd `AmbientCapabilities=CAP_DAC_READ_SEARCH`
-  (`noterra/noterra.service` disiapkan, belum dijalankan — sudo diblokir di
+  (`server/deploy/noterra.service` disiapkan, belum dijalankan — sudo diblokir di
   sesi harness). Server tetap bind 127.0.0.1.
 - `ff8f072` throttle CPU dari sysfs `thermal_throttle/*_throttle_count`
   (delta/s, sibling dedup); nilai awal nyata: core 1155, package 40240 count
@@ -194,7 +197,7 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
 
 ## 2026-10-30 — Langkah 3 belum dikerjakan
 
-- `noterra/prototype/overview_v6.html` belum ada di repo → sesuai aturan,
+- `docs/prototype/overview_v6.html` belum ada di repo → sesuai aturan,
   berhenti dan minta pengguna menaruh file prototype sebelum porting layout.
 
 ## 2026-10-30 — Pemulihan sesi + langkah 1–2 (setelah harness mati lagi)
@@ -219,7 +222,7 @@ Format: kronologis, apa yang dikerjakan + hasil nyata.
 
 ## 2026-10-30 — Langkah 3: port layout overview_v6 (pengguna menaruh file)
 
-- `noterra/prototype/overview_v6.html` (20 KB) dibaca penuh; port ke
+- `docs/prototype/overview_v6.html` (20 KB) dibaca penuh; port ke
   `index.html` (commit `9be0d71`) dengan aturan tanpa-sumber=null:
   - skala gauge dinamis dari ring buffer 60 sampel (`dynMax`), bukan
     konstanta 100/45/70/256/15.75; ring dalam CPU vs PL1 nyata (200 W),

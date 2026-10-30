@@ -41,7 +41,7 @@ perSOna/
 └── changelog/
 ```
 
-`noterra/` sudah dihapus; nama produk "Noterra" tetap dipakai di UI/namespace
+Folder backend lama sudah dihapus; nama produk "Noterra" tetap dipakai di UI/namespace
 (`window.Noterra`), hanya folder lama yang hilang.
 
 ## Menjalankan

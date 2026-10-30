@@ -214,3 +214,43 @@ disebut di target layout dan tidak boleh dihapus, jadi ikut dipindah ke
 `noterra/index.html` dan `nttest/test.mjs` dihapus dengan `git rm` (path
 eksplisit). Comparator DOM lama-vs-baru (termasuk normalisasi tab Storage)
 dihapus dari `tests/test-web.mjs`; tidak ada assertion fungsional yang hilang.
+
+### B5–B9 — prototype, ignore, requirements, docs, sapu akhir
+
+- B5: `noterra/prototype/overview_v6.html` → `docs/prototype/overview_v6.html`.
+- B6: `.gitignore` hanya ditambah `.venv/`, `**/.venv/`, `**/node_modules/`;
+  baris lama (`noterra/.venv/`, `noterra/.server.log`) tidak dihapus.
+- B7: `server/requirements.txt` dari pin venv nyata (fastapi 0.162.0,
+  uvicorn 0.54.0, psutil 7.2.2, nvidia-ml-py 13.615.71).
+- B8: README root baru; `docs/noterra-architecture.md`, `docs/FORKING.md`,
+  `web/THEMES.md`, `docs/agents.md` §8 diperbarui ke `server/`/`tests/`.
+  §2 hard rules tidak disentuh. Deviasi §8 dicatat: `server/` dipakai, bukan
+  `core/`, karena `web/core/` sudah ada.
+- B9: grep akhir tidak menemukan `noterra/`, `nttest`, atau `/legacy` di luar
+  catatan historis (`docs/refactor-notes.md`, `changelog/`). Package test
+  dinamai `tests`. `docs/blackbox.md` diberi preface bahwa path historis
+  disesuaikan ke layout sekarang; isi keputusan tidak diubah.
+- File ekstra yang tidak ada di target tree tetapi tidak boleh dihapus:
+  `server/README.md` (dari `noterra/README.md`) dan `tests/check-layout.mjs`
+  (dari `nttest/check-layout.mjs`). Keduanya ikut dipindah, bukan dihapus.
+- `server/README.md` juga diperbaiki `cd server` (sebelumnya `cd noterra`).
+
+### Verifikasi akhir
+
+- `cd tests && npm test` → **ALL PASS**.
+- `cd server && ../noterra/.venv/bin/python -m py_compile server.py` → OK.
+- In-process: `/` 609 byte, `/api/snapshot` 75 key, `/api/mock/snapshot`
+  75 key, `/api/mock/health` 4 alasan, `/api/schema` 57 key, `/api/themes`
+  2 theme, `/api/log/sessions` 0 (sama dengan `ls logs | wc -l` = 0).
+- `git ls-files` tidak memuat `noterra/` atau `nttest/`; hanya
+  `web/index.html` yang tersisa.
+- `noterra/` di disk hanya berisi `.venv/` dan `__pycache__/` (tidak
+  dipindah/dihapus sesuai aturan); user menghapusnya manual setelah venv baru
+  dibuat.
+
+### Follow-up manual untuk pengguna
+
+1. `cd server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
+2. Setelah server baru terverifikasi, hapus sisa `noterra/` (hanya `.venv/`
+   dan `__pycache__/`).
+3. Review branch `restructure`, lalu push manual.
