@@ -165,3 +165,52 @@ disebut di target layout dan tidak boleh dihapus, jadi ikut dipindah ke
 - `tests/package.json` scripts test = `node test-web.mjs`; `npm test` ALL PASS.
 - `nttest/test.mjs` masih ada (belum dihapus; B4) tetapi `node_modules` sudah
   pindah, jadi jalankan dari `tests/` mulai sekarang.
+
+### B4 — legacy comparator dihapus
+
+`nttest/test.mjs` dihapus setelah semua assertion-nya dipetakan/diport ke
+`tests/test-web.mjs`. Assertion lama → cakupan baru:
+
+1. backend live → `backend live setelah fetch pertama`.
+2. core cell dinamis → `core cell dinamis dari registry`.
+3. P/E dua baris → port `P dan E dipisah dua baris`.
+4. stat cards tanpa undefined → assertion sama.
+5. core cell GHz 2 desimal → port `core cell render GHz dengan 2 desimal`.
+6. clock 0.39–5.5 GHz → port `semua clock di rentang ...`.
+7. gauge CPU ring luar+dalam → port `gauge CPU punya ring luar + ring dalam`.
+8. tooltip RAPL → `tooltip gauge dari alasan health`.
+9. chip throttle 4 slot → assertion sama.
+10. chip NVML tidak "—"/tampil "—" → port `chip NVML throttle bits ...`.
+11. timeline rail jumlah baris → assertion sama.
+12. timeline tanpa undefined → assertion sama.
+13. events 6 slot → port `events rail 6 slot`.
+14. System rail kernel → assertion sama.
+15. hint bottleneck → assertion sama.
+16. subtitle GPU RTX → assertion sama.
+17. subtitle Memory kernel → port `subtitle Memory = kernel saja`.
+18. driver NVIDIA → port `versi NVIDIA driver tampil di panel GPU`.
+19. Throttle row nyata → port `Throttle CPU row = nilai sysfs nyata`.
+20. PL1/PL2 → port `PL1/PL2 nyata tampil`.
+21. readahead KB → port `readahead nyata KB`.
+22. not mounted → assertion sama.
+23. mounted % → port `drive mounted tampil persen kapasitas nyata`.
+24. RAM bandwidth tooltip perf → port `measured RAM bandwidth unavailable + tooltip perf`.
+25. alt: tanpa GPU, 3 panel → assertion sama.
+26. alt: timeline 5 baris → assertion sama.
+27. alt: tabel drive 3 kolom → port `tabel drive dinamis: 3 kolom`.
+28. alt: bar Storage 6 → assertion sama.
+29. alt: model drive nyata → port `model drive nyata per kolom`.
+30. alt: not mounted → assertion sama.
+31. alt: tanpa undefined → port `hardware lain: tidak ada 'undefined'`.
+32. alt: dd-na → assertion sama.
+33. log controls → port `log controls rendered`.
+34. empty log → port `empty log state`.
+35. recording listed → port `recording session listed`.
+36. session persisted → port `session persisted on server`.
+37. statistics table → port `statistics table shown`.
+38. mean CPU 65.5 → port `mean CPU temp dari CSV server`.
+39. CSV export → port `CSV export triggered`.
+
+`noterra/index.html` dan `nttest/test.mjs` dihapus dengan `git rm` (path
+eksplisit). Comparator DOM lama-vs-baru (termasuk normalisasi tab Storage)
+dihapus dari `tests/test-web.mjs`; tidak ada assertion fungsional yang hilang.
