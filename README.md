@@ -72,5 +72,5 @@ menjalankan server dan tidak menyentuh hardware.
 ## Fork UI
 
 Mulai dari `web/themes/minimal/` (L2, tanpa JavaScript), edit `layout.json`.
-Panduan lengkap: [docs/FORKING.md](docs/FORKING.md); kontrak L1–L4:
-[web/THEMES.md](web/THEMES.md).
+Panduan lengkap: [docs/forking.md](docs/forking.md); kontrak L1–L4:
+[docs/theming.md](docs/theming.md).

@@ -20,13 +20,12 @@ web/
     widgets.js          # widget primitif + Noterra.renderLayout
     shell.js            # nav, status, palette, view registry, tab Log
     core.css            # fallback kelas/variabel (dimuat sebelum theme.css)
-    core.js             # shim tipis: memuat client→widgets→shell (opsional)
   themes/<nama>/
     theme.json
     theme.css
     layout.json         # opsional (L2)
     overview.js         # opsional (L3)
-  examples/headless.html # contoh L4
+examples/headless.html  # contoh L4 (di root repo)
 ```
 
 `web/index.html` memuat `core.css`, lalu `client.js`, `widgets.js`, `shell.js`.
@@ -134,7 +133,7 @@ Theme bisa mendaftarkan widget komposit sendiri (contoh:
 </script>
 ```
 
-Contoh utuh: `web/examples/headless.html` (tiga nilai live). `client.js` tidak
+Contoh utuh: `examples/headless.html` (tiga nilai live). `client.js` tidak
 menyentuh DOM; `start()` idempoten.
 
 ## `theme.json`

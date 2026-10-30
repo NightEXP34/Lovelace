@@ -10,10 +10,10 @@ sekarang = monitoring hardware murni; adapter engine LLM dikecualikan sampai nan
 
 ```
 server/
-  server.py            # FastAPI: collector /proc, /sys, NVML + endpoint
+  server.py            # FastAPI app, route API, recording
+  collectors.py        # collector /proc, /sys, NVML + build_snapshot
   metrics_meta.json    # schema metrik (label, satuan, sumber, scaleKey)
   requirements.txt     # fastapi, uvicorn, psutil, nvidia-ml-py
-  README.md            # cara menjalankan + tabel sumber metrik
   fixtures/snapshot-sample.json  # fixture snapshot nyata untuk test
   deploy/noterra.service         # contoh unit systemd (tidak dijalankan)
 web/                   # UI yang diserve GET /
@@ -24,11 +24,18 @@ web/                   # UI yang diserve GET /
   core/core.css        # fallback gaya (dimuat sebelum theme.css)
   themes/default/      # theme L3 (overview.js) + layout.json
   themes/minimal/      # contoh L2 tanpa JavaScript
-  examples/headless.html
+examples/headless.html # contoh L4
 tests/
   test-web.mjs         # smoke test headless (jsdom) terhadap web/index.html
   check-layout.mjs     # cek cepat widget komposit
-docs/prototype/overview_v6.html  # referensi desain
+scripts/               # run/check/test tanpa sudo
+docs/
+  architecture.md      # file ini
+  theming.md           # kontrak L1–L4
+  forking.md           # panduan fork
+  operations.md        # run + batasan privilege
+  metrics.md           # tabel sumber metrik
+  history/             # arsip catatan lama
 ```
 
 ## Alur data

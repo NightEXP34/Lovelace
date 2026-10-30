@@ -85,7 +85,7 @@ cd tests && npm test
 
 ## Layout
 
-Tab Overview memakai layout prototype `docs/prototype/overview_v6.html`
+Tab Overview memakai layout prototype `docs/history/prototype/overview_v6.html`
 (gauge 270°, cell core P/E, bar, chip throttle NVML, rail Timeline/Events/System,
 hint aturan bottleneck) tetapi semua angka dari snapshot nyata: skala gauge dari
 ring buffer 60 sampel, penyebut bar dari PL1/limit NVML/theoretical link max/
