@@ -416,6 +416,22 @@ function compositePanel(name,spec){
 compositePanel("cpu-panel",PANELS[0]);
 compositePanel("memory-panel",PANELS[2]);
 compositePanel("storage-panel",PANELS[3]);
+compositePanel("storage-panel",PANELS[3]);
+N.addWidget("gpu-panel",{
+  mount(el){el.style.display="none";},
+  update(el,props,ctx){
+    C=ctx; S=ctx.data; R=ctx.reasons;
+    const ok=!!(C.registry.get("gpuPresent")&&C.registry.get("gpuPresent").available);
+    if(!ok){el.style.display="none";return;}
+    el.style.display="";
+    if(!el._up){
+      const p=panel(PANELS[1]);
+      el.append(p.el);
+      el._up=()=>{p.us.forEach(f=>f());p.sub.textContent=(typeof PANELS[1].sub==="function"?PANELS[1].sub(C.data):PANELS[1].sub)||"";};
+    }
+    el._up();
+  }
+});
 
 window.Noterra.addTheme("default",{mount,update,chips});
 })();
