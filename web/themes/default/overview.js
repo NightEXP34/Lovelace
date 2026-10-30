@@ -10,6 +10,8 @@ const mk=N.mk;
 let C=null, S=null, R=null;   // ctx, ctx.data, ctx.reasons — di-refresh tiap update
 let storageSel=0;             // index drive terpilih di panel Storage (bertahan antar update)
 const storageIndex=()=>Math.min(storageSel,Math.max(0,((C&&C.drives)||[]).length-1));
+/* nama drive terpilih tidak tampil di label gauge; hanya lewat tooltip */
+const driveTip=()=>{const i=storageIndex(),d=(C&&C.drives||[])[i]||{};return (d.dev||("drive"+i))+(d.name?" · "+d.name:"")};
 const H=k=>C.hist(k);
 const dynMax=k=>C.max(k);
 
@@ -40,14 +42,17 @@ function gauge(g){
     const k=key(), s=C.data, x=s[k], m=g.max?g.max():dynMax(k);
     un.textContent=typeof g.unit==="function"?g.unit():(g.unit||"");
     lb.textContent=typeof g.label==="function"?g.label():(g.label||"");
+    lb.setAttribute("title",g.tip?g.tip(s):"");
     draw(v,x,m,54);
     tx.textContent=val(x,g.d||0); tx.setAttribute("title",x==null?(R[k]||"no data source"):"");
     if(g.in){
       const ik=typeof g.in.key==="function"?g.in.key():g.in.key, ix=s[ik], im=g.in.max?g.in.max():dynMax(ik);
       draw(w,ix,im,41);
       sub.style.display="";
-      sub.textContent=(g.in.name||"power")+" "+(typeof ix==="number"?fx(ix,g.in.d||0)+" "+(g.in.unit||""):"unavailable");
-      sub.setAttribute("title",ix==null?(R[ik]||"no data source"):"");
+      const nm=g.in.name||"power";
+      /* teks ring dalam = nama saja; nilai + satuan pindah ke tooltip */
+      sub.textContent=nm;
+      sub.setAttribute("title",typeof ix==="number"?nm+" "+fx(ix,g.in.d||0)+" "+(g.in.unit||""):(R[ik]||"no data source"));
       el.querySelector("svg").setAttribute("title",ix==null?(R[ik]||""):"");
     }else{sub.style.display="none"}
   }};
@@ -283,9 +288,9 @@ const PANELS=[
  {title:"Storage",sub:s=>C.drives.length?C.drives.map(d=>`${d.dev||"drive"}: ${d.name||"unavailable"}`).join(" · "):"no drives in /sys/block",
   l:[{t:"gauges",items:[
        {key:()=>"w"+storageIndex(),max:()=>dynMax("w"+storageIndex()),unit:"MB/s",d:1,
-        label:()=>{const i=storageIndex(),d=C.drives[i]||{};return (d.dev||("drive"+i))+" write"}},
+        label:()=>"write",tip:driveTip},
        {key:()=>"r"+storageIndex(),max:()=>dynMax("r"+storageIndex()),unit:"MB/s",d:1,
-        label:()=>{const i=storageIndex(),d=C.drives[i]||{};return (d.dev||("drive"+i))+" read"}}]},
+        label:()=>"read",tip:driveTip}]},
    {t:"dynBars",items:s=>{const out=[];
      C.drives.forEach((d,i)=>{
        out.push({l:`${d.dev||("drive"+i)} read`,c:["--a"],f:x=>[x["r"+i],dynMax("r"+i)],

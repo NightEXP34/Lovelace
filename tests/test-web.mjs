@@ -116,8 +116,13 @@ ok([...d.querySelectorAll(".stats b")].map(x => x.textContent).every(t => !t.inc
 const cpuPanel = [...d.querySelectorAll(".p")].find(p => p.querySelector("h2").textContent === "CPU");
 ok(cpuPanel.querySelector(".gw svg")?.getAttribute("title").includes("RAPL"), "tooltip gauge dari alasan health");
 ok(cpuPanel.querySelector(".gw svg .v") && cpuPanel.querySelector(".gw svg .w"), "gauge CPU punya ring luar + ring dalam");
-ok(cpuPanel.querySelector(".gw svg .ring-sub")?.textContent.includes("power"), "gauge CPU menampilkan power di ring dalam");
+ok(cpuPanel.querySelector(".gw svg .ring-sub")?.textContent === "power", "gauge CPU: teks ring dalam hanya 'power'");
+ok(cpuPanel.querySelector(".gw svg .ring-sub")?.getAttribute("title").includes("RAPL"), "gauge CPU: nilai/alasan power pindah ke tooltip");
 ok(cpuPanel.querySelector(".gw svg linearGradient"), "gauge memakai gradient hijau-merah");
+const memPanel = [...d.querySelectorAll(".p")].find(p => p.querySelector("h2").textContent === "Memory");
+ok(memPanel.querySelector(".gw svg .ring-sub")?.textContent === "swap", "gauge Memory: teks ring dalam hanya 'swap'");
+ok([...memPanel.querySelectorAll(".gw svg text")].map(t => t.textContent).join(" ").includes("RAM usage"), "gauge Memory: label 'RAM usage' tetap");
+ok([...cpuPanel.querySelectorAll(".gw svg text")].map(t => t.textContent).join(" ").includes("utilization"), "gauge CPU: label 'utilization' tetap");
 const coreClocks = [...d.querySelectorAll(".cc u")].map(x => x.textContent);
 const realClocks = [...(base.pf || []), ...(base.ef || [])].filter(v => typeof v === "number");
 ok(coreClocks.filter(t => /^\d+\.\d{2}$/.test(t)).length === nCores, "core cell render GHz dengan 2 desimal");
@@ -128,6 +133,7 @@ const chips = [...gpuPanel.querySelectorAll(".cp")].map(x => x.textContent);
 ok(chips.length === 4, "chip throttle GPU 4 slot");
 if (base.thrIdle != null) ok(chips.every(t => !t.includes("—")), "chip NVML throttle bits terbaca (tidak '—')");
 else ok(chips.some(t => t.includes("—")), "chip throttle tampil '—' saat NVML gagal");
+ok(gpuPanel.querySelector(".gw svg .ring-sub")?.textContent === "power", "gauge GPU: teks ring dalam hanya 'power'");
 const tlExpect = 1 + (base.snap.gpuPresent ? 4 : 0) + 1 + base.drives.length;
 ok(d.querySelectorAll("#tl .tr").length === tlExpect, `timeline rail dinamis (${tlExpect} baris)`);
 ok([...d.querySelectorAll("#tl .tr b")].map(x => x.textContent).every(t => !t.includes("undefined")), "timeline tanpa 'undefined'");
@@ -228,7 +234,10 @@ stTabs()[1].click();
 await sleep(100);
 ok(stTabs()[1]?.getAttribute("aria-pressed") === "true", "storage: tab drive 1 aktif setelah diklik");
 ok(stTabs()[1]?.dataset.key === "r1", "storage: chart memakai series drive 1");
-ok(gaugeText().includes("nvme1n1"), "storage: gauge label ikut drive 1");
+const gaugeLabel = () => [...storage.querySelectorAll(".gauge-pair .gw svg text")].map(t => t.getAttribute("title") || "").join(" ");
+ok(gaugeText().includes("write") && gaugeText().includes("read") && !gaugeText().includes("nvme"),
+  "storage: gauge hanya 'write'/'read', nama drive hilang dari label");
+ok(gaugeLabel().includes("nvme1n1"), "storage: drive terpilih terbaca lewat tooltip gauge");
 await sleep(2200);
 ok(stTabs()[1]?.getAttribute("aria-pressed") === "true" && stTabs()[1]?.dataset.key === "r1",
   "storage: pilihan drive 1 bertahan setelah 2 tick update");
@@ -236,7 +245,7 @@ stTabs()[0].click();
 await sleep(100);
 ok(stTabs()[0]?.getAttribute("aria-pressed") === "true" && stTabs()[0]?.dataset.key === "r0",
   "storage: klik drive 0 mengembalikan pilihan");
-ok(gaugeText().includes("nvme0n1"), "storage: gauge kembali ke drive 0");
+ok(gaugeLabel().includes("nvme0n1"), "storage: tooltip gauge kembali ke drive 0");
 
 /* ---- tab Log (port assertion test.mjs) ---- */
 [...d.querySelectorAll("nav button")].find(b => b.dataset.p === "log").click();
