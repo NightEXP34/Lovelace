@@ -3,7 +3,7 @@
 (function(){
 "use strict";
 const N=window.Noterra;
-if(!N||!N.addWidget)throw new Error("widgets.js butuh core.js (Noterra.addWidget)");
+if(!N||!N.addWidget)throw new Error("widgets.js butuh client.js (Noterra.addWidget)");
 const {esc}=N.fmt;
 
 const reg=(ctx,key)=>ctx.registry.get(key);

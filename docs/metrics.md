@@ -1,4 +1,4 @@
-# noterra — Monitor backend (Lovelace)
+# noterra — sumber metrik backend
 
 Webapp monitoring localhost untuk proyek UAS Sistem Operasi. Backend membaca
 status hardware nyata; tidak ada angka tebakan — metrik yang tidak punya
@@ -7,21 +7,15 @@ sumber data dikembalikan `null` dan UI menampilkan **unavailable**.
 ## Jalankan
 
 ```bash
-cd server
-# venv ada di server/.venv (dibuat ulang sesuai requirements.txt)
-.venv/bin/python server.py        # http://127.0.0.1:5130
-.venv/bin/python server.py --check  # diagnosis sumber per metrik (available/unavailable + alasan)
+./scripts/setup.sh
+./scripts/run.sh          # http://127.0.0.1:5130
+./scripts/check.sh        # diagnosis per metrik tanpa server/port
 ```
 
 Daya CPU via RAPL butuh akses baca `energy_uj` (mode 0400 — kernel membatasinya
-sejak PLATYPUS; **jangan** chmod world-readable). Dua cara yang dipakai:
-
-```bash
-sudo .venv/bin/python server.py                # root penuh (paling sederhana)
-systemctl --user enable --now noterra          # unit server/deploy/noterra.service:
-                                               # AmbientCapabilities=CAP_DAC_READ_SEARCH,
-                                               # tanpa root penuh, server tetap bind 127.0.0.1
-```
+sejak PLATYPUS; **jangan** chmod world-readable). Tanpa sudo, `cpuW` tetap
+`unavailable`; opsi akses penuh dan trade-off-nya ada di
+[docs/operations.md](operations.md).
 
 Server melayani frontend di `/`, polled endpoint `GET /api/snapshot`
 (JSON, satu snapshot penuh; laju counter dihitung dari delta antar panggilan),

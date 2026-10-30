@@ -10,7 +10,7 @@ sekarang = monitoring hardware murni; adapter engine LLM dikecualikan sampai nan
 
 ```
 server/
-  server.py            # FastAPI app, route API, recording
+  main.py              # FastAPI app, route API, recording
   collectors.py        # collector /proc, /sys, NVML + build_snapshot
   metrics_meta.json    # schema metrik (label, satuan, sumber, scaleKey)
   requirements.txt     # fastapi, uvicorn, psutil, nvidia-ml-py
@@ -150,7 +150,7 @@ lain (tanpa GPU, 3 drive SATA) — keduanya ALL PASS.
 |---|---|
 | `GET /` | `web/index.html` |
 | `GET /api/snapshot` | JSON: metrik scalar (cpuT, cpuW, cpuU, pfa, pl1, pl2, plPeak, cpuThr, ctx, migr, irq, idle, gT..pcu, gbw, gpeak, pctheory, vbw, majF, minF, swp, ramBW, r0..t1, a0Idle/a1Idle), array per-core (pu, pf, pt, eu, ef, et), `drives[]` (model, sizeGB, link, linkMax, sched, readahead, capUsed, mount), `snap` konfigurasi sistem (kernel, cpuModel, driver, gpuDriver, gpuName, governor, epp, turbo, pinning, thp, swappiness, nvml). |
-| `GET /api/health` | `{ok, nvml, items:{key→alasan|null}}` — alasan tiap metrik yang unavailable; dipakai tooltip UI dan `server.py --check`. |
+| `GET /api/health` | `{ok, nvml, items:{key→alasan|null}}` — alasan tiap metrik yang unavailable; dipakai tooltip UI dan `scripts/check.sh`. |
 | `POST /api/log/start` `{label,tag,interval}` | buat sesi recording; folder `logs/<tanggal>_<label>/` (samples.csv + meta.json schema v1: label, tag, interval_s, snapshot konfigurasi, marker, status, kolom CSV); loop server nulis CSV tiap interval |
 | `POST /api/log/stop` `{id}` | hentikan loop, meta status→"saved" |
 | `POST /api/log/marker` `{id,note?}` | marker `{ts_ms, since_s, note}` masuk `meta.markers` |
@@ -158,7 +158,7 @@ lain (tanpa GPU, 3 drive SATA) — keduanya ALL PASS.
 | `GET /api/log/<id>/samples.csv` | CSV mentah untuk analisis UI |
 | `DELETE /api/log/<id>` | hapus folder sesi (409 kalau masih recording) |
 
-CLI: `server.py --check` = probe dua snapshot lalu cetak tabel available/unavailable + alasan.
+CLI: `./scripts/check.sh` = probe dua snapshot lalu cetak tabel available/unavailable + alasan.
 
 ## Status saat ini (hasil nyata, bukan klaim)
 
@@ -219,9 +219,10 @@ di kemudian hari tanpa mengubah core.
 - [ ] **Baseline A/B tuning OS** — ≥3 run cold/warm untuk eksperimen
       governor/EPP/pinning/readahead (protokol drop_caches), sebagai alat
       verifikasi tweak hardware — bukan metrik engine.
-- [~] **Refactor core/adapter** — folder sudah dirapikan: backend di `server/`,
-      test di `tests/`, UI di `web/`; frontend modular L1–L4. Yang tersisa:
-      memecah `server/server.py` menjadi modul collector dan menyiapkan
+- [~] **Refactor core/adapter** — folder dan modul sudah dirapikan: backend
+      `server/main.py` (API) + `server/collectors.py` (hardware), test di
+      `tests/`, UI di `web/`, script di `scripts/`; frontend modular L1–L4.
+      Yang tersisa: memecah collector per domain dan menyiapkan
       `server/adapters/` (engine/game) sesuai Repo A.
 
 Dikecualikan dari scope sekarang (bukan hilang permanen, hanya tidak dikerjakan):

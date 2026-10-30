@@ -112,17 +112,21 @@ Dua repo terpisah:
 ```
 perSOna/
   README.md
-  server/        # collector, API, adapter (generik, tanpa asumsi LLM)
-    server.py
+  Makefile
+  scripts/       # run/check/test/setup (tanpa sudo)
+  server/        # API + collector + adapter (generik, tanpa asumsi LLM)
+    main.py      # FastAPI app + route
+    collectors.py
     metrics_meta.json
     requirements.txt
     fixtures/
     deploy/      # contoh unit systemd
   web/           # frontend (client/widgets/shell + themes)
-  tests/         # smoke test jsdom
-  docs/          # arsitektur, fork, catatan
+  examples/      # headless.html (L4)
+  tests/         # jsdom + backend unittest
+  docs/          # arsitektur, theming, forking, operations, metrics
+    history/     # arsip catatan lama
   logs/          # sesi rekaman
-  changelog/
 ```
 
 Catatan: struktur lama `monitor/core/` + `monitor/adapters/` diganti menjadi

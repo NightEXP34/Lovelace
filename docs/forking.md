@@ -6,8 +6,8 @@ Panduan 1 halaman untuk fork (mis. optimisasi game). Tidak perlu menyentuh
 ## 0. Jalankan dulu
 
 ```bash
-cd server
-.venv/bin/python server.py          # http://127.0.0.1:5130
+./scripts/setup.sh
+./scripts/run.sh                    # http://127.0.0.1:5130
 ```
 
 Venv dibuat di `server/.venv` (lihat `server/requirements.txt`). Buka

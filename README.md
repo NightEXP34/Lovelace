@@ -1,76 +1,92 @@
 # Lovelace — noterra
 
-Monitor hardware lokal (localhost) untuk mesin ini: backend FastAPI membaca
-`/proc`, `/sys`, dan NVML; frontend vanilla-JS menampilkan Overview + tab Log.
-Data yang tidak tersedia tetap `null` dan ditampilkan `unavailable` dengan
-alasan — tidak ada angka karangan.
+Monitor hardware lokal (localhost): backend FastAPI membaca `/proc`, `/sys`,
+dan NVML; frontend vanilla-JS menampilkan Overview + tab Log. Data yang tidak
+tersedia tetap `null` dan ditampilkan `unavailable` dengan alasan — tidak ada
+angka karangan.
 
 ## Peta folder
 
 ```
 perSOna/
 ├── README.md
-├── .gitignore
+├── Makefile
+├── scripts/                 # run/check/test/setup (tanpa sudo)
 ├── server/
-│   ├── server.py              # FastAPI + collector (port 5130)
-│   ├── metrics_meta.json      # schema metrik (label/satuan/sumber)
+│   ├── main.py              # FastAPI app, route API, recording
+│   ├── collectors.py        # collector /proc, /sys, NVML + build_snapshot
+│   ├── metrics_meta.json    # schema metrik (label/satuan/sumber)
 │   ├── requirements.txt
-│   ├── README.md              # catatan backend (sumber metrik, unavailable)
-│   ├── fixtures/
-│   │   └── snapshot-sample.json
-│   └── deploy/
-│       └── noterra.service    # contoh unit systemd (tidak dijalankan di sini)
+│   ├── fixtures/snapshot-sample.json
+│   └── deploy/noterra.service   # contoh unit systemd (tidak dijalankan otomatis)
 ├── web/
-│   ├── index.html             # shell UI
-│   ├── core/                  # client.js, widgets.js, shell.js, core.css
-│   ├── themes/                # default (L3) + minimal (L2, tanpa JS)
-│   ├── examples/headless.html # contoh L4
-│   └── THEMES.md
+│   ├── index.html           # shell UI
+│   ├── core/                # client.js, widgets.js, shell.js, core.css
+│   └── themes/              # default (L3), minimal (L2 tanpa JS)
+├── examples/headless.html   # contoh L4
 ├── tests/
-│   ├── package.json
-│   ├── test-web.mjs
-│   └── check-layout.mjs       # cek cepat widget komposit
+│   ├── test-web.mjs         # jsdom frontend
+│   ├── check-layout.mjs     # cek cepat widget komposit
+│   └── backend/             # unittest route API
 ├── docs/
+│   ├── architecture.md
+│   ├── theming.md           # kontrak L1–L4
+│   ├── forking.md
+│   ├── operations.md        # run, test, batas privilege
+│   ├── metrics.md           # sumber tiap metrik
 │   ├── agents.md
-│   ├── blackbox.md
-│   ├── noterra-architecture.md
-│   ├── FORKING.md
-│   ├── refactor-notes.md
-│   └── prototype/overview_v6.html
-├── logs/                      # sesi rekaman (tidak diubah)
-└── changelog/
+│   └── history/             # arsip catatan/changelog/prototype lama
+└── logs/                    # sesi rekaman (runtime)
 ```
 
-Folder backend lama sudah dihapus; nama produk "Noterra" tetap dipakai di UI/namespace
-(`window.Noterra`), hanya folder lama yang hilang.
-
-## Menjalankan
-
-Venv harus dibuat di `server/.venv` (lihat `server/requirements.txt`):
+## Menjalankan (tanpa sudo)
 
 ```bash
-cd server
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python server.py          # http://127.0.0.1:5130
+./scripts/setup.sh      # sekali: venv server/.venv + dependency
+./scripts/run.sh        # http://127.0.0.1:5130
 ```
 
-Mode mock (tanpa hardware): buka `http://127.0.0.1:5130/?mock=1`.
-Diagnosis sumber metrik: `.venv/bin/python server.py --check`.
+Mode mock tanpa hardware: `http://127.0.0.1:5130/?mock=1`.
+Diagnosis sumber metrik tanpa server/port: `./scripts/check.sh`.
+Hentikan dengan Ctrl+C di terminal yang menjalankan.
+
+### Akses hardware tanpa sudo
+
+Berjalan tanpa sudo untuk semua metrik yang bisa dibaca user: CPU
+temp/freq/util, memory, storage, NVMe, dan GPU (NVML). **Daya package CPU
+(RAPL `energy_uj`) tidak bisa dibaca tanpa privilege**; `cpuW` akan
+`unavailable`. Itu batas kernel, bukan bug. Untuk akses penuh perlu satu kali
+setup service system dengan `CAP_DAC_READ_SEARCH` (unit disediakan, tidak
+di-enable otomatis). Detail dan trade-off: [docs/operations.md](docs/operations.md).
 
 ## Test
 
 ```bash
+./scripts/test.sh       # py_compile + backend unittest + frontend jsdom
+```
+
+Atau manual:
+
+```bash
 cd tests
-npm test                 # node test-web.mjs (jsdom, fetch di-stub)
+npm test
 node check-layout.mjs cpu-panel memory-panel storage-panel gpu-panel rail
 ```
 
-Tidak perlu `npm install` lagi jika `tests/node_modules` ada. Test tidak
-menjalankan server dan tidak menyentuh hardware.
+Test tidak menyalakan server dan tidak menyentuh hardware.
 
 ## Fork UI
 
 Mulai dari `web/themes/minimal/` (L2, tanpa JavaScript), edit `layout.json`.
-Panduan lengkap: [docs/forking.md](docs/forking.md); kontrak L1–L4:
-[docs/theming.md](docs/theming.md).
+Untuk Overview benar-benar baru, buat `overview.js` (L3). Kontrak lengkap:
+[docs/theming.md](docs/theming.md); panduan langkah demi langkah:
+[docs/forking.md](docs/forking.md).
+
+## Dokumentasi
+
+- [Arsitektur](docs/architecture.md)
+- [Theming L1–L4](docs/theming.md)
+- [Forking](docs/forking.md)
+- [Operations & privilege](docs/operations.md)
+- [Sumber metrik](docs/metrics.md)
+- [Catatan historis](docs/history/)

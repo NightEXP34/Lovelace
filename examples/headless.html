@@ -23,7 +23,7 @@ function render(){
   }).join("");
 }
 C.on("update",render);
-C.on("offline",()=>{out.textContent="Backend offline — jalankan server.py, atau buka halaman ini dengan ?mock=1.";});
+C.on("offline",()=>{out.textContent="Backend offline — jalankan ./scripts/run.sh, atau buka halaman ini dengan ?mock=1.";});
 N.loadSchema().then(()=>N.start());
 </script>
 </body>

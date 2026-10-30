@@ -276,12 +276,12 @@ ctx.on("update",()=>{
   }catch(e){
     /* perilaku lama: error render theme jatuh ke status offline + chips */
     N.markOffline();
-    $(DOM.status).textContent=MOCK?"Backend: mock data gagal dimuat":"Backend: offline — run server.py";
+    $(DOM.status).textContent=MOCK?"Backend: mock data gagal dimuat":"Backend: offline — run ./scripts/run.sh";
     refreshTheme();
   }
 });
 ctx.on("offline",()=>{
-  $(DOM.status).textContent=MOCK?"Backend: mock data gagal dimuat":"Backend: offline — run server.py";
+  $(DOM.status).textContent=MOCK?"Backend: mock data gagal dimuat":"Backend: offline — run ./scripts/run.sh";
   refreshTheme();
 });
 ctx.mk=mk;
