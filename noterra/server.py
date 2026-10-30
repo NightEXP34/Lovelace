@@ -1147,6 +1147,12 @@ def log_delete(sid: str):
 
 WEB = BASE.parent / "web"
 SAMPLE = BASE / "snapshot-sample.json"
+SCHEMA = BASE / "metrics_meta.json"
+
+@app.get("/api/schema")
+def api_schema():
+    """Metadata metrik (label, satuan, digits, sumber, scaleKey) untuk UI."""
+    return JSONResponse(json.loads(SCHEMA.read_text()))
 
 @app.get("/api/themes")
 def api_themes():
@@ -1183,6 +1189,11 @@ def mock_health():
         if v is None:
             items[k] = "unavailable on the sample machine — no source recorded in snapshot-sample.json"
     return JSONResponse({"ok": True, "nvml": bool(data["snap"].get("nvml")), "items": items})
+
+@app.get("/api/mock/schema")
+def mock_schema():
+    """Metadata metrik versi mock — file yang sama, tanpa hardware."""
+    return JSONResponse(json.loads(SCHEMA.read_text()))
 
 @app.get("/")
 def index():

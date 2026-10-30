@@ -47,6 +47,15 @@ kontrak tab Log/widget supaya theme baru tidak wajib menulis semuanya:
 Theme cukup meng-override token di `theme.css`; selector yang sama di
 `theme.css` menang karena dimuat belakangan.
 
+## /api/schema
+
+`GET /api/schema` (dan `GET /api/mock/schema`) mengembalikan
+`noterra/metrics_meta.json`: peta `key → {label, unit, digits, source,
+scaleKey?}`. Core mem-fetch sekali saat start; key yang tidak ada di schema
+tetap masuk registry dengan `label = key`. Menambah metrik baru cukup menambah
+key di adapter/snapshot + entri schema (tidak perlu mengubah daftar metrik di
+core).
+
 ## theme.json (di `web/themes/<nama>/theme.json`)
 
 ```json

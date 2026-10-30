@@ -27,71 +27,14 @@ const params=new URLSearchParams(location.search);
 const MOCK=params.get("mock")==="1";
 const SNAP_URL=MOCK?"/api/mock/snapshot":"/api/snapshot";
 const HEALTH_URL=MOCK?"/api/mock/health":"/api/health";
+const SCHEMA_URL=MOCK?"/api/mock/schema":"/api/schema";
 
 let S={snap:{},drives:[]}, H={}, R={}, online=false, rec=null;
 const REG=new Map();               // registry metrik, rebuild tiap snapshot
 let theme=null, themeMeta=null;
 
-/* ---- metadata metrik: label, satuan, skala asli (scaleKey), sumber nyata ---- */
-const META={
-  cpuT:{label:"CPU temp",unit:"°C",digits:0,source:"hwmon coretemp package"},
-  cpuW:{label:"Power",unit:"W",digits:1,source:"RAPL energy_uj",scaleKey:"pl1"},
-  cpuU:{label:"Util",unit:"%",digits:0,source:"/proc/stat delta per-cpu"},
-  pfa:{label:"P clock",unit:"GHz",digits:2,source:"sysfs cpufreq scaling_cur_freq"},
-  pu:{label:"P util per core",unit:"%",digits:0,source:"/proc/stat delta"},
-  pf:{label:"P clock per core",unit:"GHz",digits:2,source:"sysfs cpufreq"},
-  pt:{label:"P temp per core",unit:"°C",digits:0,source:"hwmon coretemp"},
-  eu:{label:"E util per core",unit:"%",digits:0,source:"/proc/stat delta"},
-  ef:{label:"E clock per core",unit:"GHz",digits:2,source:"sysfs cpufreq"},
-  et:{label:"E temp per core",unit:"°C",digits:0,source:"hwmon coretemp"},
-  ctx:{label:"Context switches",unit:"/s",digits:0,source:"/proc/stat ctxt"},
-  migr:{label:"Migrations",unit:"/s",digits:0,source:"/proc/*/task/*/sched nr_migrations"},
-  irq:{label:"Interrupts",unit:"/s",digits:0,source:"/proc/stat irq"},
-  idle:{label:"Idle residency",unit:"%",digits:0,source:"cpuidle sysfs state*/time"},
-  idleName:{label:"Idle state",unit:null,digits:0,source:"cpuidle state tertinggi"},
-  cpuThr:{label:"Throttle",unit:null,digits:0,source:"sysfs thermal throttling"},
-  pl1:{label:"PL1",unit:"W",digits:1,source:"RAPL constraint"},
-  pl2:{label:"PL2",unit:"W",digits:1,source:"RAPL constraint"},
-  plPeak:{label:"PL peak window",unit:"W",digits:1,source:"RAPL peak window"},
-  gT:{label:"GPU temp",unit:"°C",digits:0,source:"NVML"},
-  gW:{label:"GPU power",unit:"W",digits:1,source:"NVML",scaleKey:"gLim"},
-  gClk:{label:"SM clock",unit:"MHz",digits:0,source:"NVML"},
-  gMemClk:{label:"Memory clock",unit:"MHz",digits:0,source:"NVML"},
-  gClkMax:{label:"SM clock max",unit:"MHz",digits:0,source:"NVML"},
-  gU:{label:"GPU util",unit:"%",digits:0,source:"NVML"},
-  gMU:{label:"Mem ctrl util",unit:"%",digits:0,source:"NVML"},
-  vram:{label:"VRAM used",unit:"GiB",digits:1,source:"NVML",scaleKey:"vramTot"},
-  vramTot:{label:"VRAM total",unit:"GiB",digits:2,source:"NVML"},
-  gLim:{label:"Draw limit",unit:"W",digits:0,source:"NVML power limit"},
-  gLimDef:{label:"Limit default",unit:null,digits:0,source:"NVML"},
-  pstate:{label:"P-state",unit:null,digits:0,source:"NVML"},
-  thr:{label:"GPU throttle",unit:null,digits:0,source:"NVML throttle decoder"},
-  fan:{label:"Fan",unit:"%",digits:0,source:"NVML"},
-  thrIdle:{label:"Idle",unit:null,digits:0,source:"NVML throttle bit"},
-  thrPower:{label:"Power cap",unit:null,digits:0,source:"NVML throttle bit"},
-  thrThermal:{label:"Thermal",unit:null,digits:0,source:"NVML throttle bit"},
-  thrHw:{label:"HW slowdown",unit:null,digits:0,source:"NVML throttle bit"},
-  pcieGen:{label:"PCIe gen",unit:null,digits:0,source:"NVML atau sysfs PCI"},
-  pcieWidth:{label:"PCIe width",unit:"lane",digits:0,source:"NVML atau sysfs PCI"},
-  pcieMax:{label:"PCIe max",unit:null,digits:0,source:"sysfs PCI max_link"},
-  vbw:{label:"VRAM bw",unit:"GB/s",digits:0,source:"mem util × clock × bus width (estimasi)",scaleKey:"gpeak"},
-  prx:{label:"PCIe receive",unit:"GB/s",digits:2,source:"NVML rx bytes delta",scaleKey:"pctheory"},
-  ptx:{label:"PCIe transmit",unit:"GB/s",digits:2,source:"NVML tx bytes delta",scaleKey:"pctheory"},
-  pcu:{label:"PCIe util",unit:"%",digits:2,source:"NVML"},
-  gbw:{label:"Bus width",unit:"bit",digits:0,source:"NVML"},
-  gpeak:{label:"VRAM theoretical peak",unit:"GB/s",digits:0,source:"clock mem × bus width"},
-  pctheory:{label:"PCIe link ceiling",unit:"GB/s",digits:2,source:"gen × width"},
-  ramU:{label:"RAM used",unit:"GiB",digits:1,source:"/proc/meminfo",scaleKey:"memTot"},
-  cache:{label:"Page cache",unit:"GiB",digits:1,source:"/proc/meminfo"},
-  avail:{label:"Available",unit:"GiB",digits:1,source:"/proc/meminfo"},
-  memTot:{label:"Total",unit:"GiB",digits:2,source:"/proc/meminfo"},
-  swapU:{label:"Swap used",unit:"GiB",digits:1,source:"/proc/meminfo",scaleKey:"swapTot"},
-  swapTot:{label:"Swap total",unit:"GiB",digits:2,source:"/proc/meminfo"},
-  majF:{label:"Major faults",unit:"/s",digits:0,source:"/proc/vmstat maj_flt"},
-  minF:{label:"Minor faults",unit:"/s",digits:0,source:"/proc/vmstat min_flt"},
-  swp:{label:"Swap I/O",unit:"MB/s",digits:1,source:"/proc/vmstat pgpgin/out"},
-  ramBW:{label:"Measured bandwidth",unit:"GB/s",digits:1,source:"PMU IMC read events"},
-};
+/* ---- metadata metrik: di-fetch dari /api/schema (noterra/metrics_meta.json) ---- */
+let META={};
 
 /* ---- registry metrik dari snapshot nyata + alasan dari /api/health ---- */
 function metricEntry(k,v,m){
@@ -187,7 +130,15 @@ function initPalette(){
   th.onchange=()=>{try{localStorage.setItem("nt.palette",th.value);}catch(e){}
     document.documentElement.dataset.theme=th.value;};
 }
+/* metadata metrik dari server; key tak dikenal fallback label = key */
+async function loadSchema(){
+  try{
+    const r=await fetch(SCHEMA_URL,{cache:"no-store"});
+    if(r.ok){const d=await r.json(); if(d&&typeof d==="object")META=d;}
+  }catch(e){/* offline: registry memakai key sebagai label */}
+}
 async function loadTheme(){
+  await loadSchema();
   let themes=[];
   try{const r=await fetch("/api/themes",{cache:"no-store"}); if(r.ok)themes=(await r.json()).themes||[];}catch(e){}
   const name=themeName();

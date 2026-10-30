@@ -8,3 +8,4 @@ Satu baris per sub-task. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — 1.3 registry view `Noterra.addView(id,{label,mount,update?})`; nav dibangun dari view (Overview order 0, Log order 10); theme boleh override `log`.
 - 2026-10-30 — 1.4 semua id core dikumpulkan di objek `DOM`; id wajib `index.html` didokumentasikan di THEMES.md.
 - 2026-10-30 — 1.5 `web/core/core.css` fallback netral (kelas Log + token warna) dimuat sebelum theme.css; daftar kelas didokumentasikan.
+- 2026-10-30 — 1.6 `META` pindah ke `noterra/metrics_meta.json`; route `/api/schema` + `/api/mock/schema`; core fetch schema sebelum theme; stub test diperbarui.
