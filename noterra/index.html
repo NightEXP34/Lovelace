@@ -38,6 +38,8 @@ h3{font-size:12px;font-weight:600;color:var(--mute);margin:0 0 10px}
 .big div span{display:block;font-size:12px;color:var(--mute)}
 .big div b{font:600 22px/1.2 var(--mono);font-variant-numeric:tabular-nums}
 .big small{font:12px var(--sans);color:var(--mute);font-weight:400;margin-left:3px}
+.big .na,.dd-na{font:400 13px/1.2 var(--mono);color:var(--mute)}
+.na,.dd-na,[title]{cursor:help}
 svg.sp{width:100%;height:84px;display:block}
 svg.sp path{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:6px}
@@ -91,13 +93,12 @@ const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.min(b,Math.max(a,v)), 
 const fx=(v,d=0)=>typeof v==="number"?v.toFixed(d):"unavailable";
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mmss=t=>String(t/60|0).padStart(2,"0")+":"+String(t%60).padStart(2,"0");
-const GT={1:2.5,2:5,3:8,4:16,5:32,6:64};
 
 const th=$("#theme"); th.value=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";
 (th.onchange=()=>document.documentElement.dataset.theme=th.value)();
 
 /* ---- live sampler: fetch the collector API every second ---- */
-let S={snap:{},drives:[{},{}]}, H={}, cur=[], online=false;
+let S={snap:{},drives:[{},{}]}, H={}, R={}, cur=[], online=false;
 async function sample(){
   try{
     const r=await fetch("/api/snapshot",{cache:"no-store"});
@@ -115,6 +116,11 @@ async function sample(){
   }
 }
 setInterval(sample,1000); sample();
+async function health(){
+  try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw new Error(r.status);
+    R=(await r.json()).items||{};}catch(e){/* backend offline: keep last reasons */}
+}
+setInterval(health,5000); health();
 
 function spark(svg,keys,cols,min){
   const pairs=keys.map((k,i)=>[H[k]||[],cols[i]]).filter(([d])=>d.length>1);
@@ -132,7 +138,9 @@ function part(b){
     const bs=[...el.querySelectorAll("b")];
     return{el,up:()=>b.items.forEach((x,i)=>{
       const v=x[4]?x[4](S):S[x[0]];
-      bs[i].innerHTML=typeof v==="number"?fx(v,x[3]||0)+`<small>${x[2]||""}</small>`:`<span class="na">${v==null?"unavailable":v}</span>`;
+      if(typeof v==="number"){bs[i].innerHTML=fx(v,x[3]||0)+`<small>${x[2]||""}</small>`;bs[i].removeAttribute("title")}
+      else{bs[i].innerHTML=`<span class="na">${v==null?"unavailable":v}</span>`;
+        bs[i].title=v==null?(R[x[0]]||"tidak ada sumber data"):"tidak ada I/O di interval ini"}
     })};
   }
   if(b.t==="chart"){
@@ -145,8 +153,10 @@ function part(b){
     const ds=[...el.querySelectorAll("dd")];
     return{el,up:()=>b.rows.forEach((r,i)=>{
       const v=typeof r[1]==="function"?r[1](S):r[1];
-      ds[i].textContent=v==null?"unavailable":v;
-      ds[i].className=r[2]&&r[2](S)?"warn":"";
+      const na=v==null||v==="unavailable";
+      ds[i].textContent=na?"unavailable":v;
+      ds[i].className=(r[2]&&r[2](S)?"warn ":"")+(na?"dd-na":"");
+      ds[i].title=na?(R[r[3]]||"tidak ada sumber data"):"";
     })};
   }
   if(b.t==="cores"){
@@ -172,12 +182,12 @@ const drive=(i)=>[
   {t:"stats",span:2,title:`Drive ${i}: nvme${i}n1`,items:[["r"+i,"Read","MB/s"],["w"+i,"Write","MB/s",1],["i"+i,"IOPS","IOPS"],["a"+i,"Await","ms",1,s=>s["a"+i+"Idle"]?"idle":null]]},
   {t:"chart",title:"Throughput",min:0,series:[["r"+i,"Read","--a"],["w"+i,"Write","--b"]]},
   {t:"dl",title:"Device",rows:[
-    ["Model",s=>s.drives[i].name],["Link",s=>s.drives[i].link],["Link max",s=>s.drives[i].linkMax],
-    ["Size",s=>s.drives[i].sizeGB==null?"unavailable":fx(s.drives[i].sizeGB,1)+" GB"],
-    ["Utilization",s=>fx(s["u"+i])+" %"],["Queue depth",s=>fx(s["q"+i],1)],
-    ["Temperature",s=>fx(s["t"+i])+" °C"],
-    ["Capacity used",s=>s.drives[i].capUsed==null?"unavailable":fx(s.drives[i].capUsed)+" %"],
-    ["I/O scheduler",s=>s.drives[i].sched],["Readahead",s=>s.drives[i].readahead]]}];
+    ["Model",s=>s.drives[i].name,null,`d${i}model`],["Link",s=>s.drives[i].link,null,`d${i}link`],["Link max",s=>s.drives[i].linkMax,null,`d${i}linkMax`],
+    ["Size",s=>s.drives[i].sizeGB==null?null:fx(s.drives[i].sizeGB,1)+" GB",null,`d${i}size`],
+    ["Utilization",s=>s["u"+i]==null?null:fx(s["u"+i])+" %",null,"u"+i],["Queue depth",s=>s["q"+i]==null?null:fx(s["q"+i],1),null,"q"+i],
+    ["Temperature",s=>s["t"+i]==null?null:fx(s["t"+i])+" °C",null,"t"+i],
+    ["Capacity used",s=>s.drives[i].capUsed==null?null:fx(s.drives[i].capUsed)+" %",null,`d${i}capUsed`],
+    ["I/O scheduler",s=>s.drives[i].sched,null,`d${i}sched`],["Readahead",s=>s.drives[i].readahead,null,`d${i}readahead`]]}];
 const PANELS=[
  {title:"CPU",sub:s=>s.snap.cpuModel||"CPU",parts:[
   {t:"stats",span:2,items:[["cpuT","Package temp","°C"],["cpuW","Package power","W",1],["cpuU","Utilization","%"],["pfa","Avg P-core clock","GHz",2],["migr","Migrations","/s"]]},
@@ -187,12 +197,13 @@ const PANELS=[
   {t:"cores",title:"Efficiency cores",cls:"ec",pre:"E",u:"eu",f:"ef",T:"et"},
   {t:"dl",title:"Scheduler and power",rows:[
     ["Governor",s=>s.snap.governor],["EPP",s=>s.snap.epp],["Turbo",s=>s.snap.turbo],
-    ["PL1 / PL2",()=>null],["Core pinning",s=>s.snap.pinning],["Driver",s=>s.snap.driver]]},
+    ["PL1 / PL2",()=>null,null,"pl1"],["Core pinning",s=>s.snap.pinning],["Driver",s=>s.snap.driver]]},
   {t:"dl",title:"Kernel activity",rows:[
-    ["Context switches",s=>fx(s.ctx)+" /s"],["Thread migrations",s=>fx(s.migr)+" /s"],
-    ["Interrupts",s=>fx(s.irq)+" /s"],
-    ["Idle residency",s=>s.idle==null?"unavailable":fx(s.idle)+" % ("+s.idleName+")"],
-    ["Throttle",s=>s.cpuThr]]}]},
+    ["Context switches",s=>s.ctx==null?null:fx(s.ctx)+" /s",null,"ctx"],
+    ["Thread migrations",s=>s.migr==null?null:fx(s.migr)+" /s",null,"migr"],
+    ["Interrupts",s=>s.irq==null?null:fx(s.irq)+" /s",null,"irq"],
+    ["Idle residency",s=>s.idle==null?null:fx(s.idle)+" % ("+s.idleName+")",null,"idle"],
+    ["Throttle",s=>s.cpuThr,null,"cpuThr"]]}]},
  {title:"GPU",sub:s=>(s.snap.gpuName||"NVIDIA GPU")+(s.snap.nvml?"":" (NVML unavailable)"),parts:[
   {t:"stats",span:2,items:[["gT","Temperature","°C"],["gW","Power","W",1],["gClk","SM clock","MHz"],["gU","GPU util","%"],["vram","VRAM used","GiB",2]]},
   {t:"chart",title:"Temperature and power",series:[["gT","Temp (°C)","--b"],["gW","Power (W)","--a"]]},
@@ -200,36 +211,36 @@ const PANELS=[
   {t:"chart",title:"VRAM bandwidth in use",min:0,series:[["vbw","GB/s","--a"]]},
   {t:"chart",title:"PCIe traffic",min:0,series:[["prx","Receive (GB/s)","--a"],["ptx","Transmit (GB/s)","--b"]]},
   {t:"dl",title:"VRAM",rows:[
-    ["Used / total",s=>s.vram==null?"unavailable":fx(s.vram,2)+" / "+fx(s.vramTot,2)+" GiB"],
-    ["Memory clock",s=>s.gMemClk==null?"unavailable":s.gMemClk+" MHz"],
-    ["Bus width","128-bit (spec)"],["Peak bandwidth","256 GB/s (spec)"],
-    ["Bandwidth in use",s=>s.vbw==null?"unavailable":fx(s.vbw)+" GB/s"],
-    ["Controller util",s=>s.gMU==null?"unavailable":fx(s.gMU)+" %"]]},
+    ["Used / total",s=>s.vram==null?null:fx(s.vram,2)+" / "+fx(s.vramTot,2)+" GiB",null,"vram"],
+    ["Memory clock",s=>s.gMemClk==null?null:s.gMemClk+" MHz",null,"gMemClk"],
+    ["Bus width",()=>null,null,"gbw"],["Peak bandwidth",()=>null,null,"gpeak"],
+    ["Bandwidth in use",s=>s.vbw==null?null:fx(s.vbw)+" GB/s (estimasi)",null,"vbw"],
+    ["Controller util",s=>s.gMU==null?null:fx(s.gMU)+" %",null,"gMU"]]},
   {t:"dl",title:"PCIe",rows:[
-    ["Link now",s=>s.pcieGen==null?"unavailable":"Gen"+s.pcieGen+" x"+s.pcieWidth],
-    ["Link max",()=>null],
-    ["Receive",s=>s.prx==null?"unavailable":fx(s.prx,2)+" GB/s"],
-    ["Transmit",s=>s.ptx==null?"unavailable":fx(s.ptx,2)+" GB/s"],
-    ["Theoretical",s=>s.pcieGen==null?"unavailable":fx(GT[s.pcieGen]*(s.pcieWidth||0)/8*(s.pcieGen<=2?0.8:128/130),2)+" GB/s"],
-    ["Link used",s=>s.pcu==null?"unavailable":fx(s.pcu)+" %"]]},
+    ["Link now",s=>s.pcieGen==null?null:"Gen"+s.pcieGen+" x"+s.pcieWidth,null,"pcieGen"],
+    ["Link max",()=>null,null,"pcieMax"],
+    ["Receive",s=>s.prx==null?null:fx(s.prx,2)+" GB/s",null,"prx"],
+    ["Transmit",s=>s.ptx==null?null:fx(s.ptx,2)+" GB/s",null,"ptx"],
+    ["Theoretical",()=>null,null,"pctheory"],
+    ["Link used",s=>s.pcu==null?null:fx(s.pcu)+" %",null,"pcu"]]},
   {t:"dl",span:2,title:"Power and throttle",rows:[
-    ["Draw / limit",s=>s.gW==null?"unavailable":fx(s.gW,1)+" W"+(s.gLim?" / "+fx(s.gLim)+" W":"")],
-    ["SM clock max",s=>s.gClkMax==null?"unavailable":s.gClkMax+" MHz"],
-    ["Fan",s=>s.fan==null?"unavailable":fx(s.fan)+" %"],
-    ["P-state",s=>s.pstate],
+    ["Draw / limit",s=>s.gW==null?null:fx(s.gW,1)+" W"+(s.gLim?" / "+fx(s.gLim)+" W":""),null,"gW"],
+    ["SM clock max",s=>s.gClkMax==null?null:s.gClkMax+" MHz",null,"gClkMax"],
+    ["Fan",s=>s.fan==null?null:fx(s.fan)+" %",null,"fan"],
+    ["P-state",s=>s.pstate,null,"pstate"],
     ["NVIDIA driver",s=>s.snap.gpuDriver],
-    ["Throttle reason",s=>s.thr,warnG]]}]},
+    ["Throttle reason",s=>s.thr,warnG,"thr"]]}]},
  {title:"Memory",sub:s=>s.snap.kernel?"kernel "+s.snap.kernel:"",parts:[
   {t:"stats",span:2,items:[["ramU","Used","GiB",2],["cache","Page cache","GiB",2],["avail","Available","GiB",2],["majF","Major faults","/s"],["swp","Swap I/O","MB/s",1]]},
   {t:"chart",title:"RAM",min:0,series:[["ramU","Used (GiB)","--a"],["cache","Page cache (GiB)","--b"]]},
   {t:"chart",title:"Page faults",min:0,series:[["majF","Major (/s)","--b"],["minF","Minor (/s)","--a"]]},
   {t:"dl",title:"Capacity",rows:[
-    ["Total",s=>fx(s.memTot,2)+" GiB"],["Used",s=>fx(s.ramU,2)+" GiB"],
-    ["Page cache",s=>fx(s.cache,2)+" GiB"],["Swap",s=>fx(s.swapU,2)+" / "+fx(s.swapTot,2)+" GiB"],
+    ["Total",s=>s.memTot==null?null:fx(s.memTot,2)+" GiB",null,"memTot"],["Used",s=>s.ramU==null?null:fx(s.ramU,2)+" GiB",null,"ramU"],
+    ["Page cache",s=>s.cache==null?null:fx(s.cache,2)+" GiB",null,"cache"],
+    ["Swap",s=>s.swapU==null||s.swapTot==null?null:fx(s.swapU,2)+" / "+fx(s.swapTot,2)+" GiB",null,"swapU"],
     ["Transparent hugepages",s=>s.snap.thp],["Swappiness",s=>s.snap.swappiness]]},
   {t:"dl",title:"Bandwidth",rows:[
-    ["Type","DDR5-5200 (spec)"],["Channels","2 (spec)"],["Theoretical peak","83.2 GB/s (spec)"],
-    ["Measured bandwidth",()=>null],["Minor faults",s=>fx(s.minF)+" /s"]]}]},
+    ["Measured bandwidth",()=>null,null,"ramBW"],["Minor faults",s=>s.minF==null?null:fx(s.minF)+" /s",null,"minF"]]}]},
  {title:"Storage",sub:"NVMe drives",parts:[...drive(0),...drive(1)]}
 ];
 

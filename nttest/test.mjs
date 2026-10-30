@@ -7,12 +7,21 @@ const dom = new JSDOM(html, { url: "http://localhost/", runScripts: "dangerously
   beforeParse(window) {
     let i = 0;
     window.matchMedia = () => ({ matches: false });
-    window.fetch = async () => ({ ok: true, json: async () => { i++; return { ...base, majF: (base.majF ?? 20) + i * 7, cpuU: (base.cpuU ?? 10) + i, r0: (base.r0 ?? 0) + i, gT: 60 + i, gW: 50 + i }; } });
+    const HEALTH = { ok: true, nvml: false, items: {
+      cpuThr: "belum ada sumber throttle CPU di mesin ini",
+      cpuW: "RAPL energy_uj tidak terbaca tanpa privileges: file mode 0400",
+      fan: "NVML NotSupported: kipas laptop diatur EC",
+      pl1: "constraint RAPL belum dibaca" } };
+    window.fetch = async (u) => {
+      if (String(u).includes("/api/health")) return { ok: true, json: async () => HEALTH };
+      i++;
+      return { ok: true, json: async () => ({ ...base, majF: (base.majF ?? 20) + i * 7, cpuU: (base.cpuU ?? 10) + i, r0: (base.r0 ?? 0) + i, gT: 60 + i, gW: 50 + i }) };
+    };
   } });
 const w = dom.window, d = w.document;
 const fail = m => { console.error("FAIL:", m); process.exit(1); };
 const ok = (c, m) => { if (!c) fail(m); console.log("ok:", m); };
-await sleep(1400);
+await sleep(2200);   // two sample ticks + one health fetch, so tooltips are filled from /api/health
 ok(d.querySelector("#status").textContent.includes("live"), "backend live after first fetch");
 ok(d.querySelectorAll(".pc .cr").length === base.pu.length, `P-core rows dynamic (${base.pu.length})`);
 ok(d.querySelectorAll(".ec .cr").length === base.eu.length, `E-core rows dynamic (${base.eu.length})`);
@@ -35,6 +44,17 @@ const subs = [...d.querySelectorAll("#g .p .sub")].map(x => x.textContent);
 ok(subs.some(t => t.includes("RTX 4060")), "GPU subtitle from nvmlDeviceGetName");
 ok(subs.some(t => t.startsWith("kernel ")), "Memory subtitle = kernel only (driver moved to GPU panel)");
 ok(dls.some(t => t === base.snap.gpuDriver), "NVIDIA driver version rendered in GPU panel");
+const card = [...d.querySelectorAll(".big div")].find(x => x.querySelector("span").textContent === "Package power");
+ok(card && card.querySelector("b").textContent === "unavailable" && card.querySelector(".na"),
+   "unavailable in stat card: text only, small/dim span, no unit");
+ok(card.querySelector("b").getAttribute("title").includes("RAPL"), "stat card tooltip carries /api/health reason");
+const dlRows = [...d.querySelectorAll(".p dl")].flatMap(dl =>
+  [...dl.children].reduce((acc, el, i) => (i % 2 === 0 ? acc.push([el.textContent, dl.children[i + 1]]) : acc, acc), []));
+const thRow = dlRows.find(([t]) => t === "Throttle");
+ok(thRow && thRow[1].classList.contains("dd-na") && thRow[1].getAttribute("title").includes("throttle"),
+   "unavailable dl row rendered dim + tooltip reason from /api/health");
+const plRow = dlRows.find(([t]) => t === "PL1 / PL2");
+ok(plRow && plRow[1].getAttribute("title").includes("constraint"), "PL1/PL2 row tooltip explains why unavailable");
 d.querySelectorAll("nav button")[1].click();
 ok(d.body.textContent.includes("No logs yet"), "empty log state");
 d.querySelector("#rc").click();

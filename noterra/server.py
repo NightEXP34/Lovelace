@@ -64,6 +64,12 @@ def gen_of(speed):
 _state = {}      # previous cumulative counters
 _last_t = None   # previous sample time (monotonic)
 
+_health = {}     # metric key -> None (available) or a reason string for unavailable
+
+def avail(key, reason=None):
+    """Record availability of a metric key; reason explains why it is null."""
+    _health[key] = reason
+
 def rate(key, cur, dt):
     """Per-second delta of a cumulative counter; None until two samples exist."""
     prev = _state.get(key)
@@ -95,6 +101,10 @@ def proc_stat():
             busy[int(p[0][3:])] = b
             total_busy += b
             total_all += a
+    if not busy:
+        avail("cpuU", "/proc/stat tidak terbaca atau tidak ada baris per-cpu")
+    if ctxt is None:
+        avail("ctx", "/proc/stat tidak memiliki baris ctxt")
     return busy, total_busy, total_all, ctxt
 
 def cpu_topology():
@@ -117,6 +127,10 @@ def cpufreq():
         i = int(d.name[3:])
         cur[i] = rd_int(d / "cpufreq/scaling_cur_freq")
         mx[i] = rd_int(d / "cpufreq/scaling_max_freq")
+    if not cur:
+        avail("pfa", "sysfs cpufreq (scaling_cur_freq) tidak ditemukan")
+    elif all(v is None for v in cur.values()):
+        avail("pfa", "scaling_cur_freq tidak terbaca di sysfs cpufreq")
     return cur, mx
 
 def core_temps():
@@ -139,6 +153,8 @@ def core_temps():
                 pkg = v
     if pkg is None and per_cpu:
         pkg = max(per_cpu.values())
+    if pkg is None:
+        avail("cpuT", "hwmon coretemp tidak ditemukan (tidak ada sensor suhu CPU)")
     return pkg, per_cpu
 
 def idle_residency(dt):
@@ -159,6 +175,10 @@ def idle_residency(dt):
         if prev is None or t < prev or not dt:
             continue
         vals.append(min(100.0, (t - prev) / (dt * 1e6) * 100))
+    if name is None:
+        avail("idle", "cpuidle sysfs (state*/time) tidak tersedia")
+    if vals:
+        avail("idle")
     return name, (sum(vals) / len(vals) if vals else None)
 
 def migrations(dt):
@@ -185,12 +205,16 @@ def migrations(dt):
 
 def irq_rate(dt):
     total = 0
+    seen = 0
     for ln in lines("/proc/interrupts"):
         if ln.startswith("CPU") or ":" not in ln:
             continue
         for x in ln.split(":")[1].split():
             if x.isdigit():
                 total += int(x)
+                seen += 1
+    if seen == 0:
+        avail("irq", "/proc/interrupts tidak terbaca atau tidak ada counter")
     return rate("irq", total, dt)
 
 # ---- RAPL package power -----------------------------------------------------
@@ -201,16 +225,21 @@ def rapl_power(dt):
     mx = rd_int(base / "max_energy_range_uj")
     name = rd(base / "name")
     if e is None:
+        avail("cpuW", "RAPL energy_uj tidak terbaca tanpa privileges: file mode 0400 "
+                      "(butuh root atau CAP_DAC_READ_SEARCH; jangan chmod world-readable)")
         return None, name
     prev = _state.get("rapl:0")
     _state["rapl:0"] = e
     if prev is None or not dt:
+        avail("cpuW", "butuh dua snapshot (daya = delta energy_uj / dt)")
         return None, name
     d = e - prev
     if d < 0 and mx:
         d += mx            # counter wrapped
     if d < 0:
+        avail("cpuW", "delta energy_uj negatif tanpa info max_energy_range (wrap tidak diketahui)")
         return None, name
+    avail("cpuW")
     return d / dt / 1e6, name   # microjoules / s -> watts
 
 # ---- memory -----------------------------------------------------------------
@@ -223,6 +252,11 @@ def meminfo():
             m[k] = int(v)
         except ValueError:
             pass
+    if not m:
+        for k in ("memTot", "ramU", "avail", "cache", "swapTot", "swapU"):
+            avail(k, "/proc/meminfo tidak terbaca")
+        return {"memTot": None, "ramU": None, "avail": None, "cache": None,
+                "swapTot": None, "swapU": None}
     gb = lambda k: m.get(k, 0) / 1048576   # meminfo is in kB; 1048576 kB = 1 GiB
     return {
         "memTot": gb("MemTotal"),
@@ -242,6 +276,9 @@ def vmstat_rates(dt):
                 v[p[0]] = int(p[1])
             except ValueError:
                 pass
+    if not v:
+        for k in ("majF", "minF", "swp"):
+            avail(k, "/proc/vmstat tidak terbaca")
     maj = rate("pgmajfault", v.get("pgmajfault", 0), dt)
     allf = rate("pgfault", v.get("pgfault", 0), dt)
     minf = (allf - maj) if (allf is not None and maj is not None) else None
@@ -254,6 +291,13 @@ def vmstat_rates(dt):
 
 def drive_metrics(idx, dt):
     dev = f"nvme{idx}n1"
+    keys = {
+        "r": f"r{idx}", "w": f"w{idx}", "ops": f"i{idx}", "a": f"a{idx}",
+        "u": f"u{idx}", "q": f"q{idx}", "temp": f"t{idx}",
+    }
+    dl_keys = {"model": f"d{idx}model", "sizeGB": f"d{idx}size", "sched": f"d{idx}sched",
+               "readahead": f"d{idx}readahead", "capUsed": f"d{idx}capUsed",
+               "link": f"d{idx}link", "linkMax": f"d{idx}linkMax"}
     row = None
     for ln in lines("/proc/diskstats"):
         p = ln.split()
@@ -261,6 +305,11 @@ def drive_metrics(idx, dt):
             row = [int(x) for x in p[3:14]]
             break
     if row is None:
+        reason = f"{dev} tidak muncul di /proc/diskstats"
+        for k in keys.values():
+            avail(k, reason)
+        for k in dl_keys.values():
+            avail(k, reason)
         return {}
     rc, _rm, rs, rms, wc, _wm, ws, wms, infl, io_ms, _ = row
 
@@ -309,6 +358,8 @@ def drive_metrics(idx, dt):
         wm = rd(pci / "max_link_width")
         out["link"] = f"Gen{cur_g} x{w}" if cur_g else None
         out["linkMax"] = f"Gen{max_g} x{wm}" if max_g else None
+    else:
+        out["link"] = out["linkMax"] = None
 
     mount = None
     for ln in lines("/proc/mounts"):
@@ -322,6 +373,36 @@ def drive_metrics(idx, dt):
             out["capUsed"] = psutil.disk_usage(mount).percent
         except Exception:
             pass
+
+    two = "butuh dua snapshot (laju dihitung dari delta diskstats)"
+    for name, k in keys.items():
+        if out.get(name) is None:
+            if name == "a" and out["idle"]:
+                avail(k)                       # idle: terukur, tidak ada I/O yang di-await
+            elif name == "t":
+                avail(k, "hwmon nvme drive ini tidak punya sensor suhu (temp1_input)")
+            elif name == "q":
+                avail(k, "queue depth tidak terbaca dari /proc/diskstats")
+            else:
+                avail(k, two)
+        else:
+            avail(k)
+    for name, k in dl_keys.items():
+        if out.get(name) is None:
+            if name == "capUsed":
+                avail(k, "drive tidak di-mount — tidak ada filesystem terpasang di drive ini")
+            elif name == "readahead":
+                avail(k, "sysfs queue/readahead_kb tidak ada di kernel ini")
+            elif name == "model":
+                avail(k, "/sys/class/nvme tidak menyediakan nama model")
+            elif name == "sizeGB":
+                avail(k, "sysfs block size tidak terbaca")
+            elif name == "sched":
+                avail(k, "sysfs queue/scheduler tidak terbaca")
+            else:
+                avail(k, "sysfs PCI link tidak ditemukan untuk drive ini")
+        else:
+            avail(k)
     return out
 
 # ---- GPU --------------------------------------------------------------------
@@ -338,38 +419,79 @@ def gpu_metrics():
     out = dict(gT=None, gW=None, gClk=None, gMemClk=None, gClkMax=None, gU=None,
                gMU=None, vram=None, vramTot=None, gLim=None, pstate=None, thr=None,
                fan=None, pcieGen=None, pcieWidth=None, name=None)
+    keys = list(out)
     if NVML:
         try:
             h = pynvml.nvmlDeviceGetHandleByIndex(0)
-            safe = lambda fn, *a: fn(*a)
+        except Exception as e:
+            reason = f"NVML: handle GPU gagal ({e})"
+            for k in keys:
+                avail(k, reason)
+            return out
+
+        def nv(key, fn, *a, scale=None):
             try:
-                out["name"] = safe(pynvml.nvmlDeviceGetName, h)
-                out["gT"] = safe(pynvml.nvmlDeviceGetTemperature, h, pynvml.NVML_TEMPERATURE_GPU)
-                pw = safe(pynvml.nvmlDeviceGetPowerUsage, h)
-                out["gW"] = pw / 1000 if pw else None
-                out["gClk"] = safe(pynvml.nvmlDeviceGetClockInfo, h, pynvml.NVML_CLOCK_SM)
-                out["gMemClk"] = safe(pynvml.nvmlDeviceGetClockInfo, h, pynvml.NVML_CLOCK_MEM)
-                out["gClkMax"] = safe(pynvml.nvmlDeviceGetMaxClockInfo, h, pynvml.NVML_CLOCK_SM)
-                u = safe(pynvml.nvmlDeviceGetUtilizationRates, h)
-                out["gU"], out["gMU"] = u.gpu, u.memory
-                mi = safe(pynvml.nvmlDeviceGetMemoryInfo, h)
-                out["vram"], out["vramTot"] = mi.used / 1024**3, mi.total / 1024**3   # bytes -> GiB
-                lim = safe(pynvml.nvmlDeviceGetPowerManagementLimit, h)
-                out["gLim"] = lim / 1000 if lim else None
-                out["pstate"] = str(safe(pynvml.nvmlDeviceGetPerformanceState, h))
-                out["thr"] = throttle_names(safe(pynvml.nvmlDeviceGetCurrentClocksThrottleReasons, h))
-                out["fan"] = safe(pynvml.nvmlDeviceGetFanSpeed, h)
-                out["pcieGen"] = safe(pynvml.nvmlDeviceGetCurrPcieLinkGeneration, h)
-                out["pcieWidth"] = safe(pynvml.nvmlDeviceGetCurrPcieLinkWidth, h)
-            except Exception:
-                pass  # leave whatever was filled, rest stays null
-        except Exception:
-            pass
+                v = fn(*a)
+                out[key] = None if v is None else (v / scale if scale else v)
+                avail(key)
+                if v == 0:
+                    avail(key, "NVML mengembalikan 0")
+            except Exception as e:
+                avail(key, f"NVML {getattr(fn, '__name__', 'call')}: {e}")
+
+        nv("name", pynvml.nvmlDeviceGetName, h)
+        nv("gT", pynvml.nvmlDeviceGetTemperature, h, pynvml.NVML_TEMPERATURE_GPU)
+        nv("gW", pynvml.nvmlDeviceGetPowerUsage, h, scale=1000)          # mW -> W
+        nv("gClk", pynvml.nvmlDeviceGetClockInfo, h, pynvml.NVML_CLOCK_SM)
+        nv("gMemClk", pynvml.nvmlDeviceGetClockInfo, h, pynvml.NVML_CLOCK_MEM)
+        nv("gClkMax", pynvml.nvmlDeviceGetMaxClockInfo, h, pynvml.NVML_CLOCK_SM)
+        try:
+            u = pynvml.nvmlDeviceGetUtilizationRates(h)
+            out["gU"], out["gMU"] = u.gpu, u.memory
+            avail("gU"); avail("gMU")
+        except Exception as e:
+            avail("gU", f"NVML nvmlDeviceGetUtilizationRates: {e}")
+            avail("gMU", f"NVML nvmlDeviceGetUtilizationRates: {e}")
+        try:
+            mi = pynvml.nvmlDeviceGetMemoryInfo(h)
+            out["vram"], out["vramTot"] = mi.used / 1024**3, mi.total / 1024**3   # bytes -> GiB
+            avail("vram"); avail("vramTot")
+        except Exception as e:
+            avail("vram", f"NVML nvmlDeviceGetMemoryInfo: {e}")
+            avail("vramTot", f"NVML nvmlDeviceGetMemoryInfo: {e}")
+        nv("gLim", pynvml.nvmlDeviceGetPowerManagementLimit, h, scale=1000)
+        try:
+            out["pstate"] = str(pynvml.nvmlDeviceGetPerformanceState(h))
+            avail("pstate")
+        except Exception as e:
+            avail("pstate", f"NVML nvmlDeviceGetPerformanceState: {e}")
+        try:
+            out["thr"] = throttle_names(pynvml.nvmlDeviceGetCurrentClocksThrottleReasons(h))
+            avail("thr")
+        except Exception as e:
+            avail("thr", f"NVML nvmlDeviceGetCurrentClocksThrottleReasons: {e}")
+        try:
+            out["fan"] = pynvml.nvmlDeviceGetFanSpeed(h)
+            avail("fan")
+        except Exception as e:
+            avail("fan", "NVML NotSupported: fan speed tidak dilaporkan GPU laptop ini "
+                         "(kipas diatur Embedded Controller, tidak lewat NVML)")
+        nv("pcieGen", pynvml.nvmlDeviceGetCurrPcieLinkGeneration, h)
+        nv("pcieWidth", pynvml.nvmlDeviceGetCurrPcieLinkWidth, h)
+    else:
+        for k in keys:
+            avail(k, "NVML init gagal (Driver Not Loaded): /dev/nvidia* tidak terlihat; "
+                     "jalankan server di host atau dengan akses device node")
     if out["pcieGen"] is None:  # sysfs fallback, works without NVML device nodes
         pci = Path("/sys/bus/pci/devices/0000:01:00.0")
-        out["pcieGen"] = gen_of(rd(pci / "current_link_speed"))
-        out["pcieWidth"] = rd_int(pci / "current_link_width")
-    # PCIe rx/tx throughput and VRAM bandwidth have no real source here
+        g = gen_of(rd(pci / "current_link_speed"))
+        w = rd_int(pci / "current_link_width")
+        out["pcieGen"], out["pcieWidth"] = g, w
+        if g is None:
+            avail("pcieGen", "NVML tidak tersedia dan sysfs PCI GPU tidak terbaca")
+        if w is None:
+            avail("pcieWidth", "NVML tidak tersedia dan sysfs PCI GPU tidak terbaca")
+    # PCIe rx/tx throughput dan VRAM bandwidth: sumbernya ditambah di langkah B
     out.update(vbw=None, prx=None, ptx=None, pcu=None)
     return out
 
@@ -407,8 +529,20 @@ def system_snap():
 
 # ---- snapshot ---------------------------------------------------------------
 
-@app.get("/api/snapshot")
-def snapshot():
+PENDING = "butuh dua snapshot (laju dihitung dari delta antar snapshot)"
+
+def sync_health(data):
+    """Mark each scalar metric available/unavailable; keep collector reasons."""
+    for k, v in data.items():
+        if k in ("snap", "drives") or isinstance(v, (list, bool)):
+            continue
+        if v is None:
+            if _health.get(k) is None:
+                _health[k] = PENDING
+        else:
+            _health[k] = None
+
+def build_snapshot():
     global _last_t
     now = time.monotonic()
     dt = None if _last_t is None else now - _last_t
@@ -481,7 +615,7 @@ def snapshot():
 
     snap = system_snap()
     snap["gpuName"] = gpu["name"]
-    return JSONResponse({
+    data = {
         "cpuT": pkg,
         "cpuW": rapl_w,
         "cpuU": overall,
@@ -508,12 +642,43 @@ def snapshot():
         "a1Idle": d1.get("idle"), "u1": d1.get("u"), "q1": d1.get("q"), "t1": d1.get("temp"),
         "drives": [drive_view(d0), drive_view(d1)],
         "snap": snap,
-    })
+    }
+    if data["cpuThr"] is None:
+        avail("cpuThr", "belum ada sumber throttle CPU yang dibaca "
+                        "(sysfs thermal_throttle/*_throttle_count belum diaktifkan)")
+    sync_health(data)
+    return data
+
+@app.get("/api/snapshot")
+def snapshot():
+    return JSONResponse(build_snapshot())
+
+@app.get("/api/health")
+def health():
+    """Availability of every metric key: null reason = available, string = why unavailable."""
+    return JSONResponse({"ok": True, "nvml": NVML, "items": dict(_health)})
 
 @app.get("/")
 def index():
     return HTMLResponse((BASE / "index.html").read_text())
 
+def run_check():
+    """Self-diagnostic: probe every source twice (rates need a delta) and print results."""
+    build_snapshot()
+    time.sleep(1.2)
+    build_snapshot()
+    rows = sorted(_health.items())
+    width = max((len(k) for k, _ in rows), default=0)
+    for k, reason in rows:
+        state = "available" if reason is None else "unavailable"
+        print(f"{k:<{width}}  {state}" + (f"  — {reason}" if reason else ""))
+    bad = sum(1 for _, r in rows if r is not None)
+    print(f"\n{len(rows)} metric keys: {len(rows) - bad} available, {bad} unavailable")
+    return 0
+
 if __name__ == "__main__":
+    import sys
+    if "--check" in sys.argv:
+        sys.exit(run_check())
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=5130)
