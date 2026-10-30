@@ -71,6 +71,34 @@ Prototype punya data mock; porting ke `index.html` memakai snapshot nyata:
   > 600 MB/s dan GPU util < 50%), thermal-bound (throttle NVML/sysfs aktif),
   power-bound (draw ≥ 95% limit NVML); input null → aturan tidak dievaluasi.
 
+## Portabilitas (hardware lain)
+
+Asumsi mesin lama sudah diganti discovery:
+
+- **Drive**: dari listing `/sys/block` (disk penuh; loop/ram/zram dibuang),
+  bukan nama `nvme{n}n1` hardcoded → SATA/USB/mmcblk/multi-NVMe terbaca;
+  model via `/sys/block/<dev>/device/model`, suhu via hwmon NVMe kalau ada,
+  PCI link via walk symlink device (generik), mount via `/proc/mounts`.
+  Kunci laju (`r{i}/w{i}/i{i}/a{i}/u{i}/q{i}/t{i}`) dibuat dinamis per drive.
+- **GPU**: NVML primary (`nvmlDeviceGetCount`, index 0 — bukan alamat PCI
+  hardcoded); fallback sysfs scan `class` 0x03xx (display controller).
+  `snap.gpuPresent` = NVML aktif ATAU ada display controller.
+- **RAPL/power limit**: glob semua device `powercap` dengan `energy_uj`;
+  domain MMIO (`*-mmio:*`) diprioritaskan belakangan karena di mesin ini MSR
+  domain (`intel-rapl:0`) adalah sumber PL1/PL2 standar (mmio bisa memuat
+  limit yang dikelola firmware/BTP dan nilainya berbeda — pernah terbaca 45 W
+  saat seharusnya 200 W).
+- **PMU RAM**: glob `uncore_imc_free_running_*` / `uncore_imc_*` / `imc_*`
+  + filter punya event `data_read`; kalau tidak ada → unavailable dengan
+  alasan generik.
+- **UI mengikuti hardware**: panel GPU tidak dibangun kalau GPU tidak ada;
+  panel Storage memakai bar/tabel/chart dinamis per drive; timeline rail
+  membangun baris dari hardware (CPU + GPU kalau ada + majF + 1 baris per
+  drive). Nilai tanpa sumber tetap unavailable + tooltip alasan.
+
+Test jsdom sekarang punya dua mesin: fixture mesin ini dan simulasi mesin
+lain (tanpa GPU, 3 drive SATA) — keduanya ALL PASS.
+
 ## Desain kunci
 
 - **Nilai tanpa sumber nyata = `null`** → UI menampilkan `unavailable`.

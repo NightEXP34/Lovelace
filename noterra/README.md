@@ -98,3 +98,11 @@ Project ini murni **monitoring hardware dulu saja**: semua metrik, log, dan
 analisis dari sumber OS/NVML nyata. Engine LLM (Strata) dan metrik turunan
 engine dikecualikan dari scope sekarang — arsitektur tetap netral supaya
 adapter bisa ditambahkan kemudian tanpa mengubah core.
+
+## Portabilitas
+
+Server tidak lagi mengasumsikan mesin ini: drive dari `/sys/block`, GPU via
+NVML atau PCI display controller (class 0x03xx), powercap semua vendor, PMU
+IMC generik. UI membangun panel sesuai hardware yang terdeteksi (panel GPU
+hilang kalau tidak ada GPU; Storage dinamis per drive). Nilai tanpa sumber
+tetap `unavailable` dengan alasan dari `/api/health`.

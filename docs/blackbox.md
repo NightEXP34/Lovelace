@@ -260,3 +260,25 @@ persisten, interval polling live, export JSON, aturan thermal-bound + clock
 turun, verifikasi RAPL via unit systemd (butuh root di host), bandwidth RAM
 (perf diblokir paranoid=4; ubah sysctl butuh konfirmasi pengguna), baseline A/B
 tuning OS cold/warm.
+
+## 2026-10-30 — Modularisasi untuk hardware lain (fokus komponen utama)
+
+- Server: `disk_devices()` dari /sys/block; `drive_metrics(dev, idx)` generik;
+  `pci_display()` via class 0x03xx; `powercap_base()` glob semua vendor,
+  non-mmio diprioritaskan; PMU IMC glob + filter event data_read; NVML
+  `nvmlDeviceGetCount`; kunci laju drive dinamis; CSV kolom `drive0_read_mbps`.
+  Bug ketemu saat refactor: sorting string membuat `intel-rapl-mmio:0` terpilih
+  sebelum `intel-rapl:0` (karakter '-' < ':') → PL1 terbaca 45 W (nilai firmware
+  BTP) padahal MSR 200 W; diperbaiki dengan prioritas non-mmio.
+- UI: `buildPanels()` mengikuti signature hardware (GPU hanya kalau
+  `snap.gpuPresent`), Storage pakai `dynBars/dynTable/dynChart` (jumlah bar,
+  kolom tabel, tab chart per drive), timeline dinamis. `mk()` wrapper DIV
+  sempat menghancurkan elemen dalam saat rebuild (dynBars/dynTable menulis
+  innerHTML di wrapper, bukan container dalam) — diperbaiki pakai `box=
+  el.firstElementChild`.
+- Test: dua mesin di jsdom — mesin ini (fixture nyata) dan simulasi mesin lain
+  (gpuPresent false, 3 drive SATA `sda/sdb/sdc`): panel GPU tidak dibangun,
+  5 baris timeline, 3 kolom tabel, 6 bar, tanpa `undefined`. ALL PASS.
+  Catatan bug assertion: `querySelectorAll` menghasilkan Element; perbandingan
+  `t === "not mounted"` harus map `textContent` dulu.
+- Verifikasi di mesin ini tetap sama: 76 key → 72 available, 4 unavailable.
