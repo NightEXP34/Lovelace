@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>noterra headless</title>
+</head>
+<body>
+<h1>noterra headless (L4)</h1>
+<p>Hanya <code>core/client.js</code> — tanpa shell, theme, atau widget. Tiga nilai live:</p>
+<dl id="out"></dl>
+<script src="../core/client.js"></script>
+<script>
+const N=window.Noterra, C=N.ctx;
+const KEYS=[["cpuT","CPU temp","°C"],["gT","GPU temp","°C"],["gW","GPU power","W"]];
+const out=document.getElementById("out");
+function render(){
+  out.innerHTML=KEYS.map(([k,label,unit])=>{
+    const r=C.registry.get(k), v=C.data[k];
+    const s=typeof v==="number"?v.toFixed((r&&r.digits)||0):"unavailable";
+    const why=v==null?String((r&&r.reason)||C.reasons[k]||"tidak ada sumber data").replace(/"/g,"&quot;"):"";
+    return `<dt>${label}</dt><dd title="${why}">${s}${v==null?"":" "+unit}</dd>`;
+  }).join("");
+}
+C.on("update",render);
+C.on("offline",()=>{out.textContent="Backend offline — jalankan server.py, atau buka halaman ini dengan ?mock=1.";});
+N.loadSchema().then(()=>N.start());
+</script>
+</body>
+</html>
