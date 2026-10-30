@@ -21,3 +21,4 @@ Satu baris per langkah. Format: `- YYYY-MM-DD — <id> <ringkasan>`.
 - 2026-10-30 — B9a package test dinamai `tests` (package.json + lock) agar tidak ada referensi `nttest`.
 - 2026-10-30 — B8f docs lain (arsitektur, FORKING, THEMES, agents §8) selesai; B9 grep bersih, package `tests`, blackbox diberi preface path historis.
 - 2026-10-30 — verifikasi akhir: `npm test` ALL PASS, py_compile OK, 7 route in-process OK, logs 0, tidak ada path tracked `noterra/`/`nttest/`.
+- 2026-10-30 — catatan root cause Part A (a+c, b sebagian) dan detail fix di `docs/refactor-notes.md`.

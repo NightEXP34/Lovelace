@@ -254,3 +254,25 @@ dihapus dari `tests/test-web.mjs`; tidak ada assertion fungsional yang hilang.
 2. Setelah server baru terverifikasi, hapus sisa `noterra/` (hanya `.venv/`
    dan `__pycache__/`).
 3. Review branch `restructure`, lalu push manual.
+
+### Part A — root cause & fix Storage tab
+
+Tiga kandidat dicek:
+
+- (a) **terkonfirmasi** — `dynChart` membangun tombol dengan `tb.prepend(btn)`.
+  `C.drives` berurutan `[nvme0n1, nvme1n1]`, tetapi prepend membuat DOM
+  `[nvme1n1, nvme0n1]`; handler menyimpan `ti=j` (index drive), sedangkan
+  `aria-pressed` dihitung dari posisi DOM `j===ti`.
+- (b) sebagian — `ti` lokal tidak di-reset tiap tick, tetapi gauge/stats Storage
+  memang hardcode `r0`, jadi panel selalu menampilkan drive 0 walau chart
+  memilih drive lain.
+- (c) **terkonfirmasi** — active state memakai posisi DOM, click memakai index
+  drive; dua kunci berbeda.
+
+Fix: `storageSel` (satu sumber kebenaran), `storageIndex()` (clamp saat jumlah
+drive berubah), tab dibangun urut index dengan `insertBefore(btn, legend)`,
+`aria-pressed` memakai `data-key` seri, `dynChart` punya `sel`/`onSelect`, dan
+gauge/stats/chart membaca `r{k}`/`w{k}`/`i{k}`/`a{k}`/`u{k}` sesuai
+`storageIndex()`. Selection bertahan karena variabel modul, termasuk saat
+Overview di-remount. Tabel Storage + timeline sudah urut index (tidak diubah).
+Regresi `storage: ...` gagal sebelum fix dan lolos sesudahnya.
