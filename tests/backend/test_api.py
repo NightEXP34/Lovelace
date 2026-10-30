@@ -1,6 +1,7 @@
 """Smoke test backend tanpa menjalankan server: import app dan panggil route."""
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -49,6 +50,28 @@ class ApiSmokeTest(unittest.TestCase):
         for col in ("pu0", "pu1", "eu0", "r0", "w0"):
             self.assertIn(col, detailed)
         self.assertNotIn("pu0", minimal)
+
+    def test_log_data_returns_all_columns(self):
+        old_logs = main.LOGS
+        try:
+            with tempfile.TemporaryDirectory(dir=ROOT / "tests") as td:
+                main.LOGS = Path(td)
+                d = Path(td) / "sess"
+                d.mkdir()
+                (d / "meta.json").write_text(json.dumps({"id": 123, "mode": "detailed"}))
+                (d / "samples.csv").write_text(
+                    "timestamp_ms,cpuT,pu0,thr\n"
+                    "1793000000000,45.500,3.000,gpu idle\n"
+                    "1793000001000,,4.000,\n")
+                data = json.loads(main.log_data("123").body)
+                self.assertEqual(data["columns"], ["timestamp_ms", "cpuT", "pu0", "thr"])
+                self.assertEqual(len(data["rows"]), 2)
+                self.assertEqual(data["rows"][0][1], 45.5)
+                self.assertEqual(data["rows"][0][3], "gpu idle")
+                self.assertIsNone(data["rows"][1][1])
+                self.assertEqual(data["meta"]["mode"], "detailed")
+        finally:
+            main.LOGS = old_logs
 
     def test_snapshot_contract(self):
         snap = json.loads(main.snapshot().body)

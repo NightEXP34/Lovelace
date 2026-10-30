@@ -61,7 +61,7 @@ Tab Log (server-side): POST /api/log/start → loop server nulis
 logs/<tanggal>_<label>/samples.csv tiap interval + meta.json (label, tag,
 iv, marker, status); CSV berisi skalar + per-core (P/E) + per-drive
 (read/write/IOPS/await/util/queue/temp); analisis UI fetch CSV dari server
-(mean/median/p95/sd/min/max, overlay A/B); export CSV = file server
+(mean/median/p95/sd/min/max, matriks semua metrik, overlay A/B); export CSV = file server
 ```
 
 ## Layout Overview (port dari prototype overview_v6.html)
@@ -156,7 +156,8 @@ lain (tanpa GPU, 3 drive SATA) — keduanya ALL PASS.
 | `POST /api/log/stop` `{id}` | hentikan loop, meta status→"saved" |
 | `POST /api/log/marker` `{id,note?}` | marker `{ts_ms, since_s, note}` masuk `meta.markers` |
 | `GET /api/log/sessions` | daftar semua sesi (aktif + yang tersimpan di disk) dari meta.json |
-| `GET /api/log/<id>/samples.csv` | CSV mentah untuk analisis UI |
+| `GET /api/log/<id>/samples.csv` | CSV mentah untuk export/analisis |
+| `GET /api/log/<id>/data` | JSON `{columns, rows, meta}` — semua kolom CSV terstruktur untuk tab Log |
 | `DELETE /api/log/<id>` | hapus folder sesi (409 kalau masih recording) |
 
 CLI: `./scripts/check.sh` = probe dua snapshot lalu cetak tabel available/unavailable + alasan.

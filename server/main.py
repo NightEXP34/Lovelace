@@ -7,6 +7,8 @@ atau dari folder server:
     .venv/bin/python -m server.main
 """
 import asyncio
+import csv
+import io
 import json
 import re
 import shutil
@@ -209,21 +211,60 @@ def log_sessions():
     out.sort(key=lambda m: -m.get("start_ms", 0))
     return JSONResponse({"sessions": out})
 
-@app.get("/api/log/{sid}/samples.csv")
-def log_samples(sid: str):
+def _find_log(sid):
+    """Cari file CSV + meta untuk sesi aktif atau tersimpan di disk."""
     for s in _sessions.values():
         if str(s["id"]) == sid:
-            return PlainTextResponse(s["csv"].read_text(), media_type="text/csv")
+            return s["csv"], _meta(s["id"])
     if LOGS.exists():
         for d in LOGS.iterdir():
             meta = d / "meta.json"
-            if d.is_dir() and meta.exists():
-                try:
-                    if json.loads(meta.read_text()).get("id") == int(sid):
-                        return PlainTextResponse((d / "samples.csv").read_text(), media_type="text/csv")
-                except Exception:
-                    continue
-    return PlainTextResponse("", status_code=404)
+            if not (d.is_dir() and meta.exists()):
+                continue
+            try:
+                m = json.loads(meta.read_text())
+                if m.get("id") == int(sid):
+                    return d / "samples.csv", m
+            except Exception:
+                continue
+    return None, None
+
+@app.get("/api/log/{sid}/samples.csv")
+def log_samples(sid: str):
+    path, _ = _find_log(sid)
+    if path is None or not path.exists():
+        return PlainTextResponse("", status_code=404)
+    return PlainTextResponse(path.read_text(), media_type="text/csv")
+
+@app.get("/api/log/{sid}/data")
+def log_data(sid: str):
+    """Data terstruktur untuk tab Log: semua kolom CSV sebagai JSON.
+
+    Frontend memakai ini agar semua metrik (skalar/core/drive) bisa dirender
+    tanpa parsing CSV sendiri; export tetap memakai samples.csv.
+    """
+    path, meta = _find_log(sid)
+    if path is None or not path.exists():
+        return JSONResponse({"error": "session tidak ditemukan"}, status_code=404)
+    reader = csv.reader(io.StringIO(path.read_text()))
+    try:
+        columns = next(reader)
+    except StopIteration:
+        columns = []
+    rows = []
+    for row in reader:
+        vals = []
+        for v in row:
+            if v == "":
+                vals.append(None)
+                continue
+            try:
+                f = float(v)
+                vals.append(int(f) if f.is_integer() and "." not in v and "e" not in v.lower() else f)
+            except ValueError:
+                vals.append(v)
+        rows.append(vals)
+    return JSONResponse({"columns": columns, "rows": rows, "meta": meta})
 
 @app.delete("/api/log/{sid}")
 def log_delete(sid: str):

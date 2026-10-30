@@ -44,6 +44,17 @@ const SESSION = { id: 1793000000000, label: "rec-test", tag: "none", interval_s:
   config: { governor: "powersave", epp: "balance_performance", turbo: "on",
     swappiness: "60", kernel: "7.0.0-38-generic", sysctl: { "vm.swappiness": "60" } } };
 
+function csvToData(text) {
+  const lines = text.trim().split("\n");
+  const columns = lines[0].split(",");
+  const rows = lines.slice(1).filter(Boolean).map(line => line.split(",").map(v => {
+    if (v === "") return null;
+    const n = +v;
+    return Number.isFinite(n) ? n : v;
+  }));
+  return { columns, rows };
+}
+
 /* stub fetch identik per harness: hanya /api/snapshot yang menaikkan counter i */
 function installFetch(w, snapshotFn) {
   let i = 0, recStarted = false, recStopped = false, startMode = "detailed";
@@ -72,6 +83,7 @@ function installFetch(w, snapshotFn) {
         samples: recStopped ? 12 : 3, markers: [] };
       return { ok: true, json: async () => ({ sessions: recStarted ? [s] : [] }) };
     }
+    if (url.includes("/data")) return { ok: true, json: async () => csvToData(recStopped ? CSV_TEXT : CSV_PARTIAL) };
     if (url.includes("samples.csv")) return { ok: true, text: async () => (recStopped ? CSV_TEXT : CSV_PARTIAL) };
     if (snapshotFn) return { ok: true, json: async () => snapshotFn };
     i++;
@@ -242,6 +254,7 @@ ok(d.body.textContent.includes("Mean"), "statistics table shown");
 ok(d.body.textContent.includes("65.5"), "mean CPU temp dari CSV server (60..71 → 65.5)");
 ok(d.querySelector("#ov path")?.getAttribute("d"), "chart Log menggambar path");
 ok(d.querySelectorAll("#ov .grid line").length === 5, "chart Log punya grid + label");
+ok(d.querySelectorAll("#cmp .cmp-row").length > 5, "log: matriks pembanding memuat semua metrik");
 const logMetrics = [...d.querySelectorAll("#mt option")].map(o => o.value);
 ok(logMetrics.includes("pu0") && logMetrics.includes("eu0"), "log: metrik per core tersedia");
 ok(logMetrics.includes("w0"), "log: metrik write per drive tersedia");

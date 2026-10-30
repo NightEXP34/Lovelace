@@ -22,3 +22,7 @@
 - Dua mode recording: `detailed` (default; skalar + per-core + per-drive) dan
   `minimal` (8 kolom lama). Pilihan ada di toolbar Log dan tersimpan di
   `meta.json` (`mode`); sesi lama tanpa mode dideteksi dari jumlah kolom.
+
+- Backend `GET /api/log/<id>/data` mengembalikan semua kolom+baris CSV sebagai
+  JSON; UI memakainya untuk matriks pembanding semua metrik (per core/drive),
+  sparkline, filter, baseline, dan daftar metrik tanpa data.

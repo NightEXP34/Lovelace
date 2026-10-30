@@ -129,7 +129,7 @@ const HEADER_TO_KEY={"cpu_temp_c":"cpuT","cpu_power_w":"cpuW","gpu_temp_c":"gT",
   "vram_bw_gbs":"vbw","pcie_rx_gbs":"prx","mem_major_faults_s":"majF","nvme0_read_mbps":"r0"};
 let LOG_METRICS=METRICS;          // [key,label,unit]; diperbarui dari header CSV
 const COL=["--a","--b","--ok","--warn","--bad"];
-let SES=[],sel=new Set(),CSV={},lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:"",mode:"detailed"};
+let SES=[],sel=new Set(),CSV={},lo={m:"cpuT",trim:0,grp:true,iv:1,lb:"",tg:"",mode:"detailed",base:null,q:"",chg:false,thr:2,col:new Set()};
 const f2=v=>typeof v==="number"?fx(v,Math.abs(v)<10?2:1):"unavailable";
 function st(a){
   const v=a.filter(x=>typeof x==="number");
@@ -199,13 +199,10 @@ function logMetricMeta(key){
 }
 async function loadCsv(id){
   if(CSV[id])return CSV[id];
-  const r=await fetch(`/api/log/${id}/samples.csv`);
+  const r=await fetch(`/api/log/${id}/data`,{cache:"no-store"});
   if(!r.ok)return null;
-  const txt=await r.text();
-  const lines=txt.split("\n");
-  const cols=(lines[0]||"").replace(/\r$/,"").split(",").map(c=>c.trim());
-  // header asli tidak memuat timestamp_ms, jadi data bergeser satu kolom;
-  // kalau suatu saat header memuatnya, offset menyesuaikan.
+  const j=await r.json();
+  const cols=j.columns||[];
   const off=cols[0]==="timestamp_ms"?0:1;
   const found=[];
   cols.forEach((col,i)=>{
@@ -219,17 +216,10 @@ async function loadCsv(id){
   let use;
   if(found.length){use=found; LOG_METRICS=found.map(([k,l,u])=>[k,l,u]);}
   else{use=METRICS.map(([k,l,u],i)=>[k,l,u,i+1]); LOG_METRICS=METRICS;}
-  const d={ts:[],...Object.fromEntries(use.map(([k])=>[k,[]]))};
-  lines.slice(1).forEach(ln=>{
-    ln=ln.replace(/\r$/,""); if(!ln)return;
-    const p=ln.split(",");
-    d.ts.push(+p[0]);
-    use.forEach(([k,,,idx])=>{
-      const v=p[idx];
-      if(v===undefined||v===""){d[k].push(null);return}
-      const n=+v;
-      d[k].push(Number.isFinite(n)?n:v);
-    });
+  const d={ts:[],cols:use.map(([k,l,u])=>[k,l,u]),_m:use.map(([k,l,u])=>[k,l,u]),...Object.fromEntries(use.map(([k])=>[k,[]]))};
+  (j.rows||[]).forEach(row=>{
+    d.ts.push(+row[0]);
+    use.forEach(([k,,,idx])=>{const v=row[idx]; d[k].push(v===undefined?null:v)});
   });
   CSV[id]=d; return d;
 }
@@ -290,16 +280,129 @@ async function renderLog(){
   $(DOM.lb).oninput=e=>lo.lb=e.target.value; $(DOM.tg).oninput=e=>lo.tg=e.target.value; $(DOM.iv).onchange=e=>lo.iv=+e.target.value;
   $(DOM.rc).onclick=toggleRec; $(DOM.ex).onclick=exportCsv; $(DOM.mk).onclick=addMarker;
   root.querySelectorAll("[data-id]").forEach(c=>c.onchange=()=>{const id=+c.dataset.id;sel.has(id)?sel.delete(id):sel.add(id);renderLog()});
-  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{const id=+b.dataset.id;
+  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{const id=+b.dataset.del;
     await fetch(`/api/log/${id}`,{method:"DELETE"}); sel.delete(id); delete CSV[id]; await loadSessions(); renderLog()});
   const ss=SES.filter(s=>sel.has(s.id));
   $(DOM.asub).textContent=ss.length+" selected";
   if(!ss.length)return;
   const cs=await Promise.all(ss.map(s=>loadCsv(s.id)));
+  AN={ss,cs};
+  /* union metrik antar sesi (sesi Minimal & Detailed punya kolom berbeda) */
+  const um=new Map();
+  cs.forEach(c=>c&&c._m&&c._m.forEach(m=>{if(!um.has(m[0]))um.set(m[0],m)}));
+  if(um.size)LOG_METRICS=[...um.values()];
+  if(!ss.some(s=>s.id===lo.base))lo.base=ss[0].id;
   if(!LOG_METRICS.some(x=>x[0]===lo.m)&&LOG_METRICS.length)lo.m=LOG_METRICS[0][0];
+  drawAnalysis();
+}
+
+/* ---- Analysis: matriks pembanding semua metrik x semua sesi terpilih ---- */
+let AN=null;
+const CATS=["CPU","GPU","Memory","Storage","Lainnya"];
+function catOf(k,l){
+  if(/^[rwiaqut]\d+$/.test(k)||/nvme|drive|disk/i.test(l))return"Storage";
+  if(/^cpu/.test(k)||/^(pu|pf|pt|eu|ef|et)\d+$/.test(k)||/^cpu|^[pe]\d+ /i.test(l))return"CPU";
+  if(/^g[A-Z]/.test(k)||/^(vbw|prx|ptx)$/.test(k)||/gpu|vram|pcie/i.test(l))return"GPU";
+  if(/^(majF|minF)$/.test(k)||/mem|fault|swap|ram/i.test(l))return"Memory";
+  return"Lainnya";
+}
+/* turun = lebih baik (suhu, daya, latency, fault); selain itu netral */
+const lowerBetter=(l,u)=>/°C|^W$|^ms$|requests/.test(u||"")||/fault|await|queue|latency/i.test(l||"");
+function series(i,k){
+  const s=AN.ss[i],c=AN.cs[i],a=(c&&c[k])||[];
+  return a.slice(Math.round(lo.trim/(s.interval_s||1))).filter(v=>typeof v==="number");
+}
+function spark(a,iv,mn,mx,D,col){
+  if(a.length<2)return"";
+  const W=84,H=26,sp=mx-mn;
+  const d=a.map((v,j)=>`${j?"L":"M"}${(j*iv/D*W).toFixed(1)},${(sp===0?H/2:2+(1-(v-mn)/sp)*(H-4)).toFixed(1)}`).join("");
+  return `<svg class="cmp-sp" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path class="l" style="stroke:var(${col})" d="${d}"/></svg>`;
+}
+function drawAnalysis(){
+  const {ss}=AN, an=$(DOM.an), q=s=>an.querySelector(s);
+  $(DOM.asub).textContent=ss.length+" selected";
+  const flat=o=>{const r={};const walk=(v,p)=>{if(v&&typeof v==="object"){for(const k in v)walk(v[k],p?p+"."+k:k)}else r[p]=v};walk(o,"");return r};
+  const cfgs=ss.map(s=>({...flat(s.config||{}),tag:s.tag||"none",interval_s:s.interval_s}));
+  const keys=[...new Set(cfgs.flatMap(c=>Object.keys(c)))].filter(k=>new Set(cfgs.map(c=>JSON.stringify(c[k]))).size>1);
+  an.innerHTML=`<div class="log-controls">
+    <label class="log-field"><span>Baseline</span><select id="bs">${ss.map(s=>`<option value="${s.id}" ${s.id===lo.base?"selected":""}>${esc(s.label)}</option>`).join("")}</select></label>
+    <label class="log-field narrow"><span>Skip first</span><span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
+    <label class="log-field"><span>Cari metrik</span><input id="qm" placeholder="mis. temp, gpu, nvme" value="${esc(lo.q)}"></label>
+    <label class="log-check"><input type="checkbox" id="chg" ${lo.chg?"checked":""}> Hanya yang berubah ≥</label>
+    <span class="fld cmp-thr"><input type="number" id="thr" min="0" step="0.5" value="${lo.thr}" aria-label="Ambang perubahan"><em>%</em></span>
+    <label class="log-check"><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Rata-ratakan run bertag sama (detail)</label>
+    <span class="grow"></span>
+    <button class="btn" id="xa">Expand all</button><button class="btn" id="ca">Collapse all</button>
+  </div>
+  <div id="cmp"></div>
+  <details class="log-cfg" ${keys.length?"open":""}><summary>Perbedaan konfigurasi sesi (${keys.length})</summary>${keys.length?`<div class="log-table-wrap"><table class="log-table n"><thead><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr></thead><tbody>${keys.map(k=>`<tr><td>${esc(k)}</td>${cfgs.map(c=>`<td>${esc(String(c[k]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<div class="log-empty small">Semua sesi terpilih punya konfigurasi (governor/EPP/turbo/sysctl/power limit) yang sama.</div>`}</details>
+  <div id="det"></div>`;
+  q("#bs").onchange=e=>{lo.base=+e.target.value;drawCmp()};
+  q("#tr").onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);drawAnalysis()};
+  q("#qm").oninput=e=>{lo.q=e.target.value;drawCmp()};
+  q("#chg").onchange=e=>{lo.chg=e.target.checked;drawCmp()};
+  q("#thr").onchange=e=>{lo.thr=Math.max(0,+e.target.value||0);drawCmp()};
+  q("#gp").onchange=e=>{lo.grp=e.target.checked;drawDetail()};
+  q("#xa").onclick=()=>{lo.col.clear();drawCmp()};
+  q("#ca").onclick=()=>{CATS.forEach(c=>lo.col.add(c));drawCmp()};
+  drawCmp(); drawDetail();
+}
+function drawCmp(){
+  const {ss}=AN, box=$("#cmp"); if(!box)return;
+  const bi=Math.max(0,ss.findIndex(s=>s.id===lo.base)), thr=lo.thr;
+  const all=LOG_METRICS.map(([k,l,u])=>{
+    const sr=ss.map((_,i)=>series(i,k)), S=sr.map(st);
+    if(!S.some(Boolean))return{k,l,u,none:true};
+    const b=S[bi];
+    const dl=S.map((x,i)=>i===bi||!x||!b?null:x.mean-b.mean);
+    const pc=S.map((x,i)=>dl[i]===null?null:(b.mean?dl[i]/Math.abs(b.mean)*100:null));
+    const mp=Math.max(0,...dl.map((d,i)=>d===null||d===0?0:(pc[i]===null?Infinity:Math.abs(pc[i]))));
+    return{k,l,u,sr,S,dl,pc,mp,cat:catOf(k,l)};
+  });
+  const q=lo.q.trim().toLowerCase();
+  const rows=all.filter(r=>!r.none&&(!q||(r.l+" "+r.k).toLowerCase().includes(q))&&(!lo.chg||ss.length<2||r.mp>=thr));
+  const nNone=all.filter(r=>r.none).length;
+  const noneList=all.filter(r=>r.none).map(r=>`<span class="tag">${esc(r.l)}${r.u?` (${esc(r.u)})`:""}</span>`).join(" ");
+  const head=`<tr><th class="cmp-k">Metric</th>${ss.map((s,i)=>`<th class="cmp-h ${i===bi?"is-base":""}" data-b="${s.id}" title="Klik untuk jadikan baseline"><span class="legend-dot" style="background:var(${COL[i%5]})"></span>${esc(s.label)}<div class="sub">${esc(s.tag||"none")} · ${modeOf(s)==="minimal"?"Minimal":"Detailed"} · ${s.samples} sample${i===bi?" · baseline":""}</div></th>`).join("")}</tr>`;
+  let body="";
+  CATS.forEach(cat=>{
+    const rs=rows.filter(r=>r.cat===cat); if(!rs.length)return;
+    const closed=lo.col.has(cat);
+    body+=`<tr class="grp cmp-grp" data-g="${cat}"><td colspan="${ss.length+1}">${closed?"▸":"▾"} ${cat} <span class="sub">${rs.length} metrik</span></td></tr>`;
+    if(closed)return;
+    rs.forEach(r=>{
+      const D=Math.max(...r.sr.map((a,i)=>a.length*(ss[i].interval_s||1)))||1;
+      const flatv=r.sr.flat(), mn=Math.min(...flatv), mx=Math.max(...flatv), lb=lowerBetter(r.l,r.u);
+      body+=`<tr class="cmp-row ${r.k===lo.m?"is-pick":""}" data-k="${esc(r.k)}"><td class="cmp-k"><b>${esc(r.l)}</b> <span class="sub">${esc(r.u)}</span></td>${r.S.map((x,i)=>{
+        if(!x)return`<td class="cmp-c"><span class="sub">unavailable</span></td>`;
+        let d="";
+        if(i===bi)d=ss.length>1?`<span class="cmp-d">baseline</span>`:"";
+        else if(r.dl[i]!==null){
+          const dv=r.dl[i], p=r.pc[i];
+          if(dv===0||(p!==null&&Math.abs(p)<thr))d=`<span class="cmp-d">≈ sama</span>`;
+          else d=`<span class="cmp-d ${lb?(dv>0?"bad":"ok"):""}">${dv>0?"+":"−"}${f2(Math.abs(dv))}${p===null?"":` (${p>0?"+":"−"}${Math.abs(p).toFixed(1)}%)`}</span>`;
+        }
+        return`<td class="cmp-c ${i===bi?"is-base":""}"><div class="cmp-cell"><div><div class="cmp-v">${f2(x.mean)}</div><div class="cmp-r">${f2(x.min)} – ${f2(x.max)}</div>${d}</div>${spark(r.sr[i],ss[i].interval_s||1,mn,mx,D,COL[i%5])}</div></td>`;
+      }).join("")}</tr>`;
+    });
+  });
+  if(!rows.length)body=`<tr><td colspan="${ss.length+1}"><div class="log-empty small">Tidak ada metrik yang cocok dengan filter.</div></td></tr>`;
+  const wrap=box.querySelector(".cmp-wrap"), st0=wrap?wrap.scrollTop:0, sl0=wrap?wrap.scrollLeft:0;
+  box.innerHTML=`<div class="log-chart-head"><span>Perbandingan semua metrik · nilai = mean (min – max), Δ terhadap baseline</span><span>${rows.length}/${all.length-nNone} metrik${nNone?` · ${nNone} tanpa data`:""}${ss.length<2?" · pilih ≥2 sesi untuk Δ":""}</span></div>
+  <div class="log-table-wrap cmp-wrap"><table class="log-table cmp-table"><thead>${head}</thead><tbody>${body}</tbody></table></div>
+  <div class="hint lg">Hijau/merah hanya untuk metrik yang lebih rendah = lebih baik (suhu, daya, latency, fault). Sparkline memakai skala yang sama antar sesi dalam satu baris. Klik baris untuk detail, klik header sesi untuk ganti baseline.</div>
+  ${nNone?`<details class="log-cfg"><summary>Metrik tanpa data (${nNone})</summary><div class="log-none-list">${noneList}</div></details>`:""}`;
+  const w2=box.querySelector(".cmp-wrap"); w2.scrollTop=st0; w2.scrollLeft=sl0;
+  box.onclick=e=>{
+    const g=e.target.closest("[data-g]"); if(g){const c=g.dataset.g;lo.col.has(c)?lo.col.delete(c):lo.col.add(c);drawCmp();return}
+    const h=e.target.closest("[data-b]"); if(h){lo.base=+h.dataset.b;const b=$("#bs");if(b)b.value=lo.base;drawCmp();return}
+    const r=e.target.closest("[data-k]"); if(r){lo.m=r.dataset.k;drawCmp();drawDetail();const d=$("#det");if(d)d.scrollIntoView({block:"nearest",behavior:"smooth"})}
+  };
+}
+function drawDetail(){
+  const {ss}=AN, box=$("#det"); if(!box)return;
   const M=LOG_METRICS.find(x=>x[0]===lo.m)||LOG_METRICS[0]||METRICS[0];
-  const arrs=cs.map(c=>c?c[lo.m].slice(Math.round(lo.trim/(ss[0].interval_s||1))).filter(v=>typeof v==="number"):[]);
-  const S2=arrs.map(st);
+  const arrs=ss.map((_,i)=>series(i,M[0])), S2=arrs.map(st);
   const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${x?f2(x[k]):"unavailable"}</td>`).join("")}</tr>`;
   let tb=ss.map((s,i)=>line(`<i class="legend-dot" style="background:var(${COL[i%5]})"></i>${esc(s.label)}`,S2[i])).join("");
   if(lo.grp){
@@ -307,27 +410,21 @@ async function renderLog(){
     Object.entries(g).filter(([,v])=>v.length>1).forEach(([t,v])=>{const m=k=>avg(v.map(x=>x[k]));
       tb+=line(`Average of ${v.length} runs (${esc(t)})`,{mean:m("mean"),med:m("med"),p95:m("p95"),sd:st(v.map(x=>x.mean)).sd,min:Math.min(...v.map(x=>x.min)),max:Math.max(...v.map(x=>x.max))},1)});
   }
-  const flat=o=>{const r={};const walk=(v,p)=>{if(v&&typeof v==="object"){for(const k in v)walk(v[k],p?p+"."+k:k)}else r[p]=v};walk(o,"");return r};
-  const cfgs=ss.map(s=>({...flat(s.config||{}),tag:s.tag||"none",interval_s:s.interval_s}));
-  const keys=[...new Set(cfgs.flatMap(c=>Object.keys(c)))].filter(k=>new Set(cfgs.map(c=>JSON.stringify(c[k]))).size>1);
   const hasData=arrs.some(a=>a.length);
-  $(DOM.an).innerHTML=`<div class="log-controls">
-    <label class="log-field"><span>Metric</span><select id="mt">${LOG_METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
-    <label class="log-field narrow"><span>Skip first</span><span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
-    <label class="log-check"><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label>
+  box.innerHTML=`<h3 class="log-h3">Detail metrik</h3>
+  <div class="log-controls">
+    <label class="log-field"><span>Metric</span><select id="mt">${LOG_METRICS.map(m=>`<option value="${esc(m[0])}" ${m[0]===M[0]?"selected":""}>${esc(m[1])} (${esc(m[2])})</option>`).join("")}</select></label>
     <span class="grow"></span><span class="log-count">${hasData?"sample tersedia":"tidak ada sample"}</span>
   </div>
   <div class="log-chart">
-    <div class="log-chart-head"><span>${M[1]} <em>${M[2]}</em></span><span>${ss.length} sesi · ${arrs.reduce((n,a)=>n+a.length,0)} sample</span></div>
+    <div class="log-chart-head"><span>${esc(M[1])} <em>${esc(M[2])}</em></span><span>${ss.length} sesi · ${arrs.reduce((n,a)=>n+a.length,0)} sample</span></div>
     <svg class="sp lg" id="ov" viewBox="0 0 720 180" preserveAspectRatio="none" aria-label="Grafik ${esc(M[1])}"></svg>
     <div class="log-legend">${ss.map((s,i)=>`<span><i style="background:var(${COL[i%5]})"></i>${esc(s.label)}</span>`).join("")}</div>
   </div>
-  <div class="hint lg">${M[1]} (${M[2]}) dari CSV server. ${hasData?"Sample yang di-skip tidak masuk chart/statistik. Marker tersimpan di meta.json.":"Tidak ada sample untuk metrik ini — mungkin unavailable di mesin ini."}</div>
   <h3 class="log-h3">Statistics</h3>
   <div class="log-table-wrap"><table class="log-table n"><thead><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr></thead><tbody>${tb}</tbody></table></div>
-  ${lo.grp?`<div class="hint lg">Untuk baris average, std dev = spread antar run.</div>`:""}
-  <h3 class="log-h3">Perbedaan konfigurasi sesi</h3>${keys.length?`<div class="log-table-wrap"><table class="log-table n"><thead><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr></thead><tbody>${keys.map(k=>`<tr><td>${k}</td>${cfgs.map(c=>`<td>${esc(String(c[k]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<div class="log-empty small">Semua sesi terpilih punya konfigurasi (governor/EPP/turbo/sysctl/power limit) yang sama.</div>`}`;
-  $(DOM.mt).onchange=e=>{lo.m=e.target.value;renderLog()}; $(DOM.tr).onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $(DOM.gp).onchange=e=>{lo.grp=e.target.checked;renderLog()};
+  ${lo.grp?`<div class="hint lg">Untuk baris average, std dev = spread antar run.</div>`:""}`;
+  $(DOM.mt).onchange=e=>{lo.m=e.target.value;drawCmp();drawDetail()};
   overlay($(DOM.ov),arrs,ss.map(s=>s.interval_s||1));
 }
 function fmtAxis(v){

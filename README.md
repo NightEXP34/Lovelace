@@ -5,6 +5,8 @@ dan NVML; frontend vanilla-JS menampilkan Overview + tab Log. Data yang tidak
 tersedia tetap `null` dan ditampilkan `unavailable` dengan alasan — tidak ada
 angka karangan. Tab Log punya dua mode recording:
 **Detailed** (skalar + per-core P/E + per-drive) dan **Minimal** (8 kolom).
+Analysis menampilkan matriks semua metrik yang direkam (per core/drive),
+baseline, filter, sparkline, dan daftar metrik tanpa data.
 
 ## Peta folder
 
