@@ -104,3 +104,35 @@ Baseline dan akhir sama: `test-web.mjs` **ALL PASS**, `test.mjs`
 - Tujuan brief: (A) Storage tab memilih drive yang salah; (B) hapus UI legacy
   dan rapikan folder (`server/`, `tests/`, `docs/prototype/`).
 
+### B1 — inventory sebelum pindah
+
+`git ls-files` (ringkas): `.gitignore`, `changelog/*`, `docs/*`,
+`noterra/{README.md,index.html,metrics_meta.json,noterra.service,prototype/overview_v6.html,server.py,snapshot-sample.json}`,
+`nttest/{check-layout.mjs,package*.json,test-web.mjs,test.mjs}`, `web/**`.
+
+Referensi path lama yang ditemukan (ringkas): `noterra/server.py` (SAMPLE,
+/legacy), `noterra/noterra.service` (ExecStart/WorkingDirectory),
+`nttest/*` (fixture, old index, metrics_meta), `docs/FORKING.md`,
+`docs/noterra-architecture.md`, `web/THEMES.md`, `noterra/README.md`.
+`docs/blackbox.md` dan changelog adalah catatan historis.
+
+Path di `server.py` saat ini:
+
+- `BASE = Path(__file__).resolve().parent` → `noterra/`
+- `WEB = BASE.parent / "web"` → repo/web
+- `LOGS = BASE.parent / "logs"` → repo/logs
+- `SAMPLE = BASE / "snapshot-sample.json"` → akan jadi `BASE / "fixtures" / ...`
+- `SCHEMA = BASE / "metrics_meta.json"` → tetap di root `server/`
+- `GET /` membaca `WEB/index.html`; `/legacy` membaca `BASE/index.html`.
+
+Karena `server/` berada di kedalaman yang sama dengan `noterra/`,
+`BASE.parent` tetap repo root — dikonfirmasi dari kode, bukan asumsi.
+
+`ls logs | wc -l` = **0** (tidak ada sesi terekam). Jadi cek sesi setelah
+pindah harus mengembalikan 0 (selain entri non-sesi kalau ada).
+
+Catatan keputusan: `noterra/README.md` dan `nttest/check-layout.mjs` tidak
+disebut di target layout dan tidak boleh dihapus, jadi ikut dipindah ke
+`server/README.md` dan `tests/check-layout.mjs` (bukan penghapusan).
+
+
