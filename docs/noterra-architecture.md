@@ -9,13 +9,13 @@ sekarang = monitoring hardware murni; adapter engine LLM dikecualikan sampai nan
 ## Komponen
 
 ```
-noterra/
+server/
   server.py            # FastAPI: collector /proc, /sys, NVML + endpoint
   metrics_meta.json    # schema metrik (label, satuan, sumber, scaleKey)
-  prototype/           # prototype UI dari Claude (overview_v6.html, data mock)
-  snapshot-sample.json # fixture snapshot nyata untuk test
+  requirements.txt     # fastapi, uvicorn, psutil, nvidia-ml-py
   README.md            # cara menjalankan + tabel sumber metrik
-  .venv/               # deps: fastapi, uvicorn, psutil, nvidia-ml-py
+  fixtures/snapshot-sample.json  # fixture snapshot nyata untuk test
+  deploy/noterra.service         # contoh unit systemd (tidak dijalankan)
 web/                   # UI yang diserve GET /
   index.html           # shell: nav, palette, status, #root
   core/client.js       # data client (fetch/registry/ctx), tanpa DOM
@@ -25,9 +25,10 @@ web/                   # UI yang diserve GET /
   themes/default/      # theme L3 (overview.js) + layout.json
   themes/minimal/      # contoh L2 tanpa JavaScript
   examples/headless.html
-nttest/
+tests/
   test-web.mjs         # smoke test headless (jsdom) terhadap web/index.html
-  test.mjs             # smoke test UI lama (noterra/index.html, route /legacy)
+  check-layout.mjs     # cek cepat widget komposit
+docs/prototype/overview_v6.html  # referensi desain
 ```
 
 ## Alur data
@@ -165,7 +166,7 @@ throttle bits NVML (chip UI), layout Overview v6. `--check` terakhir: 76 key,
 
 Unavailable dengan alasan (via /api/health):
 - daya package CPU: `energy_uj` mode 0400 — butuh root/CAP_DAC_READ_SEARCH
-  (unit `noterra/noterra.service` disiapkan; energy_uj TIDAK di-chmod);
+  (unit `server/deploy/noterra.service` disiapkan; energy_uj TIDAK di-chmod);
 - fan GPU: NVML NotSupported (EC-controlled);
 - bandwidth RAM terukur: PMU `uncore_imc_free_running_{0,1}` ada tapi perf
   diblokir `kernel.perf_event_paranoid=4` tanpa root (ubah sysctl = tuning →
@@ -203,7 +204,7 @@ di kemudian hari tanpa mengubah core.
 - [ ] **Aturan thermal-bound + clock turun** — tambahkan sinyal "SM clock
       turun saat bit thermal aktif" ke aturan bottleneck (dari data NVML).
 - [~] **RAPL package power** — butuh root/CAP_DAC_READ_SEARCH; unit
-      `noterra/noterra.service` disiapkan, belum dijalankan (butuh aksi root di
+      `server/deploy/noterra.service` disiapkan, belum dijalankan (butuh aksi root di
       host; energy_uj tidak di-chmod).
 - [ ] **Bandwidth RAM terukur** — PMU IMC ada; butuh perf diizinkan
       (menurunkan perf_event_paranoid = parameter tuning → butuh konfirmasi
@@ -211,10 +212,10 @@ di kemudian hari tanpa mengubah core.
 - [ ] **Baseline A/B tuning OS** — ≥3 run cold/warm untuk eksperimen
       governor/EPP/pinning/readahead (protokol drop_caches), sebagai alat
       verifikasi tweak hardware — bukan metrik engine.
-- [~] **Refactor core/adapter** — frontend sudah modular: data client tanpa DOM
-      (`web/core/client.js`), shell (`shell.js`), widget/layout L2, theme L3,
-      contoh headless L4, dan theme minimal tanpa JS. Yang tersisa: pemisahan
-      backend collector/`adapters/` dan adapter engine/game sesuai Repo A.
+- [~] **Refactor core/adapter** — folder sudah dirapikan: backend di `server/`,
+      test di `tests/`, UI di `web/`; frontend modular L1–L4. Yang tersisa:
+      memecah `server/server.py` menjadi modul collector dan menyiapkan
+      `server/adapters/` (engine/game) sesuai Repo A.
 
 Dikecualikan dari scope sekarang (bukan hilang permanen, hanya tidak dikerjakan):
 adapter Strata / metrik engine (tok/s, joule per token, waktu hingga warm) dan
