@@ -72,3 +72,57 @@ svg path.l{fill:none;stroke-width:1.5;vector-effect:non-scaling-stroke}
 /* host layout.json: lepas grid shell supaya grid layout yang mengatur */
 .layout-host{display:block;padding:12px 14px;min-width:0}
 .layout{min-width:0}
+
+/* ---- Log tab (dipakai shell; theme cukup menyediakan token warna) ---- */
+.log-host{display:block;padding:14px 16px;min-width:0}
+.log{display:flex;flex-direction:column;gap:14px;max-width:1500px;margin:0 auto;min-width:0}
+.log-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.log-kicker{font:600 10px var(--mono,monospace);letter-spacing:.16em;color:var(--a,#3b5bdb);margin-bottom:5px}
+.log-head h1{font-size:clamp(22px,2.6vw,30px);line-height:1.1;margin:0;letter-spacing:-.02em}
+.log-sub{margin:6px 0 0;color:var(--mute,#6a7180);font-size:12px}
+.log-sub code{font-family:var(--mono,monospace);color:var(--ink,#15171c)}
+.log-head-actions{display:flex;align-items:center;gap:8px}
+.log-live{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line,#e2e4e9);border-radius:99px;color:var(--mute,#6a7180);font:11px var(--mono,monospace)}
+.log-live i{width:7px;height:7px;border-radius:50%;background:var(--mute,#6a7180)}
+.log-live.on{color:var(--bad,#d6336c);border-color:var(--bad,#d6336c)}
+.log-live.on i{background:var(--bad,#d6336c);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad,#d6336c) 18%,transparent)}
+.log-toolbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:14px;background:var(--surface,#fff);border:1px solid var(--line,#e2e4e9);border-radius:var(--r-panel,12px)}
+.log-field{display:flex;flex-direction:column;gap:4px;min-width:0;font:600 10px var(--sans,sans-serif);letter-spacing:.08em;text-transform:uppercase;color:var(--mute,#6a7180)}
+.log-field input,.log-field select{min-width:190px;font:inherit;text-transform:none;letter-spacing:0;color:var(--ink,#15171c);background:var(--bg,#f2f3f5);border:1px solid var(--line,#e2e4e9);border-radius:var(--r-ctl,7px);padding:8px 10px}
+.log-field.narrow input,.log-field.narrow select{min-width:88px}
+.log-field .fld{height:36px}
+.log-toolbar .btn{height:36px}
+.log-toolbar .timer{align-self:center;margin:0 2px}
+.log-card{background:var(--surface,#fff);border:1px solid var(--line,#e2e4e9);border-radius:var(--r-panel,12px);padding:16px 18px;min-width:0}
+.log-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.log-card h2{font-size:16px;margin:0;font-weight:650}
+.log-card-head p{margin:3px 0 0;color:var(--mute,#6a7180);font-size:12px}
+.log-count{white-space:nowrap;font:11px var(--mono,monospace);color:var(--mute,#6a7180);border:1px solid var(--line,#e2e4e9);border-radius:99px;padding:4px 9px}
+.log-table-wrap{width:100%;overflow:auto;border:1px solid var(--line,#e2e4e9);border-radius:10px}
+.log-table{width:100%;border-collapse:collapse;font-size:12px;min-width:760px}
+.log-table th{ text-align:left;color:var(--mute,#6a7180);font-weight:500;padding:10px 12px;border-bottom:1px solid var(--line,#e2e4e9);white-space:nowrap;background:var(--bg,#f2f3f5)}
+.log-table td{padding:10px 12px;border-bottom:1px solid var(--line,#e2e4e9);vertical-align:middle}
+.log-table tbody tr:last-child td{border-bottom:0}
+.log-table tbody tr:hover td{background:color-mix(in srgb,var(--a,#3b5bdb) 6%,transparent)}
+.log-table tbody tr.is-sel td{background:color-mix(in srgb,var(--a,#3b5bdb) 9%,transparent)}
+.log-table .mono{font-family:var(--mono,monospace);font-variant-numeric:tabular-nums}
+.log-table .check{width:34px}
+.log-table.n th:not(:first-child),.log-table.n td:not(:first-child){text-align:right}
+.log-table.n td:not(:first-child){font-family:var(--mono,monospace)}
+.log-table tr.grp td{background:var(--bg,#f2f3f5);font-weight:600}
+.btn.ghost{background:transparent;color:var(--bad,#d6336c);border-color:color-mix(in srgb,var(--bad,#d6336c) 35%,var(--line,#e2e4e9))}
+.log-empty{padding:34px 16px;text-align:center;color:var(--mute,#6a7180);border:1px dashed var(--line,#e2e4e9);border-radius:10px;font-size:12px}
+.log-empty.small{padding:16px;text-align:left}
+.log-controls{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.log-check{display:inline-flex;align-items:center;gap:7px;color:var(--mute,#6a7180);font-size:12px;padding-bottom:8px}
+.log-chart{border:1px solid var(--line,#e2e4e9);border-radius:10px;padding:10px 12px 8px;background:var(--bg,#f2f3f5)}
+.log-chart-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font:11px var(--mono,monospace);color:var(--mute,#6a7180);margin-bottom:4px}
+.log-chart-head em{font-style:normal;color:var(--ink,#15171c)}
+.log-chart svg{width:100%;height:230px;display:block}
+.log-chart .grid line{stroke:var(--line,#e2e4e9);stroke-width:1;vector-effect:non-scaling-stroke}
+.log-chart .grid text{fill:var(--mute,#6a7180);font:9px var(--mono,monospace)}
+.log-chart .chart-empty{fill:var(--mute,#6a7180);font:11px var(--sans,sans-serif)}
+.log-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font:10px var(--mono,monospace);color:var(--mute,#6a7180)}
+.log-legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.log-h3{font-size:13px;margin:18px 0 8px;font-weight:650}
+.legend-dot{display:inline-block;width:9px;height:3px;border-radius:2px;margin-right:7px;vertical-align:middle}

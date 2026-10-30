@@ -118,6 +118,7 @@ function show(id){
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.p===id));
   const root=$(DOM.root), v=VIEWS.get(id);
   root.classList.remove("layout-host");
+  root.classList.remove("log-host");
   if(v&&v.mount)v.mount(root,ctx); else root.innerHTML="";
 }
 
@@ -211,14 +212,43 @@ async function exportCsv(){
 async function renderLog(){
   await loadSessions();
   const root=$(DOM.root), r=!!rec;
-  const rows=SES.map(s=>`<tr><td><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.label)}"></td><td>${esc(s.label)}${s.status==="recording"?' <span class="tag">recording</span>':""}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td>${esc(s.started_iso||String(s.start_ms))}</td><td>${mmss(Math.round(s.samples*(s.interval_s||1)))}</td><td>${s.interval_s} s</td><td>${s.samples}</td><td>${(s.markers||[]).length}</td><td><button class="btn" data-del="${s.id}">Delete</button></td></tr>`).join("");
-  root.innerHTML=`<div class="bar-top"><input id="lb" placeholder="Session label" size="22" value="${esc(lo.lb)}"><input id="tg" placeholder="Tag (groups repeated runs)" size="24" value="${esc(lo.tg)}">
-    <label>Interval <select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===(r?rec.iv:lo.iv)?"selected":""}>${v} s</option>`).join("")}</select></label>
-    <button class="btn ${r?"on":""}" id="rc">${r?"Stop and save":"Start recording"}</button><span class="timer" id="tm">${r?mmss(Math.round((rec.samples||0)*rec.iv)):"00:00"}</span>
-    <button class="btn" id="mk" ${r?"":"disabled"}>Add marker${r?" ("+(rec.mk||0)+")":""}</button><span class="grow"></span><button class="btn" id="ex" ${sel.size?"":"disabled"}>Export CSV</button></div>
-    <div class="stack"><section class="p" style="display:block"><h2>Sessions</h2><div class="sub" style="margin:2px 0 16px">${SES.length} tersimpan di server (folder logs/). Interval & marker ikut tersimpan di meta.json.</div>
-    ${SES.length?`<table><tr><th></th><th>Name</th><th>Tag</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr>${rows}</table>`:`<div class="empty">No logs yet. Start a recording to create one.</div>`}</section>
-    <section class="p" style="display:block"><h2>Analysis</h2><div class="sub" id="asub" style="margin:2px 0 16px">0 selected</div><div id="an"><div class="empty">Select one or more sessions above to analyze them.</div></div></section></div>`;
+  const rows=SES.map(s=>`<tr class="${sel.has(s.id)?"is-sel":""}"><td class="check"><input type="checkbox" data-id="${s.id}" ${sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.label)}"></td><td><b>${esc(s.label)}</b>${s.status==="recording"?' <span class="tag">recording</span>':""}</td><td><span class="tag">${esc(s.tag||"none")}</span></td><td class="mono">${esc(s.started_iso||String(s.start_ms))}</td><td class="mono">${mmss(Math.round(s.samples*(s.interval_s||1)))}</td><td>${s.interval_s} s</td><td class="mono">${s.samples}</td><td class="mono">${(s.markers||[]).length}</td><td><button class="btn ghost" data-del="${s.id}">Delete</button></td></tr>`).join("");
+  const sessions=SES.length?`<div class="log-table-wrap"><table class="log-table"><thead><tr><th class="check"></th><th>Name</th><th>Tag</th><th>Started</th><th>Length</th><th>Interval</th><th>Samples</th><th>Markers</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="log-empty">No logs yet. Mulai rekaman untuk membuat sesi pertama.</div>`;
+  root.innerHTML=`<div class="log">
+    <header class="log-head">
+      <div>
+        <div class="log-kicker">RECORDING / ANALYSIS</div>
+        <h1>Log sessions</h1>
+        <p class="log-sub">Rekam snapshot server-side, bandingkan sesi, lalu ekspor CSV. Semua data dari folder <code>logs/</code>.</p>
+      </div>
+      <div class="log-head-actions">
+        <span class="log-live ${r?"on":""}"><i></i>${r?"recording":"idle"}</span>
+        <button class="btn" id="ex" ${sel.size?"":"disabled"}>Export CSV</button>
+      </div>
+    </header>
+
+    <section class="log-toolbar">
+      <label class="log-field"><span>Session label</span><input id="lb" placeholder="mis. cold-run" value="${esc(lo.lb)}"></label>
+      <label class="log-field"><span>Tag</span><input id="tg" placeholder="grup run berulang" value="${esc(lo.tg)}"></label>
+      <label class="log-field narrow"><span>Interval</span><select id="iv" ${r?"disabled":""}>${[.5,1,5].map(v=>`<option value="${v}" ${v===(r?rec.iv:lo.iv)?"selected":""}>${v} s</option>`).join("")}</select></label>
+      <button class="btn ${r?"on":""}" id="rc">${r?"Stop and save":"Start recording"}</button>
+      <span class="timer" id="tm">${r?mmss(Math.round((rec.samples||0)*rec.iv)):"00:00"}</span>
+      <button class="btn" id="mk" ${r?"":"disabled"}>Add marker${r?" ("+(rec.mk||0)+")":""}</button>
+    </section>
+
+    <section class="log-card">
+      <div class="log-card-head">
+        <div><h2>Sessions</h2><p>${SES.length} tersimpan di server (folder logs/). Interval & marker ikut tersimpan di meta.json.</p></div>
+        <span class="log-count">${SES.length} sesi</span>
+      </div>
+      ${sessions}
+    </section>
+
+    <section class="log-card">
+      <div class="log-card-head"><div><h2>Analysis</h2><p id="asub">0 selected</p></div></div>
+      <div id="an"><div class="log-empty">Pilih satu atau lebih sesi di atas untuk dianalisis.</div></div>
+    </section>
+  </div>`;
   $(DOM.lb).oninput=e=>lo.lb=e.target.value; $(DOM.tg).oninput=e=>lo.tg=e.target.value; $(DOM.iv).onchange=e=>lo.iv=+e.target.value;
   $(DOM.rc).onclick=toggleRec; $(DOM.ex).onclick=exportCsv; $(DOM.mk).onclick=addMarker;
   root.querySelectorAll("[data-id]").forEach(c=>c.onchange=()=>{const id=+c.dataset.id;sel.has(id)?sel.delete(id):sel.add(id);renderLog()});
@@ -233,7 +263,7 @@ async function renderLog(){
   const arrs=cs.map(c=>c?c[lo.m].slice(Math.round(lo.trim/(ss[0].interval_s||1))).filter(v=>typeof v==="number"):[]);
   const S2=arrs.map(st);
   const line=(l,x,c)=>`<tr${c?' class="grp"':""}><td>${l}</td>${["mean","med","p95","sd","min","max"].map(k=>`<td>${x?f2(x[k]):"unavailable"}</td>`).join("")}</tr>`;
-  let tb=ss.map((s,i)=>line(`<i style="display:inline-block;width:10px;height:3px;border-radius:2px;background:var(${COL[i%5]});margin-right:8px;vertical-align:middle"></i>${esc(s.label)}`,S2[i])).join("");
+  let tb=ss.map((s,i)=>line(`<i class="legend-dot" style="background:var(${COL[i%5]})"></i>${esc(s.label)}`,S2[i])).join("");
   if(lo.grp){
     const g={};ss.forEach((s,i)=>{if(S2[i])(g[s.tag||"none"]=g[s.tag||"none"]||[]).push(S2[i])});
     Object.entries(g).filter(([,v])=>v.length>1).forEach(([t,v])=>{const m=k=>avg(v.map(x=>x[k]));
@@ -243,35 +273,61 @@ async function renderLog(){
   const cfgs=ss.map(s=>({...flat(s.config||{}),tag:s.tag||"none",interval_s:s.interval_s}));
   const keys=[...new Set(cfgs.flatMap(c=>Object.keys(c)))].filter(k=>new Set(cfgs.map(c=>JSON.stringify(c[k]))).size>1);
   const hasData=arrs.some(a=>a.length);
-  $(DOM.an).innerHTML=`<div class="ctl"><label>Metric <select id="mt">${LOG_METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
-    <label>Skip first <span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
-    <label><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label></div>
-    ${hasData?`<svg class="sp lg" id="ov" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>`:""}
-    <div class="hint lg">${M[1]} (${M[2]}) dari CSV server. ${hasData?"Sample yang di-skip tidak masuk chart/statistik. Marker tersimpan di meta.json.":"Tidak ada sample untuk metrik ini — mungkin unavailable di mesin ini."}</div>
-    <h3 style="margin-top:18px">Statistics</h3><table class="n"><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr>${tb}</table>
-    ${lo.grp?`<div class="hint lg">Untuk baris average, std dev = spread antar run.</div>`:""}
-    <h3 style="margin-top:18px">Perbedaan konfigurasi sesi</h3>${keys.length?`<table class="n"><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr>${keys.map(k=>`<tr><td>${k}</td>${cfgs.map(c=>`<td>${esc(String(c[k]))}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="hint lg">Semua sesi terpilih punya konfigurasi (governor/EPP/turbo/sysctl/power limit) yang sama.</div>`}`;
+  $(DOM.an).innerHTML=`<div class="log-controls">
+    <label class="log-field"><span>Metric</span><select id="mt">${LOG_METRICS.map(m=>`<option value="${m[0]}" ${m[0]===lo.m?"selected":""}>${m[1]} (${m[2]})</option>`).join("")}</select></label>
+    <label class="log-field narrow"><span>Skip first</span><span class="fld"><input type="number" id="tr" min="0" step="5" value="${lo.trim}" aria-label="Seconds to skip"><em>s</em></span></label>
+    <label class="log-check"><input type="checkbox" id="gp" ${lo.grp?"checked":""}> Average runs with the same tag</label>
+    <span class="grow"></span><span class="log-count">${hasData?"sample tersedia":"tidak ada sample"}</span>
+  </div>
+  <div class="log-chart">
+    <div class="log-chart-head"><span>${M[1]} <em>${M[2]}</em></span><span>${ss.length} sesi · ${arrs.reduce((n,a)=>n+a.length,0)} sample</span></div>
+    <svg class="sp lg" id="ov" viewBox="0 0 720 180" preserveAspectRatio="none" aria-label="Grafik ${esc(M[1])}"></svg>
+    <div class="log-legend">${ss.map((s,i)=>`<span><i style="background:var(${COL[i%5]})"></i>${esc(s.label)}</span>`).join("")}</div>
+  </div>
+  <div class="hint lg">${M[1]} (${M[2]}) dari CSV server. ${hasData?"Sample yang di-skip tidak masuk chart/statistik. Marker tersimpan di meta.json.":"Tidak ada sample untuk metrik ini — mungkin unavailable di mesin ini."}</div>
+  <h3 class="log-h3">Statistics</h3>
+  <div class="log-table-wrap"><table class="log-table n"><thead><tr><th>Session</th><th>Mean</th><th>Median</th><th>p95</th><th>Std dev</th><th>Min</th><th>Max</th></tr></thead><tbody>${tb}</tbody></table></div>
+  ${lo.grp?`<div class="hint lg">Untuk baris average, std dev = spread antar run.</div>`:""}
+  <h3 class="log-h3">Perbedaan konfigurasi sesi</h3>${keys.length?`<div class="log-table-wrap"><table class="log-table n"><thead><tr><th>Field</th>${ss.map(s=>`<th>${esc(s.label)}</th>`).join("")}</tr></thead><tbody>${keys.map(k=>`<tr><td>${k}</td>${cfgs.map(c=>`<td>${esc(String(c[k]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<div class="log-empty small">Semua sesi terpilih punya konfigurasi (governor/EPP/turbo/sysctl/power limit) yang sama.</div>`}`;
   $(DOM.mt).onchange=e=>{lo.m=e.target.value;renderLog()}; $(DOM.tr).onchange=e=>{lo.trim=Math.max(0,+e.target.value||0);renderLog()}; $(DOM.gp).onchange=e=>{lo.grp=e.target.checked;renderLog()};
-  const ov=$(DOM.ov);
-  if(ov) overlay(ov,arrs,ss.map(s=>s.interval_s||1));
+  overlay($(DOM.ov),arrs,ss.map(s=>s.interval_s||1));
+}
+function fmtAxis(v){
+  const a=Math.abs(v);
+  return v.toFixed(a<1?2:a<10?1:0);
 }
 function overlay(svg,arrs,ivs){
+  if(!svg)return;
   const keep=arrs.map((a,i)=>[a,ivs[i]]).filter(([a])=>a.length>1);
-  if(!keep.length){svg.innerHTML="";return}
-  const all=keep.flatMap(([a])=>a),mn=Math.min(...all),sp=(Math.max(...all)-mn)||1,D=Math.max(...keep.map(([a,i])=>a.length*ivs[i]));
-  svg.innerHTML=keep.map(([a,i])=>`<path class="l" style="stroke:var(${COL[i%5]})" d="${a.map((v,j)=>`${j?"L":"M"}${(j*ivs[i]/D*200).toFixed(1)},${(58-(v-mn)/sp*56).toFixed(1)}`).join("")}"/>`).join("");
+  if(!keep.length){
+    svg.innerHTML='<text class="chart-empty" x="360" y="96" text-anchor="middle">Tidak ada sample untuk metrik ini.</text>';
+    return;
+  }
+  const all=keep.flatMap(([a])=>a),mn=Math.min(...all),mx=Math.max(...all),span=mx-mn;
+  const W=720,H=180,L=48,R=14,T=18,B=28;
+  const D=Math.max(...keep.map(([a,i])=>a.length*i))||1;
+  const x=(j,i)=>L+(j*i/D)*(W-L-R);
+  const y=v=>span===0?T+(H-T-B)/2:T+(1-(v-mn)/span)*(H-T-B);
+  const grid=[0,.25,.5,.75,1].map(f=>{
+    const gy=T+f*(H-T-B), val=mx-f*span;
+    return `<line x1="${L}" y1="${gy.toFixed(1)}" x2="${W-R}" y2="${gy.toFixed(1)}"/><text x="${L-8}" y="${(gy+3).toFixed(1)}" text-anchor="end">${fmtAxis(val)}</text>`;
+  }).join("");
+  const paths=keep.map(([a,i],k)=>`<path class="l" style="stroke:var(${COL[k%5]})" d="${a.map((v,j)=>`${j?"L":"M"}${x(j,i).toFixed(1)},${y(v).toFixed(1)}`).join("")}"/>`).join("");
+  svg.innerHTML=`<g class="grid">${grid}</g>${paths}`;
 }
 
 /* shell memakai polling idempoten dari client */
 function start(){dataStart();}
 
 /* ---- titik masuk: daftar theme dari server, muat theme terpilih ---- */
-addView("log",{label:"Log",order:10,mount(){renderLog();}});
+addView("log",{label:"Log",order:10,mount(root){root.classList.add("log-host");renderLog();}});
 /* data update -> status + theme/view update; offline -> chips saja (perilaku lama) */
 ctx.on("update",()=>{
   $(DOM.status).textContent=MOCK?"Backend: mock":"Backend: live";
   try{
-    if(theme&&theme.update)theme.update(ctx);
+    /* theme Overview tidak boleh di-update saat tab Log aktif: rail/panel
+       tidak ada di DOM dan dulu membuat status jatuh ke offline. */
+    if(activeView==="overview"&&theme&&theme.update)theme.update(ctx);
     const v=VIEWS.get(activeView); if(v&&v.update)v.update(ctx);
   }catch(e){
     /* perilaku lama: error render theme jatuh ke status offline + chips */

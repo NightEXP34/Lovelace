@@ -1,0 +1,11 @@
+# Changelog — perbaikan tab Log
+
+- Status backend tidak lagi jatuh ke "offline" saat tab Log aktif: shell hanya
+  memanggil `theme.update()` untuk view Overview (rail/panel tidak ada di DOM
+  Log).
+- Layout Log ditulis ulang: header, toolbar rekaman, kartu Sessions, kartu
+  Analysis, tabel yang bisa di-scroll, empty state.
+- Chart Log baru: grid + label sumbu, penanganan nilai konstan (garis di
+  tengah), pesan saat tidak ada sample, dan legend per sesi.
+- `web/core/core.css` mendapat gaya Log netral (berlaku juga untuk theme lain).
+- Test: status live di tab Log, path chart, dan grid chart ditambahkan.
